@@ -51,15 +51,15 @@ The Twitter Bootstrap example site is included in the `examples` folder, along w
 
     cd examples
     unzip bootstrap-examples-master.zip
-    ../embedfs -generate=true bootstrap-examples-master
-    go run ../bootstrap-examples-master.go
+    ../embedfs -match=".*" -generate=true bootstrap-examples-master
+    go run main/bootstrap-examples-master.go
 
 To prove that the entire site is embedded into a single executable, just build the example
 
-    go build -o bootstrap-examples-master ../bootstrap-examples-master.go
+    go build -o bootstrap-examples main/bootstrap-examples-master.go
 
-Then run the resulting executable, `bootstrap-examples-master`:
+Then run the resulting executable, `bootstrap-examples`:
 
-    ./bootstrap-examples-master
+    ./bootstrap-examples
 
 and open the browser at [localhost](http://localhost:7777)
