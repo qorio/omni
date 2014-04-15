@@ -19,11 +19,11 @@ type Settings struct {
 	RedisUrl       string
 	RedisPrefix    string
 	RestrictDomain string
-	Redirect404    string
 	UrlLength      int
 }
 
 type Shorty interface {
+	UrlLength() int
 	ShortUrl(url string) (ShortUrl, error)
 	Find(id string) (*ShortUrl, error)
 }
@@ -70,6 +70,10 @@ func Init(settings Settings) *shortyImpl {
 			},
 		},
 	}
+}
+
+func (this *shortyImpl) UrlLength() int {
+	return this.settings.UrlLength
 }
 
 func (this *shortyImpl) ShortUrl(data string) (entity *ShortUrl, err error) {
