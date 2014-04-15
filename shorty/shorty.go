@@ -4,13 +4,9 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
-	// "fmt"
 	"github.com/garyburd/redigo/redis"
-	//	"math"
 	"net/url"
 	"regexp"
-	//	"sort"
-	//	"strconv"
 	"strings"
 	"time"
 )
@@ -22,11 +18,20 @@ type Settings struct {
 	UrlLength      int
 }
 
+type ShortUrl struct {
+	Id          string
+	Destination string
+	Created     time.Time
+	service     *shortyImpl
+}
+
 type Shorty interface {
 	UrlLength() int
 	ShortUrl(url string) (ShortUrl, error)
 	Find(id string) (*ShortUrl, error)
 }
+
+///////////////////////////////////////////////////////////////////////////////////
 
 type shortyImpl struct {
 	settings Settings
@@ -35,21 +40,7 @@ type shortyImpl struct {
 
 const (
 	alphanum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-	keyy     = "year:%d"
-	keym     = "month:%0d-%0.2d"
-	keyd     = "day:%d-%0.2d-%0.2d"
-	keyh     = "hour:%d-%0.2d-%0.2d %0.2d"
-	keyi     = "minute:%d-%0.2d-%0.2d %0.2d:%0.2d"
 )
-
-type ShortUrl struct {
-	Id          string
-	Destination string
-	Created     time.Time
-	service     *shortyImpl
-}
-
-//var pool *redis.Pool
 
 func Init(settings Settings) *shortyImpl {
 	return &shortyImpl{

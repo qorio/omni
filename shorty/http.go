@@ -108,7 +108,9 @@ func (this *ApiEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.Req
 
 	// Record stats asynchronously
 	go func() {
-		//shortUrl.Hit(service.requestParser.Parse(req))
+		if origin, err := this.requestParser.Parse(req); err == nil {
+			shortUrl.Record(origin)
+		}
 	}()
 	http.Redirect(resp, req, shortUrl.Destination, http.StatusMovedPermanently)
 }
