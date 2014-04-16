@@ -3,6 +3,7 @@ package shorty
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	omni_http "github.com/qorio/omni/http"
 	"io"
@@ -42,8 +43,16 @@ func NewApiEndPoint(settings ApiEndPointSettings, service Shorty) (api *ApiEndPo
 
 		regex := fmt.Sprintf("[A-Za-z0-9]{%d}", service.UrlLength())
 		api.router.HandleFunc("/{id:"+regex+"}", api.RedirectHandler).Name("redirect")
+
+		return api, nil
+	} else {
+		return nil, err
 	}
-	return
+}
+
+func (this *ApiEndPoint) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
+	glog.V(1).Infoln("router", this.router)
+	this.router.ServeHTTP(resp, request)
 }
 
 func (this *ApiEndPoint) ApiAddHandler(resp http.ResponseWriter, req *http.Request) {
@@ -81,7 +90,7 @@ func (this *ApiEndPoint) ApiAddHandler(resp http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	json := fmt.Sprintf("{\"id\":\"http://%s%s\",\"longUrl\":\"%s\"}", req.Host, url, shortUrl.Destination)
+	json := fmt.Sprintf("{\"id\":\"%s\",\"longUrl\":\"%s\",\"shortUrl\":\"%s\"}", shortUrl.Id, shortUrl.Destination, url)
 	resp.Write([]byte(json))
 }
 
@@ -102,7 +111,7 @@ func (this *ApiEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.Req
 			http.Redirect(resp, req, url404, http.StatusTemporaryRedirect)
 			return
 		}
-		renderError(resp, req, "No URL was found with that goshorty code", http.StatusNotFound)
+		renderError(resp, req, "No URL was found with that shorty code", http.StatusNotFound)
 		return
 	}
 

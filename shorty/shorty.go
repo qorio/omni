@@ -27,7 +27,7 @@ type ShortUrl struct {
 
 type Shorty interface {
 	UrlLength() int
-	ShortUrl(url string) (ShortUrl, error)
+	ShortUrl(url string) (*ShortUrl, error)
 	Find(id string) (*ShortUrl, error)
 }
 
@@ -133,7 +133,7 @@ func (this *shortyImpl) Find(id string) (*ShortUrl, error) {
 		return nil, err
 	}
 
-	var url ShortUrl
+	url := ShortUrl{service: this}
 	if err := json.Unmarshal(data, &url); err != nil {
 		return nil, err
 	}
