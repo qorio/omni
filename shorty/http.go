@@ -13,33 +13,49 @@ import (
 	"strings"
 )
 
-type ApiAddRequest struct {
+type ShortyAddRequest struct {
 	LongUrl string
 }
 
-type ApiEndPointSettings struct {
+type ShortyEndPointSettings struct {
 	Redirect404     string
 	GeoIpDbFilePath string
 }
 
-type ApiEndPoint struct {
-	settings      ApiEndPointSettings
+type ShortyEndPoint struct {
+	settings      ShortyEndPointSettings
 	router        *mux.Router
 	requestParser *omni_http.RequestParser
 	service       Shorty
 }
 
-func NewApiEndPoint(settings ApiEndPointSettings, service Shorty) (api *ApiEndPoint, err error) {
+func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty) (api *ShortyEndPoint, err error) {
 	if requestParser, err := omni_http.NewRequestParser(settings.GeoIpDbFilePath); err == nil {
-		api = &ApiEndPoint{
+		api = &ShortyEndPoint{
 			settings:      settings,
 			router:        mux.NewRouter(),
 			requestParser: requestParser,
 			service:       service,
 		}
 
-		// configure router
+		regex := fmt.Sprintf("[A-Za-z0-9]{%d}", service.UrlLength())
+		api.router.HandleFunc("/{id:"+regex+"}", api.RedirectHandler).Name("redirect")
 		api.router.HandleFunc("/api/v1/url", api.ApiAddHandler).Methods("POST").Name("add")
+
+		return api, nil
+	} else {
+		return nil, err
+	}
+}
+
+func NewRedirector(settings ShortyEndPointSettings, service Shorty) (api *ShortyEndPoint, err error) {
+	if requestParser, err := omni_http.NewRequestParser(settings.GeoIpDbFilePath); err == nil {
+		api = &ShortyEndPoint{
+			settings:      settings,
+			router:        mux.NewRouter(),
+			requestParser: requestParser,
+			service:       service,
+		}
 
 		regex := fmt.Sprintf("[A-Za-z0-9]{%d}", service.UrlLength())
 		api.router.HandleFunc("/{id:"+regex+"}", api.RedirectHandler).Name("redirect")
@@ -50,19 +66,19 @@ func NewApiEndPoint(settings ApiEndPointSettings, service Shorty) (api *ApiEndPo
 	}
 }
 
-func (this *ApiEndPoint) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
+func (this *ShortyEndPoint) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
 	glog.V(1).Infoln("router", this.router)
 	this.router.ServeHTTP(resp, request)
 }
 
-func (this *ApiEndPoint) ApiAddHandler(resp http.ResponseWriter, req *http.Request) {
+func (this *ShortyEndPoint) ApiAddHandler(resp http.ResponseWriter, req *http.Request) {
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var message ApiAddRequest
+	var message ShortyAddRequest
 	dec := json.NewDecoder(strings.NewReader(string(body)))
 	for {
 		if err := dec.Decode(&message); err == io.EOF {
@@ -94,7 +110,7 @@ func (this *ApiEndPoint) ApiAddHandler(resp http.ResponseWriter, req *http.Reque
 	resp.Write([]byte(json))
 }
 
-func (this *ApiEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.Request) {
+func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	shortUrl, err := this.service.Find(vars["id"])
 	if err != nil {
