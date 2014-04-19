@@ -6,7 +6,7 @@ BUILD=/tmp/build
 
 GITHUB=github.com/qorio/omni
 DIRS_TO_COPY=$(ls -d */)
-FILES_TO_COPY=""
+FILES_TO_COPY="GeoIP.dat"
 
 # Git commit hash / message
 GIT_COMMIT_HASH=$(git rev-list --max-count=1 --reverse HEAD)
