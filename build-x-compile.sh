@@ -46,7 +46,6 @@ mkdir -p $ROOTDIR
 
 for dir in $DIRS_TO_COPY; do
     t=`echo $dir | sed -e 's/\///g'`
-    
     echo "Copying $t to $ROOTDIR"
     cp -r $t $ROOTDIR
 done
