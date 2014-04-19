@@ -3,7 +3,6 @@ package shorty
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	omni_http "github.com/qorio/omni/http"
 	"io"
@@ -48,6 +47,11 @@ func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty) (api *Short
 	}
 }
 
+func addHeaders(w *http.ResponseWriter) {
+	(*w).Header().Add("Content-Type", "application/json")
+	(*w).Header().Add("Access-Control-Allow-Origin", "*")
+}
+
 func NewRedirector(settings ShortyEndPointSettings, service Shorty) (api *ShortyEndPoint, err error) {
 	if requestParser, err := omni_http.NewRequestParser(settings.GeoIpDbFilePath); err == nil {
 		api = &ShortyEndPoint{
@@ -67,11 +71,12 @@ func NewRedirector(settings ShortyEndPointSettings, service Shorty) (api *Shorty
 }
 
 func (this *ShortyEndPoint) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
-	glog.V(1).Infoln("router", this.router)
 	this.router.ServeHTTP(resp, request)
 }
 
 func (this *ShortyEndPoint) ApiAddHandler(resp http.ResponseWriter, req *http.Request) {
+	addHeaders(&resp)
+
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
