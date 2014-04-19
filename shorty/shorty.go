@@ -74,21 +74,16 @@ func (this *shortyImpl) ShortUrl(data string) (entity *ShortUrl, err error) {
 		return
 	}
 
-	if matches, _ := regexp.MatchString("^https?", data); !matches {
-		data = "http://" + data
-	}
-
 	u, err := url.Parse(data)
 	if err != nil {
 		return
-	} else if matches, _ := regexp.MatchString("[.]+", u.Host); !matches {
-		err = errors.New("No valid domain in URL: " + u.Host)
-		return
 	}
 
-	if matches, _ := regexp.MatchString("^[A-Za-z0-9.]*"+this.settings.RestrictDomain, u.Host); len(this.settings.RestrictDomain) > 0 && !matches {
-		err = errors.New("Only URLs on " + this.settings.RestrictDomain + " domain allowed")
-		return
+	if len(this.settings.RestrictDomain) > 0 {
+		if matches, _ := regexp.MatchString("^[A-Za-z0-9.]*"+this.settings.RestrictDomain, u.Host); !matches {
+			err = errors.New("Only URLs on " + this.settings.RestrictDomain + " domain allowed")
+			return
+		}
 	}
 
 	entity = &ShortUrl{Destination: u.String(), Created: time.Now(), service: this}
