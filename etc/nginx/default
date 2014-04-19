@@ -1,0 +1,30 @@
+
+# Redirector http endpoint
+server {
+      listen 80;
+      server_name qor.io;
+      location / {
+              proxy_pass http://localhost:8080;
+      }
+}
+
+# Shorty API + redirector endpoint
+server {
+	listen 443;
+	server_name qor.io;
+
+        ssl on;
+        ssl_certificate /etc/nginx/ssl/-_qor_io_ee.crt;
+        ssl_certificate_key /etc/nginx/ssl/-_qor_io.key;
+
+#	ssl_session_timeout 5m;
+#	ssl_protocols SSLv3 TLSv1;
+#	ssl_ciphers ALL:!ADH:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv3:+EXP;
+#	ssl_prefer_server_ciphers on;
+
+	location / {
+	 	proxy_pass http://localhost:8081;
+	}
+}
+
+
