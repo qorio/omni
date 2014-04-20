@@ -51,6 +51,9 @@ func main() {
 
 	flag.Parse()
 
+	buildInfo := runtime.BuildInfo()
+	glog.Infoln("Build", buildInfo.Number, "Commit", buildInfo.Commit, "When", buildInfo.Timestamp)
+
 	shortyService := shorty.Init(shorty.Settings{
 		RedisUrl:       fmt.Sprintf("%s:%d", *redisHost, *redisPort),
 		RedisPrefix:    *redisPrefix,

@@ -122,6 +122,9 @@ func (this *ShortyEndPoint) ApiAddHandler(resp http.ResponseWriter, req *http.Re
 func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	shortUrl, err := this.service.Find(vars["id"])
+
+	glog.Infoln("1", shortUrl, err)
+
 	if err != nil {
 		renderError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
@@ -144,6 +147,9 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	// Record stats asynchronously
 	go func() {
 		origin, geoParseErr := this.requestParser.Parse(req)
+
+		glog.Infoln("2", origin, geoParseErr)
+
 		shortUrl.Record(origin)
 		if geoParseErr != nil {
 			glog.Warningln("Cannot determine location:", geoParseErr)

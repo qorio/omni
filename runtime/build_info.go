@@ -6,3 +6,17 @@ const (
 	buildTimestamp   = "@@BUILD_TIMESTAMP@@"
 	buildNumber      = "@@BUILD_NUMBER@@"
 )
+
+type Build struct {
+	Commit    string
+	Timestamp string
+	Number    string
+}
+
+func BuildInfo() Build {
+	return Build{
+		Commit:    gitCommitHash,
+		Timestamp: buildTimestamp,
+		Number:    buildNumber,
+	}
+}
