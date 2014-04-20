@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
-	"github.com/golang/glog"
 	"github.com/qorio/omni/http"
 	"math"
 	"sort"
@@ -58,8 +57,6 @@ func (this *ShortUrl) Record(r *http.RequestOrigin) (err error) {
 	c.Send("INCR", fmt.Sprintf(hitsPrefix+keyd, year, month, day))
 	c.Send("INCR", fmt.Sprintf(hitsPrefix+keyh, year, month, day, hour))
 	c.Send("INCR", fmt.Sprintf(hitsPrefix+keyi, year, month, day, hour, minute))
-
-	glog.Infoln("INCR", hitsPrefix+"total")
 
 	if r.Country != "" {
 		c.Send("INCR", countriesPrefix+"total:"+r.Country)

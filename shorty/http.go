@@ -123,8 +123,6 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	vars := mux.Vars(req)
 	shortUrl, err := this.service.Find(vars["id"])
 
-	glog.Infoln("1", shortUrl, err)
-
 	if err != nil {
 		renderError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
@@ -147,14 +145,14 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	// Record stats asynchronously
 	go func() {
 		origin, geoParseErr := this.requestParser.Parse(req)
-
-		glog.Infoln("2", origin, geoParseErr)
-
 		shortUrl.Record(origin)
 		if geoParseErr != nil {
 			glog.Warningln("Cannot determine location:", geoParseErr)
 		}
 	}()
+	resp.Header().Add("Pragma", "no-cache")
+	resp.Header().Add("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate")
+	resp.Header().Add("Expires", "Mon, 01 Jan 1990 00:00:00 GMT")
 	http.Redirect(resp, req, shortUrl.Destination, http.StatusMovedPermanently)
 }
 
