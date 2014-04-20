@@ -36,7 +36,7 @@ const (
 	keyi = "minute:%d-%0.2d-%0.2d %0.2d:%0.2d"
 )
 
-func (this *ShortUrl) Record(r *http.RequestOrigin) (err error) {
+func (this *ShortUrl) Record(r *http.RequestOrigin, isRevisit bool) (err error) {
 	c := this.service.pool.Get()
 	defer c.Close()
 
@@ -52,6 +52,9 @@ func (this *ShortUrl) Record(r *http.RequestOrigin) (err error) {
 	referrerPrefix := prefix + "referrers:"
 
 	c.Send("INCR", hitsPrefix+"total")
+	if !isRevisit {
+		c.Send("INCR", hitsPrefix+"uniques")
+	}
 	c.Send("INCR", fmt.Sprintf(hitsPrefix+keyy, year))
 	c.Send("INCR", fmt.Sprintf(hitsPrefix+keym, year, month))
 	c.Send("INCR", fmt.Sprintf(hitsPrefix+keyd, year, month, day))
@@ -100,6 +103,18 @@ func (this *ShortUrl) Hits() (total int, err error) {
 
 	prefix := this.service.settings.RedisPrefix + "stats:" + this.Id + ":hits:"
 	result, err := c.Do("GET", prefix+"total")
+	if result == nil {
+		return 0, nil
+	}
+	return redis.Int(result, err)
+}
+
+func (this *ShortUrl) Uniques() (total int, err error) {
+	c := this.service.pool.Get()
+	defer c.Close()
+
+	prefix := this.service.settings.RedisPrefix + "stats:" + this.Id + ":hits:"
+	result, err := c.Do("GET", prefix+"uniques")
 	if result == nil {
 		return 0, nil
 	}

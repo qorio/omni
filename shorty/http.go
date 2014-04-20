@@ -31,9 +31,15 @@ type ShortyEndPoint struct {
 	service       Shorty
 }
 
-func addHeaders(w *http.ResponseWriter) {
-	(*w).Header().Add("Content-Type", "application/json")
-	(*w).Header().Add("Access-Control-Allow-Origin", "*")
+var secureCookie *omni_http.SecureCookie
+
+func init() {
+	var err error
+	secureCookie, err = omni_http.NewSecureCookie([]byte(""), nil)
+	if err != nil {
+		glog.Warningln("Cannot initialize secure cookie!")
+		panic(err)
+	}
 }
 
 func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty) (api *ShortyEndPoint, err error) {
@@ -79,7 +85,7 @@ func (this *ShortyEndPoint) ServeHTTP(resp http.ResponseWriter, request *http.Re
 }
 
 func (this *ShortyEndPoint) ApiAddHandler(resp http.ResponseWriter, req *http.Request) {
-	addHeaders(&resp)
+	omni_http.SetCORSHeaders(resp)
 
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
@@ -142,30 +148,42 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 		return
 	}
 
+	// no caching
+	omni_http.SetNoCachingHeaders(resp)
+
+	// drop cookie
+	var visits int = 0
+	if readCookieError := secureCookie.ReadCookie(req, shortUrl.Id, &visits); readCookieError == nil {
+		glog.Infoln("Found cookie", visits)
+		visits++
+	}
+	if err = secureCookie.SetCookie(resp, shortUrl.Id, visits); err != nil {
+		glog.Warningln("Cannot set cookie for ", shortUrl.Id)
+	}
+
+	http.Redirect(resp, req, shortUrl.Destination, http.StatusMovedPermanently)
+
 	// Record stats asynchronously
 	go func() {
 		origin, geoParseErr := this.requestParser.Parse(req)
-		shortUrl.Record(origin)
+		shortUrl.Record(origin, visits > 1)
 		if geoParseErr != nil {
 			glog.Warningln("Cannot determine location:", geoParseErr)
 		}
 	}()
-	resp.Header().Add("Pragma", "no-cache")
-	resp.Header().Add("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate")
-	resp.Header().Add("Expires", "Mon, 01 Jan 1990 00:00:00 GMT")
-	http.Redirect(resp, req, shortUrl.Destination, http.StatusMovedPermanently)
 }
 
 type StatsSummary struct {
 	Id      string      `json:"id"`
 	Created string      `json:"when"`
 	Hits    int         `json:"hits"`
+	Uniques int         `json:"uniques"`
 	Summary OriginStats `json:"summary"`
 	Config  ShortUrl    `json:"config"`
 }
 
 func (this *ShortyEndPoint) StatsHandler(resp http.ResponseWriter, req *http.Request) {
-	addHeaders(&resp)
+	omni_http.SetCORSHeaders(resp)
 
 	vars := mux.Vars(req)
 	shortyUrl, err := this.service.Find(vars["id"])
@@ -183,6 +201,12 @@ func (this *ShortyEndPoint) StatsHandler(resp http.ResponseWriter, req *http.Req
 		return
 	}
 
+	uniques, err := shortyUrl.Uniques()
+	if err != nil {
+		renderError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	originStats, err := shortyUrl.Sources(true)
 	if err != nil {
 		renderError(resp, req, err.Error(), http.StatusInternalServerError)
@@ -193,6 +217,7 @@ func (this *ShortyEndPoint) StatsHandler(resp http.ResponseWriter, req *http.Req
 		Id:      shortyUrl.Id,
 		Created: relativeTime(time.Now().Sub(shortyUrl.Created)),
 		Hits:    hits,
+		Uniques: uniques,
 		Summary: originStats,
 		Config:  *shortyUrl,
 	}
