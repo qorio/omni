@@ -19,9 +19,9 @@ type Settings struct {
 }
 
 type ShortUrl struct {
-	Id          string
-	Destination string
-	Created     time.Time
+	Id          string    `json:"id"`
+	Destination string    `json:"destination"`
+	Created     time.Time `json:"created"`
 	service     *shortyImpl
 }
 

@@ -7,13 +7,15 @@ import (
 	omni_http "github.com/qorio/omni/http"
 	"io"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 type ShortyAddRequest struct {
-	LongUrl string
+	LongUrl string `json:"longUrl"`
 }
 
 type ShortyEndPointSettings struct {
@@ -28,6 +30,11 @@ type ShortyEndPoint struct {
 	service       Shorty
 }
 
+func addHeaders(w *http.ResponseWriter) {
+	(*w).Header().Add("Content-Type", "application/json")
+	(*w).Header().Add("Access-Control-Allow-Origin", "*")
+}
+
 func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty) (api *ShortyEndPoint, err error) {
 	if requestParser, err := omni_http.NewRequestParser(settings.GeoIpDbFilePath); err == nil {
 		api = &ShortyEndPoint{
@@ -40,16 +47,12 @@ func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty) (api *Short
 		regex := fmt.Sprintf("[A-Za-z0-9]{%d}", service.UrlLength())
 		api.router.HandleFunc("/{id:"+regex+"}", api.RedirectHandler).Name("redirect")
 		api.router.HandleFunc("/api/v1/url", api.ApiAddHandler).Methods("POST").Name("add")
+		api.router.HandleFunc("/api/v1/stats/{id:"+regex+"}", api.StatsHandler).Methods("GET").Name("stats")
 
 		return api, nil
 	} else {
 		return nil, err
 	}
-}
-
-func addHeaders(w *http.ResponseWriter) {
-	(*w).Header().Add("Content-Type", "application/json")
-	(*w).Header().Add("Access-Control-Allow-Origin", "*")
 }
 
 func NewRedirector(settings ShortyEndPointSettings, service Shorty) (api *ShortyEndPoint, err error) {
@@ -128,7 +131,8 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 				renderError(resp, req, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			url404 := strings.Replace(this.settings.Redirect404, "$gosURL", url.QueryEscape(fmt.Sprintf("http://%s%s", req.Host, originalUrl.String())), 1)
+			url404 := strings.Replace(this.settings.Redirect404,
+				"$origURL", url.QueryEscape(fmt.Sprintf("http://%s%s", req.Host, originalUrl.String())), 1)
 			http.Redirect(resp, req, url404, http.StatusTemporaryRedirect)
 			return
 		}
@@ -143,6 +147,86 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 		}
 	}()
 	http.Redirect(resp, req, shortUrl.Destination, http.StatusMovedPermanently)
+}
+
+type StatsSummary struct {
+	Id      string      `json:"id"`
+	Created string      `json:"when"`
+	Hits    int         `json:"hits"`
+	Summary OriginStats `json:"summary"`
+	Config  ShortUrl    `json:"config"`
+}
+
+func (this *ShortyEndPoint) StatsHandler(resp http.ResponseWriter, req *http.Request) {
+	addHeaders(&resp)
+
+	vars := mux.Vars(req)
+	shortyUrl, err := this.service.Find(vars["id"])
+	if err != nil {
+		renderError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	} else if shortyUrl == nil {
+		renderError(resp, req, "No URL was found with short code", http.StatusNotFound)
+		return
+	}
+
+	hits, err := shortyUrl.Hits()
+	if err != nil {
+		renderError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	originStats, err := shortyUrl.Sources(true)
+	if err != nil {
+		renderError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	summary := StatsSummary{
+		Id:      shortyUrl.Id,
+		Created: relativeTime(time.Now().Sub(shortyUrl.Created)),
+		Hits:    hits,
+		Summary: originStats,
+		Config:  *shortyUrl,
+	}
+
+	buff, err := json.Marshal(summary)
+	if err != nil {
+		renderJsonError(resp, req, "Malformed summary", http.StatusInternalServerError)
+		return
+	}
+	resp.Write(buff)
+}
+
+func relativeTime(duration time.Duration) string {
+	hours := int64(math.Abs(duration.Hours()))
+	minutes := int64(math.Abs(duration.Minutes()))
+	when := ""
+	switch {
+	case hours >= (365 * 24):
+		when = "Over an year ago"
+	case hours > (30 * 24):
+		when = fmt.Sprintf("%d months ago", int64(hours/(30*24)))
+	case hours == (30 * 24):
+		when = "a month ago"
+	case hours > 24:
+		when = fmt.Sprintf("%d days ago", int64(hours/24))
+	case hours == 24:
+		when = "yesterday"
+	case hours >= 2:
+		when = fmt.Sprintf("%d hours ago", hours)
+	case hours > 1:
+		when = "over an hour ago"
+	case hours == 1:
+		when = "an hour ago"
+	case minutes >= 2:
+		when = fmt.Sprintf("%d minutes ago", minutes)
+	case minutes > 1:
+		when = "a minute ago"
+	default:
+		when = "just now"
+	}
+	return when
 }
 
 func renderJsonError(resp http.ResponseWriter, req *http.Request, message string, code int) (err error) {

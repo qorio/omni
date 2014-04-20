@@ -13,8 +13,8 @@ import (
 )
 
 type Stat struct {
-	Name  string
-	Value int
+	Name  string `json:"name"`
+	Value int    `json:"value"`
 }
 
 type Stats []*Stat
@@ -22,10 +22,10 @@ type Descending Stats
 type Format func(string) (string, error)
 
 type OriginStats struct {
-	Countries Stats
-	Browsers  Stats
-	OS        Stats
-	Referrers Stats
+	Countries Stats `json:"countries"`
+	Browsers  Stats `json:"browsers"`
+	OS        Stats `json:"os"`
+	Referrers Stats `json:"referrers"`
 }
 
 const (
