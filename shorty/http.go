@@ -3,6 +3,7 @@ package shorty
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	omni_http "github.com/qorio/omni/http"
 	"io"
@@ -142,8 +143,10 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 
 	// Record stats asynchronously
 	go func() {
-		if origin, err := this.requestParser.Parse(req); err == nil {
-			shortUrl.Record(origin)
+		origin, geoParseErr := this.requestParser.Parse(req)
+		shortUrl.Record(origin)
+		if geoParseErr != nil {
+			glog.Warningln("Cannot determine location:", geoParseErr)
 		}
 	}()
 	http.Redirect(resp, req, shortUrl.Destination, http.StatusMovedPermanently)
