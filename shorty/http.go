@@ -148,27 +148,28 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 		return
 	}
 
+	var destination string = shortUrl.Destination
+
 	// no caching
 	omni_http.SetNoCachingHeaders(resp)
 
 	// drop cookie
 	var visits int = 0
 	if readCookieError := secureCookie.ReadCookie(req, shortUrl.Id, &visits); readCookieError == nil {
-		glog.Infoln("Found cookie", visits)
 		visits++
 	}
 	if err = secureCookie.SetCookie(resp, shortUrl.Id, visits); err != nil {
-		glog.Warningln("Cannot set cookie for ", shortUrl.Id)
+		glog.Warningln("can-not-set-cookie", shortUrl.Id)
 	}
 
-	http.Redirect(resp, req, shortUrl.Destination, http.StatusMovedPermanently)
+	http.Redirect(resp, req, destination, http.StatusMovedPermanently)
 
 	// Record stats asynchronously
 	go func() {
 		origin, geoParseErr := this.requestParser.Parse(req)
 		shortUrl.Record(origin, visits > 1)
 		if geoParseErr != nil {
-			glog.Warningln("Cannot determine location:", geoParseErr)
+			glog.Warningln("can-not-determine-location", geoParseErr)
 		}
 	}()
 }

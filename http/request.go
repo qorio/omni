@@ -2,6 +2,7 @@ package http
 
 import (
 	"errors"
+	"github.com/golang/glog"
 	"github.com/mssola/user_agent"
 	"github.com/nranchev/go-libGeoIP"
 	"net/http"
@@ -34,6 +35,7 @@ func NewRequestParser(geoDb string) (parser *RequestParser, err error) {
 func (this *RequestParser) Parse(req *http.Request) (r *RequestOrigin, err error) {
 	r = &RequestOrigin{}
 	r.Country, err = this.geo(req)
+
 	ua := new(user_agent.UserAgent)
 	ua.Parse(req.UserAgent())
 	r.Referrer = req.Referer()
@@ -74,6 +76,9 @@ func (this *RequestParser) geo(req *http.Request) (string, error) {
 	}
 
 	location := this.geoIp.GetLocationByIP(ip)
+
+	glog.Infoln("IP:", ip, "location:", location, "remoteAddr:", req.RemoteAddr, "forwarded:", forwarded)
+
 	if location == nil {
 		return "", nil
 	}
