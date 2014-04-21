@@ -19,7 +19,7 @@ var (
 	redirect404    = flag.String("redirect_404", "", "Global redirect when no record found")
 	urlLength      = flag.Int("url_length", 7, "How many characters should the short code have")
 	port           = flag.Int("port", 8080, "Port where server is listening on")
-	geoDbFilePath  = flag.String("geo_db", "./GeoIP.dat", "Location to the MaxMind GeoIP country database file")
+	geoDbFilePath  = flag.String("geo_db", "./GeoLiteCity.dat", "Location to the MaxMind GeoIP city database file")
 
 	currentWorkingDir, _ = os.Getwd()
 )
