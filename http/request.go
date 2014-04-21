@@ -2,7 +2,6 @@ package http
 
 import (
 	"errors"
-	"github.com/golang/glog"
 	"github.com/mssola/user_agent"
 	"github.com/nranchev/go-libGeoIP"
 	"net/http"
@@ -13,14 +12,25 @@ type RequestParser struct {
 	geoIp *libgeo.GeoIP
 }
 
+type Location struct {
+	CountryCode string
+	CountryName string
+	Region      string
+	City        string
+	PostalCode  string
+	Latitude    float32
+	Longitude   float32
+}
+
 type RequestOrigin struct {
+	Ip       string
 	Referrer string
-	Country  string
 	Bot      bool
 	Mobile   bool
 	OS       string
 	Browser  string
 	Version  string
+	Location *Location
 }
 
 func NewRequestParser(geoDb string) (parser *RequestParser, err error) {
@@ -33,8 +43,22 @@ func NewRequestParser(geoDb string) (parser *RequestParser, err error) {
 }
 
 func (this *RequestParser) Parse(req *http.Request) (r *RequestOrigin, err error) {
-	r = &RequestOrigin{}
-	r.Country, err = this.geo(req)
+	ip, location, _ := this.geo(req)
+	r = &RequestOrigin{
+		Ip: ip,
+	}
+
+	if location != nil {
+		r.Location = &Location{
+			CountryCode: location.CountryCode,
+			CountryName: location.CountryName,
+			Region:      location.Region,
+			City:        location.City,
+			PostalCode:  location.PostalCode,
+			Latitude:    location.Latitude,
+			Longitude:   location.Longitude,
+		}
+	}
 
 	ua := new(user_agent.UserAgent)
 	ua.Parse(req.UserAgent())
@@ -49,7 +73,7 @@ func (this *RequestParser) Parse(req *http.Request) (r *RequestOrigin, err error
 	return r, err
 }
 
-func (this *RequestParser) geo(req *http.Request) (string, error) {
+func (this *RequestParser) geo(req *http.Request) (string, *libgeo.Location, error) {
 	ip := req.Header.Get("X-Real-Ip")
 	forwarded := req.Header.Get("X-Forwarded-For")
 	if ip == "" && forwarded == "" {
@@ -68,21 +92,16 @@ func (this *RequestParser) geo(req *http.Request) (string, error) {
 
 	ip = strings.TrimSpace(ip)
 	if ip == "" {
-		return "", errors.New("Could not obtain IP address from request")
+		return "", nil, errors.New("Could not obtain IP address from request")
 	} else if ip == "[::1]" {
-		// TODO: faked request
-		ip = "190.50.75.97"
-		//return "", nil
+		ip = "50.184.95.238" // fake ip -- for local development etc.
 	}
 
-	location := this.geoIp.GetLocationByIP(ip)
-
-	glog.Infoln("IP:", ip, "location:", location, "remoteAddr:", req.RemoteAddr, "forwarded:", forwarded)
-
-	if location == nil {
-		return "", nil
+	if location := this.geoIp.GetLocationByIP(ip); location == nil {
+		return ip, nil, nil
+	} else {
+		return ip, location, nil
 	}
-	return location.CountryCode, nil
 }
 
 func (this *RequestParser) Browser(req *http.Request) (bot bool, mobile bool, os string, browser string, version string) {
