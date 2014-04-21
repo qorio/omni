@@ -150,6 +150,17 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 
 	var destination string = shortUrl.Destination
 
+	// If there are platform-dependent routing
+	if len(shortUrl.Rules) > 0 {
+		userAgent := omni_http.ParseUserAgent(req)
+		for _, rule := range shortUrl.Rules {
+			if dest, match := rule.Match(userAgent); match {
+				destination = dest
+				break
+			}
+		}
+	}
+
 	// no caching
 	omni_http.SetNoCachingHeaders(resp)
 
@@ -167,10 +178,13 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	// Record stats asynchronously
 	go func() {
 		origin, geoParseErr := this.requestParser.Parse(req)
+
 		glog.Infoln(
+			"url:", shortUrl.Id, "send-to:", destination,
 			"ip:", origin.Ip, "mobile:", origin.Mobile,
-			"os:", origin.OS, "version:", origin.Version,
-			"browser:", origin.Browser, "location:", *origin.Location)
+			"platform:", origin.Platform, "os:", origin.OS,
+			"browser:", origin.Browser, "version:", origin.BrowserVersion,
+			"location:", *origin.Location)
 
 		shortUrl.Record(origin, visits > 1)
 		if geoParseErr != nil {

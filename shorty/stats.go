@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
-	"github.com/golang/glog"
 	"github.com/qorio/omni/http"
 	"math"
 	"sort"
@@ -23,12 +22,14 @@ type Descending Stats
 type Format func(string) (string, error)
 
 type OriginStats struct {
-	Countries Stats `json:"countries"`
-	Regions   Stats `json:"regions"`
-	Cities    Stats `json:"cities"`
-	Browsers  Stats `json:"browsers"`
-	OS        Stats `json:"os"`
-	Referrers Stats `json:"referrers"`
+	Countries   Stats `json:"countries"`
+	Regions     Stats `json:"regions"`
+	Cities      Stats `json:"cities"`
+	PostalCodes Stats `json:"postalcodes"`
+	Browsers    Stats `json:"browsers"`
+	Platforms   Stats `json:"platform"`
+	OS          Stats `json:"os"`
+	Referrers   Stats `json:"referrers"`
 }
 
 const (
@@ -64,7 +65,9 @@ func (this *ShortUrl) Record(r *http.RequestOrigin, isRevisit bool) (err error) 
 	countriesPrefix := prefix + "countries:"
 	regionsPrefix := prefix + "regions:"
 	citiesPrefix := prefix + "cities:"
+	postalCodesPrefix := prefix + "postalcodes:"
 	browsersPrefix := prefix + "browsers:"
+	platformPrefix := prefix + "platform:"
 	osPrefix := prefix + "os:"
 	referrerPrefix := prefix + "referrers:"
 
@@ -74,7 +77,6 @@ func (this *ShortUrl) Record(r *http.RequestOrigin, isRevisit bool) (err error) 
 	c.Send("INCR", fmt.Sprintf(hitsPrefix+keyh, year, month, day, hour))
 	c.Send("INCR", fmt.Sprintf(hitsPrefix+keyi, year, month, day, hour, minute))
 
-	glog.Infoln("location", r.Location)
 	if l := r.Location; l != nil {
 		if l.CountryCode != "" {
 			c.Send("INCR", countriesPrefix+"total:"+l.CountryCode)
@@ -100,6 +102,14 @@ func (this *ShortUrl) Record(r *http.RequestOrigin, isRevisit bool) (err error) 
 			c.Send("INCR", fmt.Sprintf(citiesPrefix+keyh+":"+l.City, year, month, day, hour))
 			c.Send("INCR", fmt.Sprintf(citiesPrefix+keyi+":"+l.City, year, month, day, hour, minute))
 		}
+		if l.PostalCode != "" {
+			c.Send("INCR", postalCodesPrefix+"total:"+l.PostalCode)
+			c.Send("INCR", fmt.Sprintf(postalCodesPrefix+keyy+":"+l.PostalCode, year))
+			c.Send("INCR", fmt.Sprintf(postalCodesPrefix+keym+":"+l.PostalCode, year, month))
+			c.Send("INCR", fmt.Sprintf(postalCodesPrefix+keyd+":"+l.PostalCode, year, month, day))
+			c.Send("INCR", fmt.Sprintf(postalCodesPrefix+keyh+":"+l.PostalCode, year, month, day, hour))
+			c.Send("INCR", fmt.Sprintf(postalCodesPrefix+keyi+":"+l.PostalCode, year, month, day, hour, minute))
+		}
 	}
 	if !r.Bot {
 		c.Send("INCR", browsersPrefix+"total:"+r.Browser)
@@ -108,6 +118,13 @@ func (this *ShortUrl) Record(r *http.RequestOrigin, isRevisit bool) (err error) 
 		c.Send("INCR", fmt.Sprintf(browsersPrefix+keyd+":"+r.Browser, year, month, day))
 		c.Send("INCR", fmt.Sprintf(browsersPrefix+keyh+":"+r.Browser, year, month, day, hour))
 		c.Send("INCR", fmt.Sprintf(browsersPrefix+keyi+":"+r.Browser, year, month, day, hour, minute))
+
+		c.Send("INCR", platformPrefix+"total:"+r.Platform)
+		c.Send("INCR", fmt.Sprintf(platformPrefix+keyy+":"+r.Platform, year))
+		c.Send("INCR", fmt.Sprintf(platformPrefix+keym+":"+r.Platform, year, month))
+		c.Send("INCR", fmt.Sprintf(platformPrefix+keyd+":"+r.Platform, year, month, day))
+		c.Send("INCR", fmt.Sprintf(platformPrefix+keyh+":"+r.Platform, year, month, day, hour))
+		c.Send("INCR", fmt.Sprintf(platformPrefix+keyi+":"+r.Platform, year, month, day, hour, minute))
 
 		c.Send("INCR", osPrefix+"total:"+r.OS)
 		c.Send("INCR", fmt.Sprintf(osPrefix+keyy+":"+r.OS, year))
@@ -164,8 +181,16 @@ func (this *ShortUrl) Cities(sorting bool) (Stats, error) {
 	return this.keyStats(this.service.settings.RedisPrefix+"stats:"+this.Id+":cities:total:*", sorting)
 }
 
+func (this *ShortUrl) PostalCodes(sorting bool) (Stats, error) {
+	return this.keyStats(this.service.settings.RedisPrefix+"stats:"+this.Id+":postalcodes:total:*", sorting)
+}
+
 func (this *ShortUrl) Browsers(sorting bool) (Stats, error) {
 	return this.keyStats(this.service.settings.RedisPrefix+"stats:"+this.Id+":browsers:total:*", sorting)
+}
+
+func (this *ShortUrl) Platforms(sorting bool) (Stats, error) {
+	return this.keyStats(this.service.settings.RedisPrefix+"stats:"+this.Id+":platform:total:*", sorting)
 }
 
 func (this *ShortUrl) OS(sorting bool) (Stats, error) {
@@ -197,7 +222,17 @@ func (this *ShortUrl) Sources(sorting bool) (stats OriginStats, err error) {
 		return
 	}
 
+	stats.PostalCodes, err = this.PostalCodes(sorting)
+	if err != nil {
+		return
+	}
+
 	stats.OS, err = this.OS(sorting)
+	if err != nil {
+		return
+	}
+
+	stats.Platforms, err = this.Platforms(sorting)
 	if err != nil {
 		return
 	}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/garyburd/redigo/redis"
+	"github.com/qorio/omni/http"
 	"net/url"
 	"regexp"
 	"strings"
@@ -18,10 +19,27 @@ type Settings struct {
 	UrlLength      int
 }
 
+type RoutingRule struct {
+	MatchPlatform string `json:"platform,omitempty"`
+	MatchOS       string `json:"os,omitempty"`
+	Destination   string `json:"destination"`
+}
+
+func (this *RoutingRule) Match(ua *http.UserAgent) (destination string, match bool) {
+	if matches, _ := regexp.MatchString(this.MatchPlatform, ua.Platform); matches {
+		return this.Destination, true
+	}
+	if matches, _ := regexp.MatchString(this.MatchOS, ua.OS); matches {
+		return this.Destination, true
+	}
+	return "", false
+}
+
 type ShortUrl struct {
-	Id          string    `json:"id"`
-	Destination string    `json:"destination"`
-	Created     time.Time `json:"created"`
+	Id          string        `json:"id"`
+	Rules       []RoutingRule `json:"rules"`
+	Destination string        `json:"destination"`
+	Created     time.Time     `json:"created"`
 	service     *shortyImpl
 }
 

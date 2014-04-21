@@ -22,15 +22,25 @@ type Location struct {
 	Longitude   float32
 }
 
+type UserAgent struct {
+	Bot            bool
+	Mobile         bool
+	Platform       string
+	OS             string
+	Browser        string
+	BrowserVersion string // browser version
+}
+
 type RequestOrigin struct {
-	Ip       string
-	Referrer string
-	Bot      bool
-	Mobile   bool
-	OS       string
-	Browser  string
-	Version  string
-	Location *Location
+	Ip             string
+	Referrer       string
+	Bot            bool
+	Mobile         bool
+	Platform       string
+	OS             string
+	Browser        string
+	BrowserVersion string
+	Location       *Location
 }
 
 func NewRequestParser(geoDb string) (parser *RequestParser, err error) {
@@ -40,6 +50,19 @@ func NewRequestParser(geoDb string) (parser *RequestParser, err error) {
 		return nil, err
 	}
 	return parser, nil
+}
+
+func ParseUserAgent(req *http.Request) *UserAgent {
+	ua := new(user_agent.UserAgent)
+	ua.Parse(req.UserAgent())
+	val := &UserAgent{
+		Bot:      ua.Bot(),
+		Mobile:   ua.Mobile(),
+		Platform: ua.Platform(),
+		OS:       ua.OS(),
+	}
+	val.Browser, val.BrowserVersion = ua.Browser()
+	return val
 }
 
 func (this *RequestParser) Parse(req *http.Request) (r *RequestOrigin, err error) {
@@ -60,16 +83,18 @@ func (this *RequestParser) Parse(req *http.Request) (r *RequestOrigin, err error
 		}
 	}
 
-	ua := new(user_agent.UserAgent)
-	ua.Parse(req.UserAgent())
 	r.Referrer = req.Referer()
 	if r.Referrer == "" {
 		r.Referrer = "DIRECT"
 	}
+
+	ua := new(user_agent.UserAgent)
+	ua.Parse(req.UserAgent())
 	r.Bot = ua.Bot()
 	r.Mobile = ua.Mobile()
+	r.Platform = ua.Platform()
 	r.OS = ua.OS()
-	r.Browser, r.Version = ua.Browser()
+	r.Browser, r.BrowserVersion = ua.Browser()
 	return r, err
 }
 
