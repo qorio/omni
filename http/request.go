@@ -81,6 +81,8 @@ func (this *RequestParser) Parse(req *http.Request) (r *RequestOrigin, err error
 			Latitude:    location.Latitude,
 			Longitude:   location.Longitude,
 		}
+	} else {
+		r.Location = &Location{}
 	}
 
 	r.Referrer = req.Referer()

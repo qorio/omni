@@ -16,7 +16,8 @@ import (
 )
 
 type ShortyAddRequest struct {
-	LongUrl string `json:"longUrl"`
+	LongUrl string        `json:"longUrl"`
+	Rules   []RoutingRule `json:"rules"`
 }
 
 type ShortyEndPointSettings struct {
@@ -109,20 +110,23 @@ func (this *ShortyEndPoint) ApiAddHandler(resp http.ResponseWriter, req *http.Re
 		return
 	}
 
-	shortUrl, err := this.service.ShortUrl(message.LongUrl)
+	shortUrl, err := this.service.ShortUrl(message.LongUrl, message.Rules)
 	if err != nil {
 		renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	url, err := this.router.Get("redirect").URL("id", shortUrl.Id)
-	if err != nil {
+	if _, err := this.router.Get("redirect").URL("id", shortUrl.Id); err != nil {
 		renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	json := fmt.Sprintf("{\"id\":\"%s\",\"longUrl\":\"%s\",\"shortUrl\":\"%s\"}", shortUrl.Id, shortUrl.Destination, url)
-	resp.Write([]byte(json))
+	buff, err := json.Marshal(shortUrl)
+	if err != nil {
+		renderJsonError(resp, req, "Malformed short url rule", http.StatusInternalServerError)
+		return
+	}
+	resp.Write(buff)
 }
 
 func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.Request) {
@@ -178,7 +182,6 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	// Record stats asynchronously
 	go func() {
 		origin, geoParseErr := this.requestParser.Parse(req)
-
 		glog.Infoln(
 			"url:", shortUrl.Id, "send-to:", destination,
 			"ip:", origin.Ip, "mobile:", origin.Mobile,

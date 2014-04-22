@@ -22,15 +22,25 @@ type Settings struct {
 type RoutingRule struct {
 	MatchPlatform string `json:"platform,omitempty"`
 	MatchOS       string `json:"os,omitempty"`
+	MatchBrowser  string `json:"browser,omitempty"`
 	Destination   string `json:"destination"`
 }
 
 func (this *RoutingRule) Match(ua *http.UserAgent) (destination string, match bool) {
-	if matches, _ := regexp.MatchString(this.MatchPlatform, ua.Platform); matches {
-		return this.Destination, true
+	if len(this.MatchPlatform) > 0 {
+		if matches, _ := regexp.MatchString(this.MatchPlatform, ua.Platform); matches {
+			return this.Destination, true
+		}
 	}
-	if matches, _ := regexp.MatchString(this.MatchOS, ua.OS); matches {
-		return this.Destination, true
+	if len(this.MatchOS) > 0 {
+		if matches, _ := regexp.MatchString(this.MatchOS, ua.OS); matches {
+			return this.Destination, true
+		}
+	}
+	if len(this.MatchBrowser) > 0 {
+		if matches, _ := regexp.MatchString(this.MatchBrowser, ua.Browser); matches {
+			return this.Destination, true
+		}
 	}
 	return "", false
 }
@@ -45,7 +55,7 @@ type ShortUrl struct {
 
 type Shorty interface {
 	UrlLength() int
-	ShortUrl(url string) (*ShortUrl, error)
+	ShortUrl(url string, optionalRules []RoutingRule) (*ShortUrl, error)
 	Find(id string) (*ShortUrl, error)
 }
 
@@ -85,7 +95,7 @@ func (this *shortyImpl) UrlLength() int {
 	return this.settings.UrlLength
 }
 
-func (this *shortyImpl) ShortUrl(data string) (entity *ShortUrl, err error) {
+func (this *shortyImpl) ShortUrl(data string, rules []RoutingRule) (entity *ShortUrl, err error) {
 	data = strings.TrimSpace(data)
 	if len(data) == 0 {
 		err = errors.New("Please specify an URL")
@@ -105,6 +115,38 @@ func (this *shortyImpl) ShortUrl(data string) (entity *ShortUrl, err error) {
 	}
 
 	entity = &ShortUrl{Destination: u.String(), Created: time.Now(), service: this}
+	if len(rules) > 0 {
+		for _, rule := range entity.Rules {
+			if len(rule.Destination) > 0 {
+				if _, err = url.Parse(rule.Destination); err != nil {
+					return
+				}
+			}
+
+			matching := 0
+			if c, err := regexp.Compile(rule.MatchPlatform); err != nil {
+				return nil, errors.New("Bad platform regex " + rule.MatchPlatform)
+			} else if c != nil {
+				matching++
+			}
+			if c, err := regexp.Compile(rule.MatchOS); err != nil {
+				return nil, errors.New("Bad os regex " + rule.MatchOS)
+			} else if c != nil {
+				matching++
+			}
+			if c, err := regexp.Compile(rule.MatchBrowser); err != nil {
+				return nil, errors.New("Bad browser regex " + rule.MatchBrowser)
+			} else if c != nil {
+				matching++
+			}
+			// Must have 1 or more matching regexp
+			if matching == 0 {
+				err = errors.New("bad-routing-rule:no matching regexp")
+				return
+			}
+		}
+		entity.Rules = rules
+	}
 
 	c := this.pool.Get()
 	defer c.Close()
