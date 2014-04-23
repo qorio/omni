@@ -25,22 +25,19 @@ type Location struct {
 type UserAgent struct {
 	Bot            bool
 	Mobile         bool
-	Platform       string
-	OS             string
+	Platform       string // Linux, iPhone, iPad
+	OS             string // Android, OS 7_1
+	Make           string // samsung, kindle, etc.
 	Browser        string
-	BrowserVersion string // browser version
+	BrowserVersion string
+	Header         string // original header
 }
 
 type RequestOrigin struct {
-	Ip             string
-	Referrer       string
-	Bot            bool
-	Mobile         bool
-	Platform       string
-	OS             string
-	Browser        string
-	BrowserVersion string
-	Location       *Location
+	Ip        string
+	Referrer  string
+	UserAgent *UserAgent
+	Location  *Location
 }
 
 func NewRequestParser(geoDb string) (parser *RequestParser, err error) {
@@ -56,10 +53,12 @@ func ParseUserAgent(req *http.Request) *UserAgent {
 	ua := new(user_agent.UserAgent)
 	ua.Parse(req.UserAgent())
 	val := &UserAgent{
+		Header:   req.UserAgent(),
 		Bot:      ua.Bot(),
 		Mobile:   ua.Mobile(),
 		Platform: ua.Platform(),
 		OS:       ua.OS(),
+		Make:     req.UserAgent(), // TODO - fix the library
 	}
 	val.Browser, val.BrowserVersion = ua.Browser()
 	return val
@@ -68,7 +67,8 @@ func ParseUserAgent(req *http.Request) *UserAgent {
 func (this *RequestParser) Parse(req *http.Request) (r *RequestOrigin, err error) {
 	ip, location, _ := this.geo(req)
 	r = &RequestOrigin{
-		Ip: ip,
+		Ip:        ip,
+		UserAgent: ParseUserAgent(req),
 	}
 
 	if location != nil {
@@ -90,13 +90,6 @@ func (this *RequestParser) Parse(req *http.Request) (r *RequestOrigin, err error
 		r.Referrer = "DIRECT"
 	}
 
-	ua := new(user_agent.UserAgent)
-	ua.Parse(req.UserAgent())
-	r.Bot = ua.Bot()
-	r.Mobile = ua.Mobile()
-	r.Platform = ua.Platform()
-	r.OS = ua.OS()
-	r.Browser, r.BrowserVersion = ua.Browser()
 	return r, err
 }
 

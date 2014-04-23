@@ -22,6 +22,7 @@ type Settings struct {
 type RoutingRule struct {
 	MatchPlatform string `json:"platform,omitempty"`
 	MatchOS       string `json:"os,omitempty"`
+	MatchMake     string `json:"make,omitempty"`
 	MatchBrowser  string `json:"browser,omitempty"`
 	Destination   string `json:"destination"`
 }
@@ -34,6 +35,11 @@ func (this *RoutingRule) Match(ua *http.UserAgent) (destination string, match bo
 	}
 	if len(this.MatchOS) > 0 {
 		if matches, _ := regexp.MatchString(this.MatchOS, ua.OS); matches {
+			return this.Destination, true
+		}
+	}
+	if len(this.MatchMake) > 0 {
+		if matches, _ := regexp.MatchString(this.MatchMake, ua.Make); matches {
 			return this.Destination, true
 		}
 	}
@@ -131,6 +137,11 @@ func (this *shortyImpl) ShortUrl(data string, rules []RoutingRule) (entity *Shor
 			}
 			if c, err := regexp.Compile(rule.MatchOS); err != nil {
 				return nil, errors.New("Bad os regex " + rule.MatchOS)
+			} else if c != nil {
+				matching++
+			}
+			if c, err := regexp.Compile(rule.MatchMake); err != nil {
+				return nil, errors.New("Bad make regex " + rule.MatchMake)
 			} else if c != nil {
 				matching++
 			}

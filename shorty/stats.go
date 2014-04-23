@@ -111,28 +111,6 @@ func (this *ShortUrl) Record(r *http.RequestOrigin, isRevisit bool) (err error) 
 			c.Send("INCR", fmt.Sprintf(postalCodesPrefix+keyi+":"+l.PostalCode, year, month, day, hour, minute))
 		}
 	}
-	if !r.Bot {
-		c.Send("INCR", browsersPrefix+"total:"+r.Browser)
-		c.Send("INCR", fmt.Sprintf(browsersPrefix+keyy+":"+r.Browser, year))
-		c.Send("INCR", fmt.Sprintf(browsersPrefix+keym+":"+r.Browser, year, month))
-		c.Send("INCR", fmt.Sprintf(browsersPrefix+keyd+":"+r.Browser, year, month, day))
-		c.Send("INCR", fmt.Sprintf(browsersPrefix+keyh+":"+r.Browser, year, month, day, hour))
-		c.Send("INCR", fmt.Sprintf(browsersPrefix+keyi+":"+r.Browser, year, month, day, hour, minute))
-
-		c.Send("INCR", platformPrefix+"total:"+r.Platform)
-		c.Send("INCR", fmt.Sprintf(platformPrefix+keyy+":"+r.Platform, year))
-		c.Send("INCR", fmt.Sprintf(platformPrefix+keym+":"+r.Platform, year, month))
-		c.Send("INCR", fmt.Sprintf(platformPrefix+keyd+":"+r.Platform, year, month, day))
-		c.Send("INCR", fmt.Sprintf(platformPrefix+keyh+":"+r.Platform, year, month, day, hour))
-		c.Send("INCR", fmt.Sprintf(platformPrefix+keyi+":"+r.Platform, year, month, day, hour, minute))
-
-		c.Send("INCR", osPrefix+"total:"+r.OS)
-		c.Send("INCR", fmt.Sprintf(osPrefix+keyy+":"+r.OS, year))
-		c.Send("INCR", fmt.Sprintf(osPrefix+keym+":"+r.OS, year, month))
-		c.Send("INCR", fmt.Sprintf(osPrefix+keyd+":"+r.OS, year, month, day))
-		c.Send("INCR", fmt.Sprintf(osPrefix+keyh+":"+r.OS, year, month, day, hour))
-		c.Send("INCR", fmt.Sprintf(osPrefix+keyi+":"+r.OS, year, month, day, hour, minute))
-	}
 
 	c.Send("INCR", referrerPrefix+"total:"+r.Referrer)
 	c.Send("INCR", fmt.Sprintf(referrerPrefix+keyy+":"+r.Referrer, year))
@@ -141,6 +119,29 @@ func (this *ShortUrl) Record(r *http.RequestOrigin, isRevisit bool) (err error) 
 	c.Send("INCR", fmt.Sprintf(referrerPrefix+keyh+":"+r.Referrer, year, month, day, hour))
 	c.Send("INCR", fmt.Sprintf(referrerPrefix+keyi+":"+r.Referrer, year, month, day, hour, minute))
 
+	ua := r.UserAgent
+	if !ua.Bot {
+		c.Send("INCR", browsersPrefix+"total:"+ua.Browser)
+		c.Send("INCR", fmt.Sprintf(browsersPrefix+keyy+":"+ua.Browser, year))
+		c.Send("INCR", fmt.Sprintf(browsersPrefix+keym+":"+ua.Browser, year, month))
+		c.Send("INCR", fmt.Sprintf(browsersPrefix+keyd+":"+ua.Browser, year, month, day))
+		c.Send("INCR", fmt.Sprintf(browsersPrefix+keyh+":"+ua.Browser, year, month, day, hour))
+		c.Send("INCR", fmt.Sprintf(browsersPrefix+keyi+":"+ua.Browser, year, month, day, hour, minute))
+
+		c.Send("INCR", platformPrefix+"total:"+ua.Platform)
+		c.Send("INCR", fmt.Sprintf(platformPrefix+keyy+":"+ua.Platform, year))
+		c.Send("INCR", fmt.Sprintf(platformPrefix+keym+":"+ua.Platform, year, month))
+		c.Send("INCR", fmt.Sprintf(platformPrefix+keyd+":"+ua.Platform, year, month, day))
+		c.Send("INCR", fmt.Sprintf(platformPrefix+keyh+":"+ua.Platform, year, month, day, hour))
+		c.Send("INCR", fmt.Sprintf(platformPrefix+keyi+":"+ua.Platform, year, month, day, hour, minute))
+
+		c.Send("INCR", osPrefix+"total:"+ua.OS)
+		c.Send("INCR", fmt.Sprintf(osPrefix+keyy+":"+ua.OS, year))
+		c.Send("INCR", fmt.Sprintf(osPrefix+keym+":"+ua.OS, year, month))
+		c.Send("INCR", fmt.Sprintf(osPrefix+keyd+":"+ua.OS, year, month, day))
+		c.Send("INCR", fmt.Sprintf(osPrefix+keyh+":"+ua.OS, year, month, day, hour))
+		c.Send("INCR", fmt.Sprintf(osPrefix+keyi+":"+ua.OS, year, month, day, hour, minute))
+	}
 	c.Flush()
 	return
 }

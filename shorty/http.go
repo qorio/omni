@@ -184,10 +184,11 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 		origin, geoParseErr := this.requestParser.Parse(req)
 		glog.Infoln(
 			"url:", shortUrl.Id, "send-to:", destination,
-			"ip:", origin.Ip, "mobile:", origin.Mobile,
-			"platform:", origin.Platform, "os:", origin.OS,
-			"browser:", origin.Browser, "version:", origin.BrowserVersion,
-			"location:", *origin.Location)
+			"ip:", origin.Ip, "mobile:", origin.UserAgent.Mobile,
+			"platform:", origin.UserAgent.Platform, "os:", origin.UserAgent.OS, "make:", origin.UserAgent.Make,
+			"browser:", origin.UserAgent.Browser, "version:", origin.UserAgent.BrowserVersion,
+			"location:", *origin.Location,
+			"useragent:", origin.UserAgent.Header)
 
 		shortUrl.Record(origin, visits > 1)
 		if geoParseErr != nil {
