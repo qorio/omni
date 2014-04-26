@@ -3,11 +3,13 @@ package tally
 import (
 	"encoding/json"
 	"math"
+	"regexp"
 	"strconv"
 	"time"
 )
 
 var nanoseconds = math.Pow10(9)
+var quoted = regexp.MustCompile("^\"|\"$")
 
 func NewEvent() *Event {
 	now := to_seconds(time.Now().UnixNano())
@@ -20,8 +22,8 @@ func (this *Event) SetAttribute(key, value string) {
 	this.Attributes = append(this.Attributes, parse_attribute(key, value))
 }
 
-func (this *Event) ToJSON() (bytes []byte, err error) {
-	bytes, err = format_json(this)
+func (this *Event) ToJSON(indent bool) (bytes []byte, err error) {
+	bytes, err = format_json(this, indent)
 	return
 }
 
@@ -38,9 +40,10 @@ func to_geojson(loc *Location) []float64 {
 	return []float64{*loc.Lon, *loc.Lat}
 }
 
-func format_json(event *Event) (bytes []byte, err error) {
+func format_json(event *Event, indent bool) (bytes []byte, err error) {
 	payload := map[string]interface{}{
 		"@timestamp": unix_timestamp(*event.Timestamp),
+		"@appKey":    event.AppKey,
 		"@type":      event.Type,
 		"@source":    event.Source,
 		"@context":   event.Context,
@@ -57,7 +60,12 @@ func format_json(event *Event) (bytes []byte, err error) {
 			payload[*attr.Key] = attr.StringValue
 		}
 	}
-	return json.Marshal(payload)
+	if indent {
+		return json.MarshalIndent(payload, "", "    ")
+	} else {
+		return json.Marshal(payload)
+	}
+
 }
 
 func parse_attribute(key string, value string) *Attribute {
@@ -74,7 +82,8 @@ func parse_attribute(key string, value string) *Attribute {
 		attr.BoolValue = &boolValue
 		return attr
 	} else {
-		attr.StringValue = &value
+		s := quoted.ReplaceAllString(value, "")
+		attr.StringValue = &s
 		return attr
 	}
 }

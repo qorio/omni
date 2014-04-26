@@ -2,12 +2,13 @@ package main
 
 import (
 	"flag"
-	"github.com/golang/glog"
+	"fmt"
 	"github.com/qorio/omni/tally"
 	"strings"
 )
 
 var (
+	indent     = flag.Bool("indent", true, "Indent JSON")
 	timestamp  = flag.String("timestamp", "", "Event timestamp")
 	appKey     = flag.String("appkey", "", "AppKey")
 	eventType  = flag.String("type", "event", "Event type")
@@ -31,15 +32,14 @@ func main() {
 		Lat: lat,
 	}
 
-	for i, p := range strings.Split(*attributes, ";") {
+	for _, p := range strings.Split(*attributes, ";") {
 		kv := strings.Split(p, ":")
 		if len(kv) == 2 {
-			glog.Infof("i=%d Key=%s, Value=%s", i, kv[0], kv[1])
 			event.SetAttribute(kv[0], kv[1])
 		}
 	}
 
-	if json, err := event.ToJSON(); err == nil {
-		glog.Infof("JSON2 = %s", json)
+	if json, err := event.ToJSON(*indent); err == nil {
+		fmt.Println(string(json))
 	}
 }
