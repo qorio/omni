@@ -28,6 +28,9 @@ var (
 	tallyRedisHost    = flag.String("tally_redis_host", "", "Redis host (leave empty for localhost)")
 	tallyRedisPort    = flag.Int("tally_redis_port", 6379, "Redis port")
 	tallyRedisChannel = flag.String("tally_redis_chanel", "shorty", "Redis publish chanel for Events")
+
+	logstashInputQueue          = flag.String("logstash_input_queue", "logstash-input", "Logstash input queue name")
+	maxLogstashInputQueueLength = flag.Int("logstash_input_queue_max_length", 1000, "Logstash input queue max length")
 )
 
 type fileSystemWrapper int
@@ -89,6 +92,22 @@ func main() {
 	buildInfo := runtime.BuildInfo()
 	glog.Infoln("Build", buildInfo.Number, "Commit", buildInfo.Commit, "When", buildInfo.Timestamp)
 
+	// Set up a subscriber service that will subscribe to the channel and
+	// push the message to a work queue for indexing
+	subscriber, err := tally.InitSubscriber(tally.SubscriberSettings{
+		RedisUrl:       fmt.Sprintf("%s:%d", *tallyRedisHost, *tallyRedisPort),
+		RedisChannel:   *tallyRedisChannel,
+		MaxQueueLength: *maxLogstashInputQueueLength,
+	})
+	if err != nil {
+		glog.Infoln("cannot-start-subscriber", err)
+	} else {
+		subscriber.Start()
+		// Route to a work queue
+		subscriber.Queue(*logstashInputQueue, subscriber.Channel())
+	}
+
+	// Tally service which publishes the decode events
 	tallyService := tally.Init(tally.Settings{
 		RedisUrl:     fmt.Sprintf("%s:%d", *tallyRedisHost, *tallyRedisPort),
 		RedisChannel: *tallyRedisChannel,
@@ -102,7 +121,8 @@ func main() {
 		UrlLength:      *urlLength,
 	})
 
-	// Wire the service's together
+	// Wire the service's together ==> this allows the shorty http requests
+	// be published to the redis channel
 	fromShorty := shortyService.Channel()
 	toTally := tallyService.Channel()
 	go func() {
@@ -111,6 +131,7 @@ func main() {
 		}
 	}()
 
+	// HTTP endpoints
 	httpSettings := shorty.ShortyEndPointSettings{
 		Redirect404:     *redirect404,
 		GeoIpDbFilePath: *geoDbFilePath,
