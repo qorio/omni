@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/garyburd/redigo/redis"
+	"github.com/golang/glog"
 	"github.com/qorio/omni/http"
 	"net/url"
 	"regexp"
@@ -63,6 +64,9 @@ type Shorty interface {
 	UrlLength() int
 	ShortUrl(url string, optionalRules []RoutingRule) (*ShortUrl, error)
 	Find(id string) (*ShortUrl, error)
+	Channel() <-chan *http.RequestOrigin
+	Publish(req *http.RequestOrigin)
+	Close()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -70,6 +74,7 @@ type Shorty interface {
 type shortyImpl struct {
 	settings Settings
 	pool     *redis.Pool
+	channel  chan *http.RequestOrigin
 }
 
 const (
@@ -95,6 +100,25 @@ func Init(settings Settings) *shortyImpl {
 			},
 		},
 	}
+}
+
+func (this *shortyImpl) Close() {
+	if err := this.pool.Close(); err != nil {
+		glog.Warningln("error-closing-connection-pool", err)
+	}
+}
+
+func (this *shortyImpl) Publish(req *http.RequestOrigin) {
+	if this.channel != nil {
+		this.channel <- req
+	}
+}
+
+func (this *shortyImpl) Channel() <-chan *http.RequestOrigin {
+	if this.channel == nil {
+		this.channel = make(chan *http.RequestOrigin)
+	}
+	return this.channel
 }
 
 func (this *shortyImpl) UrlLength() int {

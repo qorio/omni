@@ -34,10 +34,11 @@ type UserAgent struct {
 }
 
 type RequestOrigin struct {
-	Ip        string
-	Referrer  string
-	UserAgent *UserAgent
-	Location  *Location
+	Ip          string
+	Referrer    string
+	UserAgent   *UserAgent
+	Location    *Location
+	HttpRequest *http.Request
 }
 
 func NewRequestParser(geoDb string) (parser *RequestParser, err error) {
@@ -67,8 +68,9 @@ func ParseUserAgent(req *http.Request) *UserAgent {
 func (this *RequestParser) Parse(req *http.Request) (r *RequestOrigin, err error) {
 	ip, location, _ := this.geo(req)
 	r = &RequestOrigin{
-		Ip:        ip,
-		UserAgent: ParseUserAgent(req),
+		HttpRequest: req,
+		Ip:          ip,
+		UserAgent:   ParseUserAgent(req),
 	}
 
 	if location != nil {

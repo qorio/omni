@@ -4,8 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"github.com/golang/glog"
+	omni_http "github.com/qorio/omni/http"
 	"github.com/qorio/omni/runtime"
 	"github.com/qorio/omni/shorty"
+	"github.com/qorio/omni/tally"
 	"io"
 	"net/http"
 	"os"
@@ -22,6 +24,10 @@ var (
 	geoDbFilePath  = flag.String("geo_db", "./GeoLiteCity.dat", "Location to the MaxMind GeoIP city database file")
 
 	currentWorkingDir, _ = os.Getwd()
+
+	tallyRedisHost    = flag.String("tally_redis_host", "", "Redis host (leave empty for localhost)")
+	tallyRedisPort    = flag.Int("tally_redis_port", 6379, "Redis port")
+	tallyRedisChannel = flag.String("tally_redis_chanel", "shorty", "Redis publish chanel for Events")
 )
 
 type fileSystemWrapper int
@@ -47,6 +53,35 @@ func startWebUi(port int) {
 	}()
 }
 
+func translate(r *omni_http.RequestOrigin) (event *tally.Event) {
+	event = tally.NewEvent()
+
+	appKey := "shorty"
+	eventType := "decode"
+	source := "shorty"
+	lat := float64(r.Location.Latitude)
+	lon := float64(r.Location.Longitude)
+	event.AppKey = &appKey
+	event.Type = &eventType
+	event.Source = &source
+	event.Context = &r.HttpRequest.URL.Host
+	event.Location = &tally.Location{
+		Lat: &lat,
+		Lon: &lon,
+	}
+	event.SetAttribute("ip", r.Ip)
+	event.SetAttribute("referrer", r.Referrer)
+	event.SetAttributeBool("bot", r.UserAgent.Bot)
+	event.SetAttributeBool("mobile", r.UserAgent.Mobile)
+	event.SetAttribute("platform", r.UserAgent.Platform)
+	event.SetAttribute("os", r.UserAgent.OS)
+	event.SetAttribute("make", r.UserAgent.Make)
+	event.SetAttribute("browser", r.UserAgent.Browser)
+	event.SetAttribute("browserVersion", r.UserAgent.BrowserVersion)
+	event.SetAttribute("header", r.UserAgent.Header)
+	return
+}
+
 func main() {
 
 	flag.Parse()
@@ -54,12 +89,27 @@ func main() {
 	buildInfo := runtime.BuildInfo()
 	glog.Infoln("Build", buildInfo.Number, "Commit", buildInfo.Commit, "When", buildInfo.Timestamp)
 
+	tallyService := tally.Init(tally.Settings{
+		RedisUrl:     fmt.Sprintf("%s:%d", *tallyRedisHost, *tallyRedisPort),
+		RedisChannel: *tallyRedisChannel,
+	})
+	tallyService.Start()
+
 	shortyService := shorty.Init(shorty.Settings{
 		RedisUrl:       fmt.Sprintf("%s:%d", *redisHost, *redisPort),
 		RedisPrefix:    *redisPrefix,
 		RestrictDomain: *restrictDomain,
 		UrlLength:      *urlLength,
 	})
+
+	// Wire the service's together
+	fromShorty := shortyService.Channel()
+	toTally := tallyService.Channel()
+	go func() {
+		for {
+			toTally <- translate(<-fromShorty)
+		}
+	}()
 
 	httpSettings := shorty.ShortyEndPointSettings{
 		Redirect404:     *redirect404,
@@ -106,6 +156,8 @@ func main() {
 		runtime.ShutdownHook(func() error {
 			// Clean up database connections
 			glog.Infoln("Stopping database connections")
+			shortyService.Close()
+			tallyService.Close()
 			return nil
 		}),
 		runtime.ShutdownHook(func() error {

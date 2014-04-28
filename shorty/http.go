@@ -182,6 +182,9 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	// Record stats asynchronously
 	go func() {
 		origin, geoParseErr := this.requestParser.Parse(req)
+		if geoParseErr != nil {
+			glog.Warningln("can-not-determine-location", geoParseErr)
+		}
 		glog.Infoln(
 			"url:", shortUrl.Id, "send-to:", destination,
 			"ip:", origin.Ip, "mobile:", origin.UserAgent.Mobile,
@@ -190,10 +193,8 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 			"location:", *origin.Location,
 			"useragent:", origin.UserAgent.Header)
 
+		this.service.Publish(origin)
 		shortUrl.Record(origin, visits > 1)
-		if geoParseErr != nil {
-			glog.Warningln("can-not-determine-location", geoParseErr)
-		}
 	}()
 }
 

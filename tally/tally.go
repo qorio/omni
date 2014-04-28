@@ -2,11 +2,101 @@ package tally
 
 import (
 	"encoding/json"
+	"github.com/garyburd/redigo/redis"
+	"github.com/golang/glog"
 	"math"
 	"regexp"
 	"strconv"
 	"time"
 )
+
+type Settings struct {
+	RedisUrl     string
+	RedisChannel string
+}
+
+type Tally interface {
+	Channel() chan<- *Event
+	Start()
+	Stop()
+	Close()
+}
+
+type tallyImpl struct {
+	settings Settings
+	pool     *redis.Pool
+	channel  chan *Event
+	stop     chan bool
+}
+
+func Init(settings Settings) *tallyImpl {
+	return &tallyImpl{
+		settings: settings,
+		channel:  make(chan *Event),
+		stop:     make(chan bool),
+		pool: &redis.Pool{
+			MaxIdle:     5,
+			IdleTimeout: 240 * time.Second,
+			Dial: func() (redis.Conn, error) {
+				c, err := redis.Dial("tcp", settings.RedisUrl)
+				if err != nil {
+					return nil, err
+				}
+				return c, nil
+			},
+			TestOnBorrow: func(c redis.Conn, t time.Time) error {
+				_, err := c.Do("PING")
+				return err
+			},
+		},
+	}
+}
+
+func (this *tallyImpl) Channel() chan<- *Event {
+	return this.channel
+}
+
+func (this *tallyImpl) Start() {
+	go func() {
+		for {
+			select {
+			case message := <-this.channel:
+				count, err := this.publish(message)
+				if err != nil {
+					glog.Warningln("error-publish", err, this)
+				} else if count == 0 {
+					glog.Warningln("no-subscribers", this)
+				}
+			case stop := <-this.stop:
+				if stop {
+					return
+				}
+			}
+		}
+	}()
+}
+
+func (this *tallyImpl) Stop() {
+	this.stop <- true
+}
+
+func (this *tallyImpl) Close() {
+	if err := this.pool.Close(); err != nil {
+		glog.Warningln("error-closing-pool", err)
+	}
+}
+
+func (this *tallyImpl) publish(event *Event) (count int, err error) {
+	c := this.pool.Get()
+	defer c.Close()
+
+	data, err := event.ToJSON(false)
+	if err != nil {
+		return -1, err
+	}
+	count, err = redis.Int(c.Do("PUBLISH", this.settings.RedisChannel, data))
+	return
+}
 
 var nanoseconds = math.Pow10(9)
 var quoted = regexp.MustCompile("^\"|\"$")
@@ -20,6 +110,13 @@ func NewEvent() *Event {
 
 func (this *Event) SetAttribute(key, value string) {
 	this.Attributes = append(this.Attributes, parse_attribute(key, value))
+}
+
+func (this *Event) SetAttributeBool(key string, value bool) {
+	this.Attributes = append(this.Attributes, &Attribute{
+		Key:       &key,
+		BoolValue: &value,
+	})
 }
 
 func (this *Event) ToJSON(indent bool) (bytes []byte, err error) {
