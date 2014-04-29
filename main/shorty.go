@@ -82,6 +82,8 @@ func translate(r *omni_http.RequestOrigin) (event *tally.Event) {
 	event.SetAttribute("browser", r.UserAgent.Browser)
 	event.SetAttribute("browserVersion", r.UserAgent.BrowserVersion)
 	event.SetAttribute("header", r.UserAgent.Header)
+	event.SetAttributeBool("cookied", r.Cookied)
+	event.SetAttributeInt("visits", r.Visits)
 	return
 }
 

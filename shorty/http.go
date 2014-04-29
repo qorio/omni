@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	"github.com/nu7hatch/gouuid"
 	omni_http "github.com/qorio/omni/http"
 	"io"
 	"io/ioutil"
@@ -129,6 +130,41 @@ func (this *ShortyEndPoint) ApiAddHandler(resp http.ResponseWriter, req *http.Re
 	resp.Write(buff)
 }
 
+func processCookies(resp http.ResponseWriter, req *http.Request, shortUrl *ShortUrl) (visits int, cookied bool) {
+	// a unique user identifier
+	userId := ""
+	if readCookieError := secureCookie.ReadCookie(req, "uuid", &userId); readCookieError == nil {
+		if userId == "" {
+			// drop a UUID
+			if uuid, err := uuid.NewV4(); err == nil {
+				secureCookie.SetCookie(resp, "uuid", uuid)
+			}
+		}
+	} else {
+		return -1, false
+	}
+	// last viewed item -- for tracking conversion later
+	lastViewed := ""
+	if readCookieError := secureCookie.ReadCookie(req, "last", &lastViewed); readCookieError == nil {
+		if err := secureCookie.SetCookie(resp, "last", shortUrl.Id); err != nil {
+			return visits, false
+		}
+	} else {
+		return -1, false
+	}
+	// key - the short code, value = visits ==> this is for tracking uniques
+	if readCookieError := secureCookie.ReadCookie(req, shortUrl.Id, &visits); readCookieError == nil {
+		visits++
+		if err := secureCookie.SetCookie(resp, shortUrl.Id, visits); err != nil {
+			return visits, false
+		} else {
+			return visits, true
+		}
+	} else {
+		return -1, false
+	}
+}
+
 func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	shortUrl, err := this.service.Find(vars["id"])
@@ -168,20 +204,16 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	// no caching
 	omni_http.SetNoCachingHeaders(resp)
 
-	// drop cookie
-	var visits int = 0
-	if readCookieError := secureCookie.ReadCookie(req, shortUrl.Id, &visits); readCookieError == nil {
-		visits++
-	}
-	if err = secureCookie.SetCookie(resp, shortUrl.Id, visits); err != nil {
-		glog.Warningln("can-not-set-cookie", shortUrl.Id)
-	}
+	// handle cookies
+	visits, cookied := processCookies(resp, req, shortUrl)
 
 	http.Redirect(resp, req, destination, http.StatusMovedPermanently)
 
 	// Record stats asynchronously
 	go func() {
 		origin, geoParseErr := this.requestParser.Parse(req)
+		origin.Cookied = cookied
+		origin.Visits = visits
 		if geoParseErr != nil {
 			glog.Warningln("can-not-determine-location", geoParseErr)
 		}
@@ -191,7 +223,8 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 			"platform:", origin.UserAgent.Platform, "os:", origin.UserAgent.OS, "make:", origin.UserAgent.Make,
 			"browser:", origin.UserAgent.Browser, "version:", origin.UserAgent.BrowserVersion,
 			"location:", *origin.Location,
-			"useragent:", origin.UserAgent.Header)
+			"useragent:", origin.UserAgent.Header,
+			"cookied", cookied)
 
 		this.service.Publish(origin)
 		shortUrl.Record(origin, visits > 1)

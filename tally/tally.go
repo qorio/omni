@@ -119,6 +119,14 @@ func (this *Event) SetAttributeBool(key string, value bool) {
 	})
 }
 
+func (this *Event) SetAttributeInt(key string, value int) {
+	v := int64(value)
+	this.Attributes = append(this.Attributes, &Attribute{
+		Key:      &key,
+		IntValue: &v,
+	})
+}
+
 func (this *Event) ToJSON(indent bool) (bytes []byte, err error) {
 	bytes, err = format_json(this, indent)
 	return

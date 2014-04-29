@@ -39,6 +39,8 @@ type RequestOrigin struct {
 	UserAgent   *UserAgent
 	Location    *Location
 	HttpRequest *http.Request
+	Cookied     bool
+	Visits      int
 }
 
 func NewRequestParser(geoDb string) (parser *RequestParser, err error) {

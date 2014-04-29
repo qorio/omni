@@ -57,13 +57,21 @@ func (this *tallySubscriberImpl) Queue(queue string, inbound <-chan interface{})
 	go func() {
 		var queueLength int = 0
 		var err error
+		queueLength, _ = redis.Int(this.queue.Do("LLEN", queue))
 		for {
 			select {
 			case message := <-inbound:
-				if queueLength > this.settings.MaxQueueLength {
-					glog.Warningln("queue-length-exceeds-limit", this.settings.MaxQueueLength, queueLength)
-					// drop the message
-					continue
+				if queueLength >= this.settings.MaxQueueLength {
+					// do a read of the length in the hope that at some point the queue starts to drain
+					queueLength, err = redis.Int(this.queue.Do("LLEN", queue))
+					if err != nil {
+						glog.Warningln("error-llen", queue, err, this.settings)
+					}
+					if queueLength >= this.settings.MaxQueueLength {
+						glog.Warningln("queue-length-exceeds-limit", this.settings.MaxQueueLength, queueLength)
+						// drop the message
+						continue
+					}
 				}
 				queueLength, err = redis.Int(this.queue.Do("LPUSH", queue, message))
 				if err != nil {
