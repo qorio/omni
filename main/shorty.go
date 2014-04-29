@@ -84,6 +84,11 @@ func translate(r *omni_http.RequestOrigin) (event *tally.Event) {
 	event.SetAttribute("header", r.UserAgent.Header)
 	event.SetAttributeBool("cookied", r.Cookied)
 	event.SetAttributeInt("visits", r.Visits)
+	event.SetAttribute("country", r.Location.CountryName)
+	event.SetAttribute("country_code", r.Location.CountryCode)
+	event.SetAttribute("region", r.Location.Region)
+	event.SetAttribute("city", r.Location.City)
+	event.SetAttribute("postal", r.Location.PostalCode)
 	return
 }
 
