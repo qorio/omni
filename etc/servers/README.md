@@ -37,7 +37,7 @@ apt-get dist-upgrade
 apt-get upgrade
 ```
 
-### Heartbleed Vulnerability
+### Heartbleed (OpenSSL) Vulnerability
 
 [Blog from DigitalOcean](https://www.digitalocean.com/community/articles/how-to-protect-your-server-against-the-heartbleed-openssl-vulnerability)
 
@@ -50,7 +50,7 @@ update-rc.d nginx defaults
 ```
 
 ### Java
-On Ubuntu 12.10 - OpenJDK 7
+On Ubuntu 12.10 - default is OpenJDK 7, but Oracle JDK is recommended.
 
 ```
 apt-get install software-properties-common
@@ -71,7 +71,7 @@ Java HotSpot(TM) 64-Bit Server VM (build 24.55-b03, mixed mode)
 
 ### Logstash
 
-(Documentation)[http://logstash.net/docs/1.4.0/tutorials/getting-started-with-logstash]
+[Documentation](http://logstash.net/docs/1.4.0/tutorials/getting-started-with-logstash)
 
 ```
 curl -O https://download.elasticsearch.org/logstash/logstash/logstash-1.4.0.tar.gz
@@ -83,9 +83,9 @@ ln -s logstash-1.4.0 logstash
 
 #### Core ES service
 
-Download Debian package from (elasticsearch.org/download)[http://www.elasticsearch.org/download/]
+Download Debian package from [elasticsearch.org/download](http://www.elasticsearch.org/download/)
 
-(Instruction on setting up ElasticSearch as a service)[http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/setup-service.html]
+[Instruction on setting up ElasticSearch as a service](http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/setup-service.html)
 
 ```
 wget https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-1.1.1.deb
@@ -143,7 +143,7 @@ find /etc/elasticsearch/
 
 #### Uitlities
 
-[Montor / Dashboard @ stats1.qor.io](http://stats1.qor.io:9200/_plugin/kopf/)
+[Monitor / Dashboard @ stats1.qor.io](http://stats1.qor.io:9200/_plugin/kopf/)
 
 ```
 /usr/share/elasticsearch/bin/plugin -install lmenezes/elasticsearch-kopf

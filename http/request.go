@@ -41,6 +41,7 @@ type RequestOrigin struct {
 	HttpRequest *http.Request
 	Cookied     bool
 	Visits      int
+	Destination string
 }
 
 func NewRequestParser(geoDb string) (parser *RequestParser, err error) {

@@ -214,6 +214,7 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 		origin, geoParseErr := this.requestParser.Parse(req)
 		origin.Cookied = cookied
 		origin.Visits = visits
+		origin.Destination = destination
 		if geoParseErr != nil {
 			glog.Warningln("can-not-determine-location", geoParseErr)
 		}

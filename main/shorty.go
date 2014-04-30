@@ -74,6 +74,7 @@ func translate(r *omni_http.RequestOrigin) (event *tally.Event) {
 	}
 	event.SetAttribute("ip", r.Ip)
 	event.SetAttribute("referrer", r.Referrer)
+	event.SetAttribute("destination", r.Destination)
 	event.SetAttributeBool("bot", r.UserAgent.Bot)
 	event.SetAttributeBool("mobile", r.UserAgent.Mobile)
 	event.SetAttribute("platform", r.UserAgent.Platform)
