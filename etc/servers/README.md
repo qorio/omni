@@ -148,3 +148,45 @@ find /etc/elasticsearch/
 ```
 /usr/share/elasticsearch/bin/plugin -install lmenezes/elasticsearch-kopf
 ```
+
+## Setting up Dashboard
+
+Dashboard is running on the `web1` host.  See DNS: https://www.name.com/account/domain/details/qor.io#dns
+
+### Files and Permissions
+
+The files in `omni/www/kibana` maps to `/var/www/kibana` on host
+
+On host:
+
+```
+chown -R www-data:www-data /var/www/kibana
+chmod 755 /var/www
+```
+
+Change `config.js` to point to `https://stats1.qor.io`
+
+### Nginx Setup
+
+From `omni/etc/nginx` in local git repo:
+
+```
+scp web1.conf root@web1.qor.io:/etc/nginx/sites-available/console.qor.io
+```
+On host:
+```
+root@web1:/etc/nginx# find sites-available/
+sites-available/
+sites-available/default
+sites-available/console.qor.io
+
+root@web1:/etc/nginx# find sites-enabled/
+sites-enabled/
+sites-enabled/console.qor.io  # symlinked to file console.qor.io in sites-available
+```
+
+```
+service nginx restart
+```
+
+The console is available at https://console.qor.io
