@@ -42,6 +42,7 @@ type RequestOrigin struct {
 	Cookied     bool
 	Visits      int
 	Destination string
+	ShortCode   string
 }
 
 func NewRequestParser(geoDb string) (parser *RequestParser, err error) {

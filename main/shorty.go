@@ -61,13 +61,14 @@ func translate(r *omni_http.RequestOrigin) (event *tally.Event) {
 
 	appKey := "shorty"
 	eventType := "decode"
-	source := "shorty"
+
+	requestUrl := r.HttpRequest.URL.String()
 	lat := float64(r.Location.Latitude)
 	lon := float64(r.Location.Longitude)
 	event.AppKey = &appKey
 	event.Type = &eventType
-	event.Source = &source
-	event.Context = &r.HttpRequest.URL.Host
+	event.Source = &requestUrl
+	event.Context = &requestUrl
 	event.Location = &tally.Location{
 		Lat: &lat,
 		Lon: &lon,
@@ -90,6 +91,7 @@ func translate(r *omni_http.RequestOrigin) (event *tally.Event) {
 	event.SetAttribute("region", r.Location.Region)
 	event.SetAttribute("city", r.Location.City)
 	event.SetAttribute("postal", r.Location.PostalCode)
+	event.SetAttribute("shortcode", r.ShortCode)
 	return
 }
 
