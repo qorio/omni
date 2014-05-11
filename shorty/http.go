@@ -182,7 +182,18 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 		userAgent := omni_http.ParseUserAgent(req)
 		for _, rule := range shortUrl.Rules {
 			if dest, match := rule.Match(userAgent); match {
-				destination = dest
+
+				destination = dest // default
+
+				// check to see if the rule specifies app url scheme
+				// if yes, then check cookie by the same key exists
+				if rule.AppUrlScheme != "" {
+					timestamp := int64(0)
+					secureCookie.ReadCookie(req, rule.AppUrlScheme, &timestamp)
+					if timestamp == 0 {
+						destination = rule.AppStoreUrl
+					}
+				}
 				break
 			}
 		}
@@ -191,7 +202,6 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	omni_http.SetNoCachingHeaders(resp)
 	visits, cookied, last, userId := processCookies(resp, req, shortUrl)
 
-	glog.Infoln("UUID= ", userId)
 	http.Redirect(resp, req, destination, http.StatusMovedPermanently)
 
 	// Record stats asynchronously
@@ -256,8 +266,6 @@ func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *
 	userKey := fmt.Sprintf("%s/%s", appUuid, customUrlScheme)
 	glog.Infoln("User key = ", userKey)
 
-	// TODO - log the install event here
-
 	// read the cookies that have been set before when user clicked a short link
 	// this allows us to send a redirect as appropriate; otherwise, send a app url with 404
 
@@ -267,7 +275,8 @@ func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *
 	secureCookie.ReadCookie(req, "uuid", &userId)
 	secureCookie.ReadCookie(req, "last", &lastViewed)
 
-	glog.Infoln("From cookies uuid=", userId, "last=", lastViewed)
+	// set a cookie to note that we know the app has been installed on the device
+	secureCookie.SetCookie(resp, customUrlScheme, time.Now().Unix())
 
 	var shortUrl *ShortUrl
 	var err error

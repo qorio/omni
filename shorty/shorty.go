@@ -21,11 +21,20 @@ type Settings struct {
 }
 
 type RoutingRule struct {
+
+	// Specify one of the following matching criteria: platform, os, make, or browser
 	MatchPlatform string `json:"platform,omitempty"`
 	MatchOS       string `json:"os,omitempty"`
 	MatchMake     string `json:"make,omitempty"`
 	MatchBrowser  string `json:"browser,omitempty"`
-	Destination   string `json:"destination"`
+
+	// Destination resource url - can be app url on mobile device
+	Destination string `json:"destination"`
+
+	// For specifying mobile appstore install url and app custom url scheme
+	// If specified, check cookie to see if the app's url scheme exists, if not, direct to appstore
+	AppUrlScheme string `json:"scheme"`
+	AppStoreUrl  string `json:"appstore"`
 }
 
 func (this *RoutingRule) Match(ua *http.UserAgent) (destination string, match bool) {
