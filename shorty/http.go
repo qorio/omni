@@ -140,6 +140,8 @@ func processCookies(resp http.ResponseWriter, req *http.Request, shortUrl *Short
 			// drop a UUID
 			if uuid, err := uuid.NewV4(); err == nil {
 				secureCookie.SetCookie(resp, "uuid", uuid)
+			} else {
+				glog.Warningln("Cannot set uuid", err)
 			}
 		}
 	} else {
