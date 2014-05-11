@@ -60,13 +60,11 @@ func translate(r *omni_http.RequestOrigin) (event *tally.Event) {
 	event = tally.NewEvent()
 
 	appKey := "shorty"
-	eventType := "decode"
 
 	requestUrl := r.HttpRequest.URL.String()
 	lat := float64(r.Location.Latitude)
 	lon := float64(r.Location.Longitude)
 	event.AppKey = &appKey
-	event.Type = &eventType
 	event.Source = &requestUrl
 	event.Context = &requestUrl
 	event.Location = &tally.Location{
@@ -75,7 +73,6 @@ func translate(r *omni_http.RequestOrigin) (event *tally.Event) {
 	}
 	event.SetAttribute("ip", r.Ip)
 	event.SetAttribute("referrer", r.Referrer)
-	event.SetAttribute("destination", r.Destination)
 	event.SetAttributeBool("bot", r.UserAgent.Bot)
 	event.SetAttributeBool("mobile", r.UserAgent.Mobile)
 	event.SetAttribute("platform", r.UserAgent.Platform)
@@ -92,6 +89,24 @@ func translate(r *omni_http.RequestOrigin) (event *tally.Event) {
 	event.SetAttribute("city", r.Location.City)
 	event.SetAttribute("postal", r.Location.PostalCode)
 	event.SetAttribute("shortcode", r.ShortCode)
+	return
+}
+
+func translateDecode(decodeEvent *shorty.DecodeEvent) (event *tally.Event) {
+	event = translate(decodeEvent.Origin)
+	eventType := "decode"
+	event.Type = &eventType
+	event.SetAttribute("destination", decodeEvent.Destination)
+	return
+}
+
+func translateInstall(installEvent *shorty.InstallEvent) (event *tally.Event) {
+	event = translate(installEvent.Origin)
+	eventType := "install"
+	event.Type = &eventType
+	event.SetAttribute("destination", installEvent.Destination)
+	event.SetAttribute("app_url_scheme", installEvent.AppUrlScheme)
+	event.SetAttribute("app_uuid", installEvent.AppUUID)
 	return
 }
 
@@ -133,11 +148,18 @@ func main() {
 
 	// Wire the service's together ==> this allows the shorty http requests
 	// be published to the redis channel
-	fromShorty := shortyService.Channel()
+	fromShorty := shortyService.DecodeEventChannel()
+	fromShortyInstall := shortyService.InstallEventChannel()
 	toTally := tallyService.Channel()
 	go func() {
 		for {
-			toTally <- translate(<-fromShorty)
+			select {
+			case decode := <-fromShorty:
+				toTally <- translateDecode(decode)
+			case install := <-fromShortyInstall:
+				toTally <- translateInstall(install)
+			}
+
 		}
 	}()
 

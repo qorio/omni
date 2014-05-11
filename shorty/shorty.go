@@ -60,21 +60,36 @@ type ShortUrl struct {
 	service     *shortyImpl
 }
 
+type DecodeEvent struct {
+	Origin      *http.RequestOrigin
+	Destination string
+}
+
+type InstallEvent struct {
+	Origin       *http.RequestOrigin
+	AppUrlScheme string
+	AppUUID      string
+	Destination  string
+}
+
 type Shorty interface {
 	UrlLength() int
 	ShortUrl(url string, optionalRules []RoutingRule) (*ShortUrl, error)
 	Find(id string) (*ShortUrl, error)
-	Channel() <-chan *http.RequestOrigin
-	Publish(req *http.RequestOrigin)
+	DecodeEventChannel() <-chan *DecodeEvent
+	InstallEventChannel() <-chan *InstallEvent
+	PublishDecode(event *DecodeEvent)
+	PublishInstall(event *InstallEvent)
 	Close()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
 
 type shortyImpl struct {
-	settings Settings
-	pool     *redis.Pool
-	channel  chan *http.RequestOrigin
+	settings            Settings
+	pool                *redis.Pool
+	decodeEventChannel  chan *DecodeEvent
+	installEventChannel chan *InstallEvent
 }
 
 const (
@@ -108,17 +123,30 @@ func (this *shortyImpl) Close() {
 	}
 }
 
-func (this *shortyImpl) Publish(req *http.RequestOrigin) {
-	if this.channel != nil {
-		this.channel <- req
+func (this *shortyImpl) PublishDecode(event *DecodeEvent) {
+	if this.decodeEventChannel != nil {
+		this.decodeEventChannel <- event
 	}
 }
 
-func (this *shortyImpl) Channel() <-chan *http.RequestOrigin {
-	if this.channel == nil {
-		this.channel = make(chan *http.RequestOrigin)
+func (this *shortyImpl) PublishInstall(event *InstallEvent) {
+	if this.installEventChannel != nil {
+		this.installEventChannel <- event
 	}
-	return this.channel
+}
+
+func (this *shortyImpl) DecodeEventChannel() <-chan *DecodeEvent {
+	if this.decodeEventChannel == nil {
+		this.decodeEventChannel = make(chan *DecodeEvent)
+	}
+	return this.decodeEventChannel
+}
+
+func (this *shortyImpl) InstallEventChannel() <-chan *InstallEvent {
+	if this.installEventChannel == nil {
+		this.installEventChannel = make(chan *InstallEvent)
+	}
+	return this.installEventChannel
 }
 
 func (this *shortyImpl) UrlLength() int {
