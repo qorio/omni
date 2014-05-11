@@ -275,8 +275,9 @@ func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *
 
 	// set a plain cookie to note that we know the app has been installed on the device
 	http.SetCookie(resp, &http.Cookie{
-		Name:  customUrlScheme,
-		Value: "install",
+		Name:   customUrlScheme,
+		Value:  "install",
+		Secure: false,
 	})
 	glog.Infoln(">>>>>  cookied ", customUrlScheme)
 
