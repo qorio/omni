@@ -63,6 +63,7 @@ type ShortUrl struct {
 type DecodeEvent struct {
 	Origin      *http.RequestOrigin
 	Destination string
+	ShortyUUID  string
 }
 
 type InstallEvent struct {
@@ -70,6 +71,7 @@ type InstallEvent struct {
 	AppUrlScheme string
 	AppUUID      string
 	Destination  string
+	ShortyUUID   string
 }
 
 type Shorty interface {

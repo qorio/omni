@@ -89,6 +89,7 @@ func translate(r *omni_http.RequestOrigin) (event *tally.Event) {
 	event.SetAttribute("city", r.Location.City)
 	event.SetAttribute("postal", r.Location.PostalCode)
 	event.SetAttribute("shortcode", r.ShortCode)
+	event.SetAttribute("last_visit", r.LastVisit)
 	return
 }
 
@@ -97,6 +98,7 @@ func translateDecode(decodeEvent *shorty.DecodeEvent) (event *tally.Event) {
 	eventType := "decode"
 	event.Type = &eventType
 	event.SetAttribute("destination", decodeEvent.Destination)
+	event.SetAttribute("uuid", decodeEvent.ShortyUUID)
 	return
 }
 
@@ -107,6 +109,7 @@ func translateInstall(installEvent *shorty.InstallEvent) (event *tally.Event) {
 	event.SetAttribute("destination", installEvent.Destination)
 	event.SetAttribute("app_url_scheme", installEvent.AppUrlScheme)
 	event.SetAttribute("app_uuid", installEvent.AppUUID)
+	event.SetAttribute("uuid", installEvent.ShortyUUID)
 	return
 }
 

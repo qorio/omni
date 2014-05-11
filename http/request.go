@@ -43,6 +43,7 @@ type RequestOrigin struct {
 	Visits      int
 	Destination string
 	ShortCode   string
+	LastVisit   string
 }
 
 func NewRequestParser(geoDb string) (parser *RequestParser, err error) {
