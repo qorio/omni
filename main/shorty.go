@@ -207,6 +207,9 @@ func main() {
 		panic(err)
 	}
 
+	// Save pid
+	pid, pidErr := runtime.SavePidFile(fmt.Sprintf("%d", *port))
+
 	// Here is a list of shutdown hooks to execute when receiving the OS signal
 	shutdownc <- runtime.ShutdownSequence{
 		runtime.ShutdownHook(func() error {
@@ -224,6 +227,13 @@ func main() {
 		runtime.ShutdownHook(func() error {
 			glog.Infoln("Stopping redirector")
 			redirectorDone <- true
+			return nil
+		}),
+		runtime.ShutdownHook(func() error {
+			if pidErr == nil {
+				glog.Infoln("Remove pid file:", pid)
+				os.Remove(pid)
+			}
 			return nil
 		}),
 	}

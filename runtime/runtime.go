@@ -8,10 +8,23 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 )
+
+func SavePidFile(args ...string) (string, error) {
+	cmd := filepath.Base(os.Args[0])
+	pidFile, err := os.Create(fmt.Sprintf("%s-%s.pid", cmd, strings.Join(args, "-")))
+	if err != nil {
+		return "", err
+	}
+
+	defer pidFile.Close()
+	fmt.Fprintf(pidFile, "%d", os.Getpid())
+	return pidFile.Name(), nil
+}
 
 type ShutdownSequence []io.Closer
 
