@@ -273,10 +273,12 @@ func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *
 	secureCookie.ReadCookie(req, "uuid", &userId)
 	secureCookie.ReadCookie(req, "last", &lastViewed)
 
-	// set a cookie to note that we know the app has been installed on the device
-	setCookieErr := secureCookie.SetCookie(resp, customUrlScheme, "install")
-
-	glog.Infoln(">>>>>  cookied ", customUrlScheme, setCookieErr)
+	// set a plain cookie to note that we know the app has been installed on the device
+	http.SetCookie(resp, &http.Cookie{
+		Name:  customUrlScheme,
+		Value: "install",
+	})
+	glog.Infoln(">>>>>  cookied ", customUrlScheme)
 
 	var shortUrl *ShortUrl
 	var err error
