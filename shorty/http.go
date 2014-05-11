@@ -187,9 +187,11 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 
 				// check to see if the rule specifies app url scheme
 				// if yes, then check cookie by the same key exists
+				glog.Infoln(">>>> APP URL SCHEME", rule.AppUrlScheme)
 				if rule.AppUrlScheme != "" {
 					timestamp := int64(0)
 					secureCookie.ReadCookie(req, rule.AppUrlScheme, &timestamp)
+					glog.Infoln(">>>>> READ TIMESTAMP COOKIE", timestamp)
 					if timestamp == 0 {
 						destination = rule.AppStoreUrl
 					}
@@ -262,10 +264,6 @@ func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *
 		return
 	}
 
-	// user key for tracking in our world
-	userKey := fmt.Sprintf("%s/%s", appUuid, customUrlScheme)
-	glog.Infoln("User key = ", userKey)
-
 	// read the cookies that have been set before when user clicked a short link
 	// this allows us to send a redirect as appropriate; otherwise, send a app url with 404
 
@@ -276,7 +274,11 @@ func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *
 	secureCookie.ReadCookie(req, "last", &lastViewed)
 
 	// set a cookie to note that we know the app has been installed on the device
-	secureCookie.SetCookie(resp, customUrlScheme, time.Now().Unix())
+	timestamp := time.Now().Unix()
+
+	setCookieErr := secureCookie.SetCookie(resp, customUrlScheme, timestamp)
+
+	glog.Infoln(">>>>>  cookied ", customUrlScheme, timestamp, setCookieErr)
 
 	var shortUrl *ShortUrl
 	var err error
