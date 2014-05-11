@@ -189,10 +189,10 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 				// if yes, then check cookie by the same key exists
 				glog.Infoln(">>>> APP URL SCHEME", rule.AppUrlScheme)
 				if rule.AppUrlScheme != "" {
-					timestamp := int64(0)
-					secureCookie.ReadCookie(req, rule.AppUrlScheme, &timestamp)
-					glog.Infoln(">>>>> READ TIMESTAMP COOKIE", timestamp)
-					if timestamp == 0 {
+					token := ""
+					secureCookie.ReadCookie(req, rule.AppUrlScheme, &token)
+					glog.Infoln(">>>>> READ INSTALL TOKEN", token)
+					if token == "" {
 						destination = rule.AppStoreUrl
 					}
 				}
@@ -274,11 +274,9 @@ func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *
 	secureCookie.ReadCookie(req, "last", &lastViewed)
 
 	// set a cookie to note that we know the app has been installed on the device
-	timestamp := time.Now().Unix()
+	setCookieErr := secureCookie.SetCookie(resp, customUrlScheme, "install")
 
-	setCookieErr := secureCookie.SetCookie(resp, customUrlScheme, timestamp)
-
-	glog.Infoln(">>>>>  cookied ", customUrlScheme, timestamp, setCookieErr)
+	glog.Infoln(">>>>>  cookied ", customUrlScheme, setCookieErr)
 
 	var shortUrl *ShortUrl
 	var err error
