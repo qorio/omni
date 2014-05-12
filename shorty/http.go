@@ -179,6 +179,9 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 
 	var destination string = shortUrl.Destination
 
+	omni_http.SetNoCachingHeaders(resp)
+	visits, cookied, last, userId := processCookies(resp, req, shortUrl)
+
 	// If there are platform-dependent routing
 	if len(shortUrl.Rules) > 0 {
 		userAgent := omni_http.ParseUserAgent(req)
@@ -187,14 +190,12 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 
 				destination = dest // default
 
-				// check to see if the rule specifies app url scheme
-				// if yes, then check cookie by the same key exists
-				glog.Infoln(">>>> APP URL SCHEME", rule.AppUrlScheme)
+				// If we know the app url scheme, then we are also tracking installs
+				// so check to see if we have seen a reported install before.
 				if rule.AppUrlScheme != "" {
-					token := ""
-					secureCookie.ReadCookie(req, rule.AppUrlScheme, &token)
-					glog.Infoln(">>>>> READ INSTALL TOKEN", token)
-					if token == "" {
+					appUUID, found, _ := this.service.FindInstall(userId, rule.AppUrlScheme)
+					glog.Infoln(">>>> Looked up", userId, rule.AppUrlScheme, "and found", appUUID)
+					if !found {
 						destination = rule.AppStoreUrl
 					}
 				}
@@ -202,9 +203,6 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 			}
 		}
 	}
-
-	omni_http.SetNoCachingHeaders(resp)
-	visits, cookied, last, userId := processCookies(resp, req, shortUrl)
 
 	http.Redirect(resp, req, destination, http.StatusMovedPermanently)
 
@@ -275,14 +273,6 @@ func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *
 	secureCookie.ReadCookie(req, "uuid", &userId)
 	secureCookie.ReadCookie(req, "last", &lastViewed)
 
-	// set a plain cookie to note that we know the app has been installed on the device
-	http.SetCookie(resp, &http.Cookie{
-		Name:   customUrlScheme,
-		Value:  "install",
-		Secure: false,
-	})
-	glog.Infoln(">>>>>  cookied ", customUrlScheme)
-
 	var shortUrl *ShortUrl
 	var err error
 
@@ -292,6 +282,12 @@ func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *
 		http.Redirect(resp, req, destination, http.StatusMovedPermanently)
 		goto stat
 	}
+
+	// We need to store the uuid received here.  This is because we can't just
+	// cookie the client to save the 'installed' state on the client side.  On ios, the
+	// apps are sandboxed so the cookied dropped here can't be combined with the cookie (uuid)
+	// dropped when the user tapped on the original short link.
+	this.service.TrackInstall(userId, appUuid, customUrlScheme)
 
 	shortUrl, err = this.service.Find(lastViewed)
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"github.com/golang/glog"
 	"github.com/qorio/omni/http"
@@ -89,6 +90,8 @@ type Shorty interface {
 	Find(id string) (*ShortUrl, error)
 	DecodeEventChannel() <-chan *DecodeEvent
 	InstallEventChannel() <-chan *InstallEvent
+	TrackInstall(shortyUUID, appUUID, appUrlScheme string) error
+	FindInstall(shortyUUID, appUrlScheme string) (appUUID string, found bool, err error)
 	PublishDecode(event *DecodeEvent)
 	PublishInstall(event *InstallEvent)
 	Close()
@@ -246,6 +249,32 @@ func (this *shortyImpl) ShortUrl(data string, rules []RoutingRule) (entity *Shor
 	entity.Save()
 
 	return entity, nil
+}
+
+func (this *shortyImpl) TrackInstall(shortyUUID, appUUID, appUrlScheme string) error {
+	c := this.pool.Get()
+	defer c.Close()
+
+	key := fmt.Sprintf("%s-%s", shortyUUID, appUrlScheme)
+	reply, err := c.Do("SET", this.settings.RedisPrefix+"install:"+key, appUUID)
+	if err == nil && reply != "OK" {
+		err = errors.New("Invalid Redis response")
+	}
+	return err
+}
+
+func (this *shortyImpl) FindInstall(shortyUUID, appUrlScheme string) (appUUID string, found bool, err error) {
+	c := this.pool.Get()
+	defer c.Close()
+
+	key := fmt.Sprintf("%s-%s", shortyUUID, appUrlScheme)
+	reply, err := c.Do("GET", this.settings.RedisPrefix+"install:"+key)
+	found = reply != nil
+
+	if found {
+		appUUID, err = redis.String(reply, err)
+	}
+	return
 }
 
 func (this *shortyImpl) Find(id string) (*ShortUrl, error) {
