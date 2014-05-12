@@ -191,7 +191,7 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 				// If we know the app url scheme, then we are also tracking installs
 				// so check to see if we have seen a reported install before.
 				if rule.AppUrlScheme != "" {
-					appUUID, found, _ := this.service.FindInstall(userId, rule.AppUrlScheme)
+					_, found, _ := this.service.FindInstall(userId, rule.AppUrlScheme)
 					if !found {
 						destination = rule.AppStoreUrl
 					}
