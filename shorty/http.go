@@ -77,8 +77,6 @@ func NewRedirector(settings ShortyEndPointSettings, service Shorty) (api *Shorty
 
 		regex := fmt.Sprintf("[A-Za-z0-9]{%d}", service.UrlLength())
 		api.router.HandleFunc("/{id:"+regex+"}", api.RedirectHandler).Name("redirect")
-		api.router.HandleFunc("/i/{scheme}/{app_uuid}",
-			api.ReportInstallHandler).Methods("GET").Name("app_install")
 
 		return api, nil
 	} else {
@@ -194,7 +192,6 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 				// so check to see if we have seen a reported install before.
 				if rule.AppUrlScheme != "" {
 					appUUID, found, _ := this.service.FindInstall(userId, rule.AppUrlScheme)
-					glog.Infoln(">>>> Looked up", userId, rule.AppUrlScheme, "and found", appUUID)
 					if !found {
 						destination = rule.AppStoreUrl
 					}
