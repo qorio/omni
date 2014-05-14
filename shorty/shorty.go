@@ -87,6 +87,7 @@ type InstallEvent struct {
 type Shorty interface {
 	UrlLength() int
 	ShortUrl(url string, optionalRules []RoutingRule) (*ShortUrl, error)
+	VanityUrl(vanity, url string, optionalRules []RoutingRule) (*ShortUrl, error)
 	Find(id string) (*ShortUrl, error)
 	DecodeEventChannel() <-chan *DecodeEvent
 	InstallEventChannel() <-chan *InstallEvent
@@ -168,6 +169,10 @@ func (this *shortyImpl) UrlLength() int {
 }
 
 func (this *shortyImpl) ShortUrl(data string, rules []RoutingRule) (entity *ShortUrl, err error) {
+	return this.VanityUrl("", data, rules)
+}
+
+func (this *shortyImpl) VanityUrl(vanity, data string, rules []RoutingRule) (entity *ShortUrl, err error) {
 	data = strings.TrimSpace(data)
 	if len(data) == 0 {
 		err = errors.New("Please specify an URL")
@@ -228,27 +233,43 @@ func (this *shortyImpl) ShortUrl(data string, rules []RoutingRule) (entity *Shor
 	c := this.pool.Get()
 	defer c.Close()
 
-	bytes := make([]byte, this.settings.UrlLength)
-	for {
-		rand.Read(bytes)
-		for i, b := range bytes {
-			bytes[i] = alphanum[b%byte(len(alphanum))]
+	if vanity != "" {
+		if exists, _ := redis.Bool(c.Do("EXISTS", this.settings.RedisPrefix+"url:"+vanity)); !exists {
+			entity.Id = vanity
 		}
-		id := string(bytes)
-		if exists, _ := redis.Bool(c.Do("EXISTS", this.settings.RedisPrefix+"url:"+id)); !exists {
-			entity.Id = id
-			break
+		if exists, _ := this.Find(vanity); exists == nil {
+			entity.Id = vanity
 		}
+	} else {
+		bytes := make([]byte, this.settings.UrlLength)
+		// TODO - probably should add a limit so we don't spend forever exploring the number space
+		// Not adding it because right now the number space is large, don't expect collisions.
+		for {
+			rand.Read(bytes)
+			for i, b := range bytes {
+				bytes[i] = alphanum[b%byte(len(alphanum))]
+			}
+			id := string(bytes)
+			if exists, _ := redis.Bool(c.Do("EXISTS", this.settings.RedisPrefix+"url:"+id)); !exists {
+				entity.Id = id
+				break
+			}
 
-		if exists, _ := this.Find(id); exists == nil {
-			entity.Id = id
-			break
+			if exists, _ := this.Find(id); exists == nil {
+				entity.Id = id
+				break
+			}
 		}
 	}
 
-	entity.Save()
-
-	return entity, nil
+	if entity.Id != "" {
+		entity.Save()
+		return entity, nil
+	} else if vanity != "" {
+		return nil, errors.New("Vanity code taken:" + vanity)
+	} else {
+		return nil, errors.New("Failed to assign code")
+	}
 }
 
 func (this *shortyImpl) TrackInstall(shortyUUID, appUUID, appUrlScheme string) error {

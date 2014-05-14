@@ -17,6 +17,7 @@ import (
 )
 
 type ShortyAddRequest struct {
+	Vanity  string        `json:"vanity"`
 	LongUrl string        `json:"longUrl"`
 	Rules   []RoutingRule `json:"rules"`
 }
@@ -53,7 +54,7 @@ func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty) (api *Short
 			service:       service,
 		}
 
-		regex := fmt.Sprintf("[A-Za-z0-9]{%d}", service.UrlLength())
+		regex := fmt.Sprintf("[A-Za-z0-9]{%d,}", service.UrlLength())
 		api.router.HandleFunc("/{id:"+regex+"}", api.RedirectHandler).Name("redirect")
 		api.router.HandleFunc("/api/v1/url", api.ApiAddHandler).Methods("POST").Name("add")
 		api.router.HandleFunc("/api/v1/stats/{id:"+regex+"}", api.StatsHandler).Methods("GET").Name("stats")
@@ -75,7 +76,7 @@ func NewRedirector(settings ShortyEndPointSettings, service Shorty) (api *Shorty
 			service:       service,
 		}
 
-		regex := fmt.Sprintf("[A-Za-z0-9]{%d}", service.UrlLength())
+		regex := fmt.Sprintf("[A-Za-z0-9]{%d,}", service.UrlLength())
 		api.router.HandleFunc("/{id:"+regex+"}", api.RedirectHandler).Name("redirect")
 
 		return api, nil
@@ -113,7 +114,12 @@ func (this *ShortyEndPoint) ApiAddHandler(resp http.ResponseWriter, req *http.Re
 		return
 	}
 
-	shortUrl, err := this.service.ShortUrl(message.LongUrl, message.Rules)
+	var shortUrl *ShortUrl
+	if message.Vanity != "" {
+		shortUrl, err = this.service.VanityUrl(message.Vanity, message.LongUrl, message.Rules)
+	} else {
+		shortUrl, err = this.service.ShortUrl(message.LongUrl, message.Rules)
+	}
 	if err != nil {
 		renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
 		return
