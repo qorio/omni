@@ -35,6 +35,7 @@ type ShortyEndPoint struct {
 }
 
 var secureCookie *omni_http.SecureCookie
+var regexFmt string = "[_A-Za-z0-9\\.\\-]{%d,}"
 
 func init() {
 	var err error
@@ -53,8 +54,7 @@ func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty) (api *Short
 			requestParser: requestParser,
 			service:       service,
 		}
-
-		regex := fmt.Sprintf("[A-Za-z0-9]{%d,}", service.UrlLength())
+		regex := fmt.Sprintf(regexFmt, service.UrlLength())
 		api.router.HandleFunc("/{id:"+regex+"}", api.RedirectHandler).Name("redirect")
 		api.router.HandleFunc("/api/v1/url", api.ApiAddHandler).Methods("POST").Name("add")
 		api.router.HandleFunc("/api/v1/stats/{id:"+regex+"}", api.StatsHandler).Methods("GET").Name("stats")
@@ -76,7 +76,7 @@ func NewRedirector(settings ShortyEndPointSettings, service Shorty) (api *Shorty
 			service:       service,
 		}
 
-		regex := fmt.Sprintf("[A-Za-z0-9]{%d,}", service.UrlLength())
+		regex := fmt.Sprintf(regexFmt, service.UrlLength())
 		api.router.HandleFunc("/{id:"+regex+"}", api.RedirectHandler).Name("redirect")
 
 		return api, nil
