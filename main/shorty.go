@@ -29,12 +29,12 @@ var (
 	tallyRedisChannel = flag.String("tally_redis_chanel", "shorty", "Redis publish chanel for Events")
 
 	logstashInputQueue          = flag.String("logstash_input_queue", "logstash-input", "Logstash input queue name")
-	maxLogstashInputQueueLength = flag.Int("logstash_input_queue_max_length", 1000, "Logstash input queue max length")
+	maxLogstashInputQueueLength = flag.Int("logstash_input_queue_max_length", 50*10^6, "Logstash input queue max length")
 
 	port           = flag.Int("port", 8080, "Port where server is listening on")
-	apiSocket      = flag.String("socket_api", "", "File name for domain socket instead of port")
-	directorSocket = flag.String("socket_director", "", "File name for domain socket instead of port")
-	managerPort    = flag.Int("manager_port", 7070, "Port where management server is listening on")
+	apiSocket      = flag.String("api_socket", "", "File name for domain socket instead of port")
+	directorSocket = flag.String("redirect_socket", "", "File name for domain socket instead of port")
+	adminPort      = flag.Int("admin_port", 7070, "Port where management server is listening on")
 )
 
 func translate(r *omni_http.RequestOrigin) (event *tally.Event) {
@@ -202,7 +202,7 @@ func main() {
 	var managerStopped chan bool
 	managerHttpServer := &http.Server{
 		Handler: runtime.NewManagerEndPoint(),
-		Addr:    fmt.Sprintf(":%d", *managerPort),
+		Addr:    fmt.Sprintf(":%d", *adminPort),
 	}
 	managerStopped = runtime.RunServer(managerHttpServer, managerDone)
 
