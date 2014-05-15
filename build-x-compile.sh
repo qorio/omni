@@ -70,6 +70,7 @@ echo "ROOTDIR=$ROOTDIR"
 echo "BUILD=$BUILD"
 find $BUILD
 
+go get -u github.com/inconshreveable/go-update
 
 for PLATFORM in $PLATFORMS; do
 	export GOOS=${PLATFORM%/*}
