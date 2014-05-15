@@ -70,7 +70,8 @@ echo "ROOTDIR=$ROOTDIR"
 echo "BUILD=$BUILD"
 find $BUILD
 
-go get -u github.com/inconshreveable/go-update
+# Required to build on linux
+go get -u bitbucket.org/kardianos/osext
 
 for PLATFORM in $PLATFORMS; do
 	export GOOS=${PLATFORM%/*}
