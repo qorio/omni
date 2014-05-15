@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -96,13 +97,18 @@ func HandleSignals(shutdownc <-chan io.Closer) {
 // Runs the http server.  This server offers more control than the standard go's default http server
 // in that when a 'true' is sent to the stop channel, the listener is closed to force a clean shutdown.
 func RunServer(server *http.Server, stop chan bool) (stopped chan bool) {
-	listener, err := net.Listen("tcp", server.Addr)
+	protocol := "tcp"
+	if match, _ := regexp.MatchString("[a-zA-Z0-9\\.]*:[0-9]{4,}", server.Addr); !match {
+		protocol = "unix"
+	}
+
+	listener, err := net.Listen(protocol, server.Addr)
 	if err != nil {
 		panic(err)
 	}
 	stopped = make(chan bool)
 
-	glog.Infoln("Starting listener at", server.Addr)
+	glog.Infoln("Starting", protocol, "listener at", server.Addr)
 
 	// This will be set to true if a shutdown signal is received. This allows us to detect
 	// if the server stop is intentional or due to some error.

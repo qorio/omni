@@ -20,7 +20,6 @@ var (
 	restrictDomain = flag.String("restrict_domain", "", "Restrict destination URLs to a single domain")
 	redirect404    = flag.String("redirect_404", "", "Global redirect when no record found")
 	urlLength      = flag.Int("url_length", 8, "How many characters should the short code have")
-	port           = flag.Int("port", 8080, "Port where server is listening on")
 	geoDbFilePath  = flag.String("geo_db", "./GeoLiteCity.dat", "Location to the MaxMind GeoIP city database file")
 
 	currentWorkingDir, _ = os.Getwd()
@@ -31,30 +30,12 @@ var (
 
 	logstashInputQueue          = flag.String("logstash_input_queue", "logstash-input", "Logstash input queue name")
 	maxLogstashInputQueueLength = flag.Int("logstash_input_queue_max_length", 1000, "Logstash input queue max length")
+
+	port           = flag.Int("port", 8080, "Port where server is listening on")
+	apiSocket      = flag.String("socket_api", "", "File name for domain socket instead of port")
+	directorSocket = flag.String("socket_director", "", "File name for domain socket instead of port")
+	managerPort    = flag.Int("manager_port", 7070, "Port where management server is listening on")
 )
-
-type fileSystemWrapper int
-
-// Implements the http.FileSystem interface and try to open a local file.  If not found,
-// defer to embedded
-func (f *fileSystemWrapper) Open(path string) (file http.File, err error) {
-	if file, err = http.Dir(currentWorkingDir + "/webapp").Open(path); err == nil {
-		return
-	}
-	return //webapp.Dir(".").Open(path)
-}
-
-// Starts a separate server for the web ui.
-func startWebUi(port int) {
-	http.Handle("/", http.FileServer(new(fileSystemWrapper)))
-	webappListen := fmt.Sprintf(":%d", port)
-	go func() {
-		err := http.ListenAndServe(webappListen, nil)
-		if err != nil {
-			panic(err)
-		}
-	}()
-}
 
 func translate(r *omni_http.RequestOrigin) (event *tally.Event) {
 	event = tally.NewEvent()
@@ -180,13 +161,17 @@ func main() {
 	// The channel done is used for getting notification on clean server shutdown.
 
 	// *** The main redirector ***
+	addr := fmt.Sprintf(":%d", *port)
+	if *directorSocket != "" {
+		addr = *directorSocket
+	}
 	glog.Infoln("Starting redirector")
 	redirectorDone := make(chan bool)
 	var redirectorStopped chan bool
 	if redirector, err := shorty.NewRedirector(httpSettings, shortyService); err == nil {
 		redirectorHttpServer := &http.Server{
 			Handler: redirector,
-			Addr:    fmt.Sprintf(":%d", *port),
+			Addr:    addr,
 		}
 		redirectorStopped = runtime.RunServer(redirectorHttpServer, redirectorDone)
 	} else {
@@ -194,18 +179,32 @@ func main() {
 	}
 
 	// *** The API endpoint ***
+	addr = fmt.Sprintf(":%d", *port+1)
+	if *apiSocket != "" {
+		addr = *apiSocket
+	}
 	glog.Infoln("Starting api endpoint")
 	apiDone := make(chan bool)
 	var apiStopped chan bool
 	if endpoint, err := shorty.NewApiEndPoint(httpSettings, shortyService); err == nil {
 		apiHttpServer := &http.Server{
 			Handler: endpoint,
-			Addr:    fmt.Sprintf(":%d", *port+1),
+			Addr:    addr,
 		}
 		apiStopped = runtime.RunServer(apiHttpServer, apiDone)
 	} else {
 		panic(err)
 	}
+
+	// *** The Manager endpoint ***
+	glog.Infoln("Starting manager endpoint")
+	managerDone := make(chan bool)
+	var managerStopped chan bool
+	managerHttpServer := &http.Server{
+		Handler: runtime.NewManagerEndPoint(),
+		Addr:    fmt.Sprintf(":%d", *managerPort),
+	}
+	managerStopped = runtime.RunServer(managerHttpServer, managerDone)
 
 	// Save pid
 	pid, pidErr := runtime.SavePidFile(fmt.Sprintf("%d", *port))
@@ -213,20 +212,25 @@ func main() {
 	// Here is a list of shutdown hooks to execute when receiving the OS signal
 	shutdownc <- runtime.ShutdownSequence{
 		runtime.ShutdownHook(func() error {
-			// Clean up database connections
-			glog.Infoln("Stopping database connections")
-			shortyService.Close()
-			tallyService.Close()
-			return nil
-		}),
-		runtime.ShutdownHook(func() error {
 			glog.Infoln("Stopping api endpoint")
 			apiDone <- true
 			return nil
 		}),
 		runtime.ShutdownHook(func() error {
+			glog.Infoln("Stopping manager endpoint")
+			managerDone <- true
+			return nil
+		}),
+		runtime.ShutdownHook(func() error {
 			glog.Infoln("Stopping redirector")
 			redirectorDone <- true
+			return nil
+		}),
+		runtime.ShutdownHook(func() error {
+			// Clean up database connections
+			glog.Infoln("Stopping database connections")
+			shortyService.Close()
+			tallyService.Close()
 			return nil
 		}),
 		runtime.ShutdownHook(func() error {
@@ -240,16 +244,22 @@ func main() {
 
 	count := 0
 	select {
+	case <-managerStopped:
+		glog.Infoln("Manager endpoint stopped.")
+		count++
+		if count == 3 {
+			break
+		}
 	case <-apiStopped:
 		glog.Infoln("Api endpoint stopped.")
 		count++
-		if count == 2 {
+		if count == 3 {
 			break
 		}
 	case <-redirectorStopped:
 		glog.Infoln("Redirector stopped.")
 		count++
-		if count == 2 {
+		if count == 3 {
 			break
 		}
 	}
