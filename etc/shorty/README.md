@@ -89,6 +89,7 @@ Installing service...
 Success!
 Starting Redis server...
 Installation successful!```
+```
 
 ### Nginx Setup
 
