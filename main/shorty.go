@@ -223,7 +223,7 @@ func main() {
 	// Save pid
 	label := fmt.Sprintf("%d", *port)
 	if *instanceId != "" {
-		label = instanceId
+		label = *instanceId
 	}
 	pid, pidErr := runtime.SavePidFile(label)
 
