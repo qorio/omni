@@ -98,8 +98,9 @@ From `omni/etc/nginx` in local git repo:
 scp -r ssl root@107.170.248.96:/etc/nginx
 scp shorty.conf root@107.170.248.96:/etc/nginx/sites-available/default0
 ```
+
 On host:
-```
+
 ```
 service nginx restart
 ```

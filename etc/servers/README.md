@@ -50,6 +50,7 @@ update-rc.d nginx defaults
 ```
 
 ### Redis
+
 ```
 sudo apt-get install build-essential
 sudo apt-get install tcl8.5
@@ -59,7 +60,11 @@ cd redis-2.8.9/
 make
 make install
 cd utils/
-./install_server.sh```
+./install_server.sh
+```
+
+Some useful paths for redis:
+
 ```
 root@sfo-redis-1:~/redis-2.8.9/utils# ./install_server.sh
 Welcome to the redis service installer
@@ -94,7 +99,8 @@ Installing service...
    /etc/rc5.d/S20redis_6379 -> ../init.d/redis_6379
 Success!
 Starting Redis server...
-Installation successful!```
+Installation successful!
+```
 
 
 ### Java
