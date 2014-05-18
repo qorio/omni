@@ -32,13 +32,19 @@ type RoutingRule struct {
 	// Destination resource url - can be app url on mobile device
 	Destination string `json:"destination"`
 
+	// Inline html.  Inline html takes precedence over destination.
+	InlineContent string `json:"inline",omitempty`
+
 	// For specifying mobile appstore install url and app custom url scheme
 	// If specified, check cookie to see if the app's url scheme exists, if not, direct to appstore
-	AppUrlScheme string `json:"scheme"`
-	AppStoreUrl  string `json:"appstore"`
+	AppUrlScheme string `json:"scheme",omitempty`
+	AppStoreUrl  string `json:"appstore",omitempty`
+
+	// For matching on mobile=true and referer is equal to the value
+	MatchMobileReferrer string `json:"x-mobile-referer",omitempty`
 }
 
-func (this *RoutingRule) Match(ua *http.UserAgent) (destination string, match bool) {
+func (this *RoutingRule) Match(ua *http.UserAgent, origin *http.RequestOrigin) (destination string, match bool) {
 	if len(this.MatchPlatform) > 0 {
 		if matches, _ := regexp.MatchString(this.MatchPlatform, ua.Platform); matches {
 			return this.Destination, true
@@ -56,6 +62,11 @@ func (this *RoutingRule) Match(ua *http.UserAgent) (destination string, match bo
 	}
 	if len(this.MatchBrowser) > 0 {
 		if matches, _ := regexp.MatchString(this.MatchBrowser, ua.Browser); matches {
+			return this.Destination, true
+		}
+	}
+	if origin != nil && ua.Mobile && len(this.MatchMobileReferrer) > 0 {
+		if matches, _ := regexp.MatchString(this.MatchMobileReferrer, origin.Referrer); matches {
 			return this.Destination, true
 		}
 	}

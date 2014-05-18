@@ -201,6 +201,7 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	}
 
 	var destination string = shortUrl.Destination
+	var renderInline bool = false
 
 	omni_http.SetNoCachingHeaders(resp)
 	visits, cookied, last, userId := processCookies(resp, req, shortUrl)
@@ -208,8 +209,10 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	// If there are platform-dependent routing
 	if len(shortUrl.Rules) > 0 {
 		userAgent := omni_http.ParseUserAgent(req)
+		origin, _ := this.requestParser.Parse(req)
+
 		for _, rule := range shortUrl.Rules {
-			if dest, match := rule.Match(userAgent); match {
+			if dest, match := rule.Match(userAgent, origin); match {
 
 				destination = dest // default
 
@@ -221,12 +224,22 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 						destination = rule.AppStoreUrl
 					}
 				}
+
+				if rule.InlineContent != "" {
+					destination = rule.InlineContent
+					renderInline = true
+				}
+
 				break
 			}
 		}
 	}
 
-	http.Redirect(resp, req, destination, http.StatusMovedPermanently)
+	if renderInline {
+		resp.Write([]byte(destination))
+	} else {
+		http.Redirect(resp, req, destination, http.StatusMovedPermanently)
+	}
 
 	// Record stats asynchronously
 	go func() {
@@ -328,7 +341,7 @@ func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *
 	if len(shortUrl.Rules) > 0 {
 		userAgent := omni_http.ParseUserAgent(req)
 		for _, rule := range shortUrl.Rules {
-			if dest, match := rule.Match(userAgent); match {
+			if dest, match := rule.Match(userAgent, nil); match {
 				destination = dest
 				break
 			}

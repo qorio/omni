@@ -140,3 +140,16 @@ mv GeoLiteCity.dat\?circle-token\=b71701145614b93a382a8e3b5d633ee71c360315 GeoLi
 ## Starting up Shorty
 - Shorty uses unix domain sockets instead of tcp port
 - Shorty requires one admin port
+- Domain sockets must be writable publicly.
+
+Start the jobs
+```
+root       613   997  0 04:43 pts/1    00:00:00 ./shorty -api_socket=/var/run/shorty/api-0.socket -redirect_socket=/var/run/shorty/redirect-0.socket -admin_port=7070 -log_dir=/var/log/shorty -id=0
+root       620   997  0 04:43 pts/1    00:00:00 ./shorty -api_socket=/var/run/shorty/api-1.socket -redirect_socket=/var/run/shorty/redirect-1.socket -admin_port=7071 -log_dir=/var/log/shorty -id=1
+root       711   997  0 04:46 pts/1    00:00:00 ./shorty -api_socket=/var/run/shorty/api-2.socket -redirect_socket=/var/run/shorty/redirect-2.socket -admin_port=7072 -log_dir=/var/log/shorty -id=2 -start_subscriber
+```
+
+###
+```
+nohup ./logstash/bin/logstash -f shorty.conf > shorty-logstash.log &
+```
