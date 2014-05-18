@@ -15,6 +15,8 @@ import (
 )
 
 var (
+	instanceId = flag.String("id", "", "Instance id")
+
 	redisHost      = flag.String("redis_host", "", "Redis host (leave empty for localhost)")
 	redisPort      = flag.Int("redis_port", 6379, "Redis port")
 	redisPrefix    = flag.String("redis_prefix", "shorty:", "Redis prefix to use")
@@ -219,7 +221,11 @@ func main() {
 	managerStopped = runtime.RunServer(managerHttpServer, managerDone)
 
 	// Save pid
-	pid, pidErr := runtime.SavePidFile(fmt.Sprintf("%d", *port))
+	label := fmt.Sprintf("%d", *port)
+	if *instanceId != "" {
+		label = instanceId
+	}
+	pid, pidErr := runtime.SavePidFile(label)
 
 	// Here is a list of shutdown hooks to execute when receiving the OS signal
 	shutdownc <- runtime.ShutdownSequence{

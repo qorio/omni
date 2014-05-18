@@ -96,7 +96,7 @@ From `omni/etc/nginx` in local git repo:
 
 ```
 scp -r ssl root@107.170.248.96:/etc/nginx
-scp shorty.conf root@107.170.248.96:/etc/nginx/sites-available/default0
+scp shorty.conf root@107.170.248.96:/etc/nginx/sites-available/default
 ```
 
 On host:
@@ -121,6 +121,13 @@ cd shorty
 wget https://circle-artifacts.com/gh/qorio/omni/61/artifacts/0/tmp/circle-artifacts.lteqSBx/linux_amd64/shorty?circle-token=b71701145614b93a382a8e3b5d633ee71c360315
 mv shorty\?circle-token\=b71701145614b93a382a8e3b5d633ee71c360315 shorty
 chmod a+x shorty
+```
+
+Make a directory for domain sockets
+
+```
+mkdir -p /var/run/shorty
+chmod 777 /var/run/shorty
 ```
 
 Make sure to copy the GeoIp file as well.
