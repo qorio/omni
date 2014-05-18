@@ -67,27 +67,41 @@ type ShortUrl struct {
 	Rules       []RoutingRule `json:"rules"`
 	Destination string        `json:"destination"`
 	Created     time.Time     `json:"created"`
+	Origin      string        `json:"origin"`
+	AppKey      string        `json:"appKey"`
+	CampaignKey string        `json:"campaignKey"`
 	service     *shortyImpl
 }
 
 type DecodeEvent struct {
-	Origin      *http.RequestOrigin
-	Destination string
-	ShortyUUID  string
+	RequestOrigin *http.RequestOrigin
+	Destination   string
+	ShortyUUID    string
+	// for tracking campaigns
+	Origin      string
+	AppKey      string
+	CampaignKey string
 }
 
 type InstallEvent struct {
-	Origin       *http.RequestOrigin
-	AppUrlScheme string
-	AppUUID      string
-	Destination  string
-	ShortyUUID   string
+	RequestOrigin *http.RequestOrigin
+	AppUrlScheme  string
+	AppUUID       string
+	Destination   string
+	ShortyUUID    string
+	// for tracking campaigns
+	Origin      string
+	AppKey      string
+	CampaignKey string
 }
 
 type Shorty interface {
 	UrlLength() int
-	ShortUrl(url string, optionalRules []RoutingRule) (*ShortUrl, error)
-	VanityUrl(vanity, url string, optionalRules []RoutingRule) (*ShortUrl, error)
+
+	// Validates the url, rules and create a new instance with the default properties set in the defaults param.
+	ShortUrl(url string, optionalRules []RoutingRule, defaults ShortUrl) (*ShortUrl, error)
+	// Validates the url, rules and create a new instance with the default properties set in the defaults param.
+	VanityUrl(vanity, url string, optionalRules []RoutingRule, defaults ShortUrl) (*ShortUrl, error)
 	Find(id string) (*ShortUrl, error)
 	DecodeEventChannel() <-chan *DecodeEvent
 	InstallEventChannel() <-chan *InstallEvent
@@ -168,11 +182,11 @@ func (this *shortyImpl) UrlLength() int {
 	return this.settings.UrlLength
 }
 
-func (this *shortyImpl) ShortUrl(data string, rules []RoutingRule) (entity *ShortUrl, err error) {
-	return this.VanityUrl("", data, rules)
+func (this *shortyImpl) ShortUrl(data string, rules []RoutingRule, defaults ShortUrl) (entity *ShortUrl, err error) {
+	return this.VanityUrl("", data, rules, defaults)
 }
 
-func (this *shortyImpl) VanityUrl(vanity, data string, rules []RoutingRule) (entity *ShortUrl, err error) {
+func (this *shortyImpl) VanityUrl(vanity, data string, rules []RoutingRule, defaults ShortUrl) (entity *ShortUrl, err error) {
 	data = strings.TrimSpace(data)
 	if len(data) == 0 {
 		err = errors.New("Please specify an URL")
@@ -263,6 +277,11 @@ func (this *shortyImpl) VanityUrl(vanity, data string, rules []RoutingRule) (ent
 	}
 
 	if entity.Id != "" {
+		// copy the defaults
+		entity.Origin = defaults.Origin
+		entity.AppKey = defaults.AppKey
+		entity.CampaignKey = defaults.CampaignKey
+
 		entity.Save()
 		return entity, nil
 	} else if vanity != "" {

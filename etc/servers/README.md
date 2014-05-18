@@ -49,6 +49,54 @@ service nginx start
 update-rc.d nginx defaults
 ```
 
+### Redis
+```
+sudo apt-get install build-essential
+sudo apt-get install tcl8.5
+wget http://download.redis.io/releases/redis-2.8.9.tar.gz
+tar xvfz redis-2.8.9.tar.gz
+cd redis-2.8.9/
+make
+make install
+cd utils/
+./install_server.sh```
+```
+root@sfo-redis-1:~/redis-2.8.9/utils# ./install_server.sh
+Welcome to the redis service installer
+This script will help you easily set up a running redis server
+
+Please select the redis port for this instance: [6379]
+Selecting default: 6379
+Please select the redis config file name [/etc/redis/6379.conf]
+Selected default - /etc/redis/6379.conf
+Please select the redis log file name [/var/log/redis_6379.log]
+Selected default - /var/log/redis_6379.log
+Please select the data directory for this instance [/var/lib/redis/6379]
+Selected default - /var/lib/redis/6379
+Please select the redis executable path [/usr/local/bin/redis-server]
+Selected config:
+Port           : 6379
+Config file    : /etc/redis/6379.conf
+Log file       : /var/log/redis_6379.log
+Data dir       : /var/lib/redis/6379
+Executable     : /usr/local/bin/redis-server
+Cli Executable : /usr/local/bin/redis-cli
+Is this ok? Then press ENTER to go on or Ctrl-C to abort.
+Copied /tmp/6379.conf => /etc/init.d/redis_6379
+Installing service...
+ Adding system startup for /etc/init.d/redis_6379 ...
+   /etc/rc0.d/K20redis_6379 -> ../init.d/redis_6379
+   /etc/rc1.d/K20redis_6379 -> ../init.d/redis_6379
+   /etc/rc6.d/K20redis_6379 -> ../init.d/redis_6379
+   /etc/rc2.d/S20redis_6379 -> ../init.d/redis_6379
+   /etc/rc3.d/S20redis_6379 -> ../init.d/redis_6379
+   /etc/rc4.d/S20redis_6379 -> ../init.d/redis_6379
+   /etc/rc5.d/S20redis_6379 -> ../init.d/redis_6379
+Success!
+Starting Redis server...
+Installation successful!```
+
+
 ### Java
 On Ubuntu 12.10 - default is OpenJDK 7, but Oracle JDK is recommended.
 

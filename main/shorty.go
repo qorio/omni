@@ -9,6 +9,7 @@ import (
 	"github.com/qorio/omni/shorty"
 	"github.com/qorio/omni/tally"
 	"io"
+	"math"
 	"net/http"
 	"os"
 )
@@ -28,8 +29,10 @@ var (
 	tallyRedisPort    = flag.Int("tally_redis_port", 6379, "Redis port")
 	tallyRedisChannel = flag.String("tally_redis_chanel", "shorty", "Redis publish chanel for Events")
 
+	startSubscriber = flag.Bool("start_subscriber", false, "Starts the subscriber to route events to logstash queue")
+
 	logstashInputQueue          = flag.String("logstash_input_queue", "logstash-input", "Logstash input queue name")
-	maxLogstashInputQueueLength = flag.Int("logstash_input_queue_max_length", 50*10^6, "Logstash input queue max length")
+	maxLogstashInputQueueLength = flag.Int("logstash_input_queue_max_length", int(math.Pow10(6)), "Qqueue max length")
 
 	port           = flag.Int("port", 8080, "Port where server is listening on")
 	apiSocket      = flag.String("api_socket", "", "File name for domain socket instead of port")
@@ -75,22 +78,28 @@ func translate(r *omni_http.RequestOrigin) (event *tally.Event) {
 }
 
 func translateDecode(decodeEvent *shorty.DecodeEvent) (event *tally.Event) {
-	event = translate(decodeEvent.Origin)
+	event = translate(decodeEvent.RequestOrigin)
 	eventType := "decode"
 	event.Type = &eventType
 	event.SetAttribute("destination", decodeEvent.Destination)
 	event.SetAttribute("uuid", decodeEvent.ShortyUUID)
+	event.SetAttribute("origin", decodeEvent.Origin)
+	event.SetAttribute("app_key", decodeEvent.AppKey)
+	event.SetAttribute("campaign_key", decodeEvent.CampaignKey)
 	return
 }
 
 func translateInstall(installEvent *shorty.InstallEvent) (event *tally.Event) {
-	event = translate(installEvent.Origin)
+	event = translate(installEvent.RequestOrigin)
 	eventType := "install"
 	event.Type = &eventType
 	event.SetAttribute("destination", installEvent.Destination)
 	event.SetAttribute("app_url_scheme", installEvent.AppUrlScheme)
 	event.SetAttribute("app_uuid", installEvent.AppUUID)
 	event.SetAttribute("uuid", installEvent.ShortyUUID)
+	event.SetAttribute("origin", installEvent.Origin)
+	event.SetAttribute("app_key", installEvent.AppKey)
+	event.SetAttribute("campaign_key", installEvent.CampaignKey)
 	return
 }
 
@@ -101,19 +110,22 @@ func main() {
 	buildInfo := runtime.BuildInfo()
 	glog.Infoln("Build", buildInfo.Number, "Commit", buildInfo.Commit, "When", buildInfo.Timestamp)
 
-	// Set up a subscriber service that will subscribe to the channel and
-	// push the message to a work queue for indexing
-	subscriber, err := tally.InitSubscriber(tally.SubscriberSettings{
-		RedisUrl:       fmt.Sprintf("%s:%d", *tallyRedisHost, *tallyRedisPort),
-		RedisChannel:   *tallyRedisChannel,
-		MaxQueueLength: *maxLogstashInputQueueLength,
-	})
-	if err != nil {
-		glog.Infoln("cannot-start-subscriber", err)
-	} else {
-		subscriber.Start()
-		// Route to a work queue
-		subscriber.Queue(*logstashInputQueue, subscriber.Channel())
+	if *startSubscriber {
+		// Set up a subscriber service that will subscribe to the channel and
+		// push the message to a work queue for indexing
+		subscriber, err := tally.InitSubscriber(tally.SubscriberSettings{
+			RedisUrl:       fmt.Sprintf("%s:%d", *tallyRedisHost, *tallyRedisPort),
+			RedisChannel:   *tallyRedisChannel,
+			MaxQueueLength: *maxLogstashInputQueueLength,
+		})
+		if err != nil {
+			glog.Infoln("cannot-start-subscriber", err)
+		} else {
+			subscriber.Start()
+			// Route to a work queue
+			subscriber.Queue(*logstashInputQueue, subscriber.Channel())
+			glog.Infoln("Subscriber started for channel", *tallyRedisChannel, "sending to queue", *logstashInputQueue)
+		}
 	}
 
 	// Tally service which publishes the decode events

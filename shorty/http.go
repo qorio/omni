@@ -17,9 +17,12 @@ import (
 )
 
 type ShortyAddRequest struct {
-	Vanity  string        `json:"vanity"`
-	LongUrl string        `json:"longUrl"`
-	Rules   []RoutingRule `json:"rules"`
+	Vanity   string        `json:"vanity"`
+	LongUrl  string        `json:"longUrl"`
+	Rules    []RoutingRule `json:"rules"`
+	Origin   string        `json:"origin"`
+	ApiToken string        `json:"token"` // user facing token that resolves to appKey
+	Campaign string        `json:"campaign"`
 }
 
 type ShortyEndPointSettings struct {
@@ -114,12 +117,28 @@ func (this *ShortyEndPoint) ApiAddHandler(resp http.ResponseWriter, req *http.Re
 		return
 	}
 
-	var shortUrl *ShortUrl
-	if message.Vanity != "" {
-		shortUrl, err = this.service.VanityUrl(message.Vanity, message.LongUrl, message.Rules)
-	} else {
-		shortUrl, err = this.service.ShortUrl(message.LongUrl, message.Rules)
+	// Set the starting values, and the api will validate the rules and return a saved reference.
+	shortUrl := &ShortUrl{
+		Origin: message.Origin,
+
+		// TODO - add lookup of api token to valid apiKey.
+		// A api token is used by client as a way to authenticate and identify the actual app.
+		// This way, we can revoke the token and shut down a client.
+		AppKey: message.ApiToken,
+
+		// TODO - this is a key that references a future struct that encapsulates all the
+		// rules around default routing (appstore, etc.).  This will simplify the api by not
+		// requiring ios client to send in rules on android, for example.  The service should
+		// check to see if there's valid campaign for the same app key. If yes, then merge the
+		// routing rules.  If not, just let this value be a tag of some kind.
+		CampaignKey: message.Campaign,
 	}
+	if message.Vanity != "" {
+		shortUrl, err = this.service.VanityUrl(message.Vanity, message.LongUrl, message.Rules, *shortUrl)
+	} else {
+		shortUrl, err = this.service.ShortUrl(message.LongUrl, message.Rules, *shortUrl)
+	}
+
 	if err != nil {
 		renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
 		return
@@ -230,9 +249,12 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 			"cookied", cookied)
 
 		this.service.PublishDecode(&DecodeEvent{
-			Origin:      origin,
-			Destination: destination,
-			ShortyUUID:  userId,
+			RequestOrigin: origin,
+			Destination:   destination,
+			ShortyUUID:    userId,
+			Origin:        shortUrl.Origin,
+			AppKey:        shortUrl.AppKey,
+			CampaignKey:   shortUrl.CampaignKey,
 		})
 		shortUrl.Record(origin, visits > 1)
 	}()
@@ -336,11 +358,14 @@ stat: // Record stats asynchronously
 			"useragent:", origin.UserAgent.Header)
 
 		this.service.PublishInstall(&InstallEvent{
-			Origin:       origin,
-			Destination:  destination,
-			AppUrlScheme: customUrlScheme,
-			AppUUID:      appUuid,
-			ShortyUUID:   userId,
+			RequestOrigin: origin,
+			Destination:   destination,
+			AppUrlScheme:  customUrlScheme,
+			AppUUID:       appUuid,
+			ShortyUUID:    userId,
+			Origin:        shortUrl.Origin,
+			AppKey:        shortUrl.AppKey,
+			CampaignKey:   shortUrl.CampaignKey,
 		})
 	}()
 }
