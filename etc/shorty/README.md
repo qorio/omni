@@ -54,7 +54,6 @@ make
 make install
 cd utils/
 ./install_server.sh```
-```
 root@sfo-redis-1:~/redis-2.8.9/utils# ./install_server.sh
 Welcome to the redis service installer
 This script will help you easily set up a running redis server
@@ -88,7 +87,7 @@ Installing service...
    /etc/rc5.d/S20redis_6379 -> ../init.d/redis_6379
 Success!
 Starting Redis server...
-Installation successful!```
+Installation successful!
 ```
 
 ### Nginx Setup
