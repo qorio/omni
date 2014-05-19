@@ -320,6 +320,8 @@ func (this *ShortyEndPoint) HarvestCookiedUUIDHandler(resp http.ResponseWriter, 
 	uuid := vars["uuid"]
 	shortUrl, err := this.service.Find(vars["shortUrlId"])
 
+	glog.Infoln("Harvesting uuid", uuid, shortUrl)
+
 	if err != nil {
 		renderError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
