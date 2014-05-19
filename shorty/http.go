@@ -247,7 +247,8 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 					// can be harvested.
 					renderInline = false
 					fetchUrl := url.QueryEscape(rule.FetchFromUrl)
-					destination = fmt.Sprintf("/h/%s/%s?c=%s", shortUrl.Id, userId, fetchUrl)
+					appUrlScheme := url.QueryEscape(rule.AppUrlScheme)
+					destination = fmt.Sprintf("/h/%s/%s?c=%s&s=%s", shortUrl.Id, userId, fetchUrl, appUrlScheme)
 
 				} else {
 
