@@ -246,15 +246,12 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 					// just redirect to the special landing page url where the cookied uuid (userId)
 					// can be harvested.
 					renderInline = false
-					destination = fmt.Sprintf("/h/%s/%s", shortUrl.Id, userId)
+					fetchUrl := url.QueryEscape(rule.FetchFromUrl)
+					destination = fmt.Sprintf("/h/%s/%s?c=%s", shortUrl.Id, userId, fetchUrl)
 
 				} else {
 
 					switch {
-
-					case rule.InlineContent != "":
-						renderInline = true
-						destination = rule.InlineContent
 
 					case rule.FetchFromUrl != "":
 						renderInline = true
@@ -349,45 +346,37 @@ func (this *ShortyEndPoint) HarvestCookiedUUIDHandler(resp http.ResponseWriter, 
 	// visits, cookied, last, userId := processCookies(cookies, shortUrl)
 	_, _, _, userId := processCookies(cookies, shortUrl)
 
-	// If there are platform-dependent routing
-	if len(shortUrl.Rules) > 0 {
-		userAgent := omni_http.ParseUserAgent(req)
-		origin, _ := this.requestParser.Parse(req)
+	userAgent := omni_http.ParseUserAgent(req)
+	origin, _ := this.requestParser.Parse(req)
 
-		glog.Infoln(">>>>referer=", origin.Referrer, "user agent", *userAgent)
+	// TODO - account for two cases
+	// 1. Rendered inside as a result of redirect from redirector that matches some referer (e.g. from m.facebook.com)
+	// 2. Rendered as a result of DIRECT referer (e.g. from Safari)
 
-		for _, rule := range shortUrl.Rules {
-			if match := rule.Match(this.service, userAgent, origin, cookies); match {
+	if origin.Referrer != "DIRECT" {
+		// we expect the fetch url to be included in the 'c' parameter
+		if err = req.ParseForm(); err == nil {
+			if fetchFromUrl, exists := req.Form["c"]; exists {
+				content = omni_http.FetchFromUrl(userAgent.Header, fetchFromUrl[0])
+			}
+		}
+		resp.Write([]byte(content))
+		return
+	} else {
+		// The direct case
+		// read the cookie for the uuid
+		// link only when the uuids are different!
+		shouldLink := uuid != userId
+		glog.Infoln(shouldLink, "TODO - Link", uuid, userId, "for", shortUrl.Id, origin.Referrer)
 
-				// See the RedirectHandler for explaination.  This handler is reached
-				// only when redirect handler decides to harvest a uuid cookie set in a
-				// different context (app).  In this context, the uuid may be different
-				// and we can link the two different uuid cookies.
-				if rule.HarvestCookiedUUID {
-
-					switch {
-
-					case rule.InlineContent != "":
-						content = rule.InlineContent
-
-					case rule.FetchFromUrl != "":
-						content = omni_http.FetchFromUrl(userAgent.Header, rule.FetchFromUrl)
-
-					default:
-						content = ""
-					}
-
-					// read the cookie for the uuid
-					// link only when the uuids are different!
-					shouldLink := uuid != userId
-					glog.Infoln(shouldLink, "TODO - Link", uuid, userId, "for", shortUrl.Id, origin.Referrer)
-					break
-				}
-			} // if match
-		} // foreach rule
-	} // if there are rules
-
-	resp.Write([]byte(content))
+		// Just redirect the user back to the short link
+		if next, err := this.router.Get("redirect").URL("id", shortUrl.Id); err != nil {
+			renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
+			return
+		} else {
+			http.Redirect(resp, req, next.String(), http.StatusMovedPermanently)
+		}
+	}
 
 	/*
 		go func() {

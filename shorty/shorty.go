@@ -47,9 +47,6 @@ type RoutingRule struct {
 	// Destination resource url - can be app url on mobile device
 	Destination string `json:"destination"`
 
-	// Inline html.  Inline html takes precedence over destination.
-	InlineContent string `json:"inline",omitempty`
-
 	// Fetch content from url
 	FetchFromUrl string `json:"fetch-from",omitempty`
 
@@ -130,8 +127,6 @@ func (this *RoutingRule) Match(service Shorty, ua *http.UserAgent, origin *http.
 			}
 		}
 	}
-
-	glog.Infoln("rule", *this, "match=", actual == expect, "expect>0", expect > 0)
 	// By the time we get here, we have done a match all
 	return actual == expect && expect > 0
 }
