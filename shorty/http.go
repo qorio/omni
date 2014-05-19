@@ -349,11 +349,34 @@ func (this *ShortyEndPoint) HarvestCookiedUUIDHandler(resp http.ResponseWriter, 
 	userAgent := omni_http.ParseUserAgent(req)
 	origin, _ := this.requestParser.Parse(req)
 
-	// TODO - account for two cases
-	// 1. Rendered inside as a result of redirect from redirector that matches some referer (e.g. from m.facebook.com)
-	// 2. Rendered as a result of DIRECT referer (e.g. from Safari)
+	// Here we check if the two uuids are different.  One uuid is in the url of this request.  This is the uuid
+	// from some context (e.g. from FB webview on iOS).  Another uuid is one in the cookie -- either we assigned
+	// or read from the client context.  The current context may not be the same as the context of the uuid in
+	// the url.  This is because the user could be visiting the same link from another browser (eg. on Safari)
+	// after being prompted.
+	// If the two uuids do not match -- then we know the contexts are different.  The user is visiting from
+	// some context other than the one with the original link.  So in this case, we can do a redirect back to
+	// the short link that the user was looking at that got them to see the harvest url in the first place.
+	// Otherwise, show the static content which may tell them to try again in a different browser/context.
 
-	if origin.Referrer != "DIRECT" {
+	if uuid != userId {
+
+		// We got the user to come here via a different context (browser) than the one that created
+		// this url in the first place.  So link the two ids together and redirect back to the short url.
+
+		glog.Infoln("***** TODO - Link", uuid, userId, "for", shortUrl.Id, origin.Referrer)
+
+		if next, err := this.router.Get("redirect").URL("id", shortUrl.Id); err != nil {
+			renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
+			return
+		} else {
+			http.Redirect(resp, req, next.String(), http.StatusMovedPermanently)
+		}
+	} else {
+
+		// The user is still coming from the same browser context because the two ids are the same.
+		// In this case we just show the static content.
+
 		// we expect the fetch url to be included in the 'c' parameter
 		if err = req.ParseForm(); err == nil {
 			if fetchFromUrl, exists := req.Form["c"]; exists {
@@ -361,21 +384,6 @@ func (this *ShortyEndPoint) HarvestCookiedUUIDHandler(resp http.ResponseWriter, 
 			}
 		}
 		resp.Write([]byte(content))
-		return
-	} else {
-		// The direct case
-		// read the cookie for the uuid
-		// link only when the uuids are different!
-		shouldLink := uuid != userId
-		glog.Infoln(shouldLink, "TODO - Link", uuid, userId, "for", shortUrl.Id, origin.Referrer)
-
-		// Just redirect the user back to the short link
-		if next, err := this.router.Get("redirect").URL("id", shortUrl.Id); err != nil {
-			renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
-			return
-		} else {
-			http.Redirect(resp, req, next.String(), http.StatusMovedPermanently)
-		}
 	}
 
 	/*
