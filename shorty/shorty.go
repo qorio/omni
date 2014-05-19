@@ -164,6 +164,16 @@ type InstallEvent struct {
 	CampaignKey string
 }
 
+type LinkEvent struct {
+	RequestOrigin *http.RequestOrigin
+	AppUrlScheme  string
+	ShortyUUID_A  string
+	ShortyUUID_B  string
+	Origin        string
+	AppKey        string
+	CampaignKey   string
+}
+
 type Shorty interface {
 	UrlLength() int
 
@@ -174,10 +184,12 @@ type Shorty interface {
 	Find(id string) (*ShortUrl, error)
 	DecodeEventChannel() <-chan *DecodeEvent
 	InstallEventChannel() <-chan *InstallEvent
+	Link(shortyUUIDContextPrev, shortyUUIDContextCurrent, appUrlScheme, shortUrlId string) error
 	TrackInstall(shortyUUID, appUUID, appUrlScheme string) error
 	FindInstall(shortyUUID, appUrlScheme string) (appUUID string, found bool, err error)
 	PublishDecode(event *DecodeEvent)
 	PublishInstall(event *InstallEvent)
+	PublishLink(event *LinkEvent)
 	Close()
 }
 
@@ -188,6 +200,7 @@ type shortyImpl struct {
 	pool                *redis.Pool
 	decodeEventChannel  chan *DecodeEvent
 	installEventChannel chan *InstallEvent
+	linkEventChannel    chan *LinkEvent
 }
 
 const (
@@ -233,11 +246,24 @@ func (this *shortyImpl) PublishInstall(event *InstallEvent) {
 	}
 }
 
+func (this *shortyImpl) PublishLink(event *LinkEvent) {
+	if this.linkEventChannel != nil {
+		this.linkEventChannel <- event
+	}
+}
+
 func (this *shortyImpl) DecodeEventChannel() <-chan *DecodeEvent {
 	if this.decodeEventChannel == nil {
 		this.decodeEventChannel = make(chan *DecodeEvent)
 	}
 	return this.decodeEventChannel
+}
+
+func (this *shortyImpl) LinkEventChannel() <-chan *LinkEvent {
+	if this.linkEventChannel == nil {
+		this.linkEventChannel = make(chan *LinkEvent)
+	}
+	return this.linkEventChannel
 }
 
 func (this *shortyImpl) InstallEventChannel() <-chan *InstallEvent {
@@ -360,6 +386,18 @@ func (this *shortyImpl) VanityUrl(vanity, data string, rules []RoutingRule, defa
 	}
 }
 
+func (this *shortyImpl) Link(shortyUUIDContextPrev, shortyUUIDContextCurrent, appUrlScheme, shortUrlId string) error {
+	c := this.pool.Get()
+	defer c.Close()
+
+	key := fmt.Sprintf(":%s:%s-%s", appUrlScheme, shortyUUIDContextPrev, shortyUUIDContextCurrent)
+	reply, err := c.Do("SET", this.settings.RedisPrefix+"uuid-pair:"+key, shortUrlId)
+	if err == nil && reply != "OK" {
+		err = errors.New("Invalid Redis response")
+	}
+	return err
+}
+
 func (this *shortyImpl) TrackInstall(shortyUUID, appUUID, appUrlScheme string) error {
 	c := this.pool.Get()
 	defer c.Close()
@@ -375,6 +413,9 @@ func (this *shortyImpl) TrackInstall(shortyUUID, appUUID, appUrlScheme string) e
 func (this *shortyImpl) FindInstall(shortyUUID, appUrlScheme string) (appUUID string, found bool, err error) {
 	c := this.pool.Get()
 	defer c.Close()
+
+	// TODO - find all keys where uuid-pair:*<shortyUUID>* and for each key found,
+	// do a query and see if there is an install.
 
 	key := fmt.Sprintf("%s-%s", shortyUUID, appUrlScheme)
 	reply, err := c.Do("GET", this.settings.RedisPrefix+"install:"+key)

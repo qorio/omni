@@ -105,6 +105,19 @@ func translateInstall(installEvent *shorty.InstallEvent) (event *tally.Event) {
 	return
 }
 
+func translateLink(linkEvent *shorty.LinkEvent) (event *tally.Event) {
+	event = translate(linkEvent.RequestOrigin)
+	eventType := "link-uuid"
+	event.Type = &eventType
+	event.SetAttribute("app_url_scheme", linkEvent.AppUrlScheme)
+	event.SetAttribute("uuid1", linkEvent.ShortyUUID_A)
+	event.SetAttribute("uuid2", linkEvent.ShortyUUID_B)
+	event.SetAttribute("origin", linkEvent.Origin)
+	event.SetAttribute("app_key", linkEvent.AppKey)
+	event.SetAttribute("campaign_key", linkEvent.CampaignKey)
+	return
+}
+
 func main() {
 
 	flag.Parse()
@@ -146,16 +159,19 @@ func main() {
 
 	// Wire the service's together ==> this allows the shorty http requests
 	// be published to the redis channel
-	fromShorty := shortyService.DecodeEventChannel()
+	fromShortyDecode := shortyService.DecodeEventChannel()
 	fromShortyInstall := shortyService.InstallEventChannel()
+	fromShortyLink := shortyService.LinkEventChannel()
 	toTally := tallyService.Channel()
 	go func() {
 		for {
 			select {
-			case decode := <-fromShorty:
+			case decode := <-fromShortyDecode:
 				toTally <- translateDecode(decode)
 			case install := <-fromShortyInstall:
 				toTally <- translateInstall(install)
+			case link := <-fromShortyLink:
+				toTally <- translateLink(link)
 			}
 
 		}

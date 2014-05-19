@@ -316,8 +316,6 @@ func (this *ShortyEndPoint) HarvestCookiedUUIDHandler(resp http.ResponseWriter, 
 	vars := mux.Vars(req)
 	uuid := vars["uuid"]
 	shortUrl, err := this.service.Find(vars["shortUrlId"])
-	glog.Infoln("________________")
-	glog.Infoln("Harvesting uuid", uuid, shortUrl)
 
 	if err != nil {
 		renderError(resp, req, err.Error(), http.StatusInternalServerError)
@@ -340,11 +338,13 @@ func (this *ShortyEndPoint) HarvestCookiedUUIDHandler(resp http.ResponseWriter, 
 
 	var content string = ""
 
+	req.ParseForm()
+
 	omni_http.SetNoCachingHeaders(resp)
 	cookies := omni_http.NewCookieHandler(secureCookie, resp, req)
 
 	// visits, cookied, last, userId := processCookies(cookies, shortUrl)
-	_, _, _, userId := processCookies(cookies, shortUrl)
+	visits, cookied, last, userId := processCookies(cookies, shortUrl)
 
 	userAgent := omni_http.ParseUserAgent(req)
 	origin, _ := this.requestParser.Parse(req)
@@ -364,13 +364,16 @@ func (this *ShortyEndPoint) HarvestCookiedUUIDHandler(resp http.ResponseWriter, 
 		// We got the user to come here via a different context (browser) than the one that created
 		// this url in the first place.  So link the two ids together and redirect back to the short url.
 
-		glog.Infoln("***** TODO - Link", uuid, userId, "for", shortUrl.Id, origin.Referrer)
-
+		if appUrlScheme, exists := req.Form["s"]; exists {
+			glog.Infoln("LINK", uuid, "<==>", userId, "for", shortUrl.Id, origin.Referrer)
+			this.service.Link(uuid, userId, appUrlScheme[0], shortUrl.Id)
+		}
 		if next, err := this.router.Get("redirect").URL("id", shortUrl.Id); err != nil {
 			renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
 			return
 		} else {
 			http.Redirect(resp, req, next.String(), http.StatusMovedPermanently)
+			goto linkevent
 		}
 	} else {
 
@@ -378,45 +381,45 @@ func (this *ShortyEndPoint) HarvestCookiedUUIDHandler(resp http.ResponseWriter, 
 		// In this case we just show the static content.
 
 		// we expect the fetch url to be included in the 'c' parameter
-		if err = req.ParseForm(); err == nil {
-			if fetchFromUrl, exists := req.Form["c"]; exists {
-				content = omni_http.FetchFromUrl(userAgent.Header, fetchFromUrl[0])
-			}
+		if fetchFromUrl, exists := req.Form["c"]; exists {
+			content = omni_http.FetchFromUrl(userAgent.Header, fetchFromUrl[0])
 		}
 		resp.Write([]byte(content))
+
+		return
 	}
 
-	/*
-		go func() {
-			origin, geoParseErr := this.requestParser.Parse(req)
-			origin.Cookied = cookied
-			origin.Visits = visits
-			origin.LastVisit = last
-			origin.Destination = destination
-			origin.ShortCode = shortUrl.Id
-			if geoParseErr != nil {
-				glog.Warningln("can-not-determine-location", geoParseErr)
-			}
-			glog.Infoln(
-				"uuid:", userId, "url:", shortUrl.Id, "send-to:", destination,
-				"ip:", origin.Ip, "mobile:", origin.UserAgent.Mobile,
-				"platform:", origin.UserAgent.Platform, "os:", origin.UserAgent.OS, "make:", origin.UserAgent.Make,
-				"browser:", origin.UserAgent.Browser, "version:", origin.UserAgent.BrowserVersion,
-				"location:", *origin.Location,
-				"useragent:", origin.UserAgent.Header,
-				"cookied", cookied)
+linkevent:
 
-			this.service.PublishDecode(&DecodeEvent{
-				RequestOrigin: origin,
-				Destination:   destination,
-				ShortyUUID:    userId,
-				Origin:        shortUrl.Origin,
-				AppKey:        shortUrl.AppKey,
-				CampaignKey:   shortUrl.CampaignKey,
-			})
-			shortUrl.Record(origin, visits > 1)
-		}()
-	*/
+	go func() {
+		origin, geoParseErr := this.requestParser.Parse(req)
+		origin.Cookied = cookied
+		origin.Visits = visits
+		origin.LastVisit = last
+		origin.Destination = content
+		origin.ShortCode = shortUrl.Id
+		if geoParseErr != nil {
+			glog.Warningln("can-not-determine-location", geoParseErr)
+		}
+		glog.Infoln("LINK-UUID",
+			"uuid:", userId, "url:", shortUrl.Id, "send-to:", content,
+			"ip:", origin.Ip, "mobile:", origin.UserAgent.Mobile,
+			"platform:", origin.UserAgent.Platform, "os:", origin.UserAgent.OS, "make:", origin.UserAgent.Make,
+			"browser:", origin.UserAgent.Browser, "version:", origin.UserAgent.BrowserVersion,
+			"location:", *origin.Location,
+			"useragent:", origin.UserAgent.Header,
+			"cookied", cookied)
+
+		this.service.PublishLink(&LinkEvent{
+			RequestOrigin: origin,
+			ShortyUUID_A:  uuid,
+			ShortyUUID_B:  userId,
+			Origin:        shortUrl.Origin,
+			AppKey:        shortUrl.AppKey,
+			CampaignKey:   shortUrl.CampaignKey,
+		})
+
+	}()
 }
 
 func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *http.Request) {
