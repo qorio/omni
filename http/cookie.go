@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bytes"
 	"encoding/gob"
 	"errors"
 	"github.com/gorilla/securecookie"
@@ -12,6 +13,49 @@ type SecureCookie struct {
 	encryptKey   []byte
 	secureCookie *securecookie.SecureCookie
 	Path         string
+}
+
+type Cookies interface {
+	Set(key string, value interface{}) (err error)
+	Get(key string, value interface{}) (err error)
+}
+
+type wrappedCookie struct {
+	secureCookie *SecureCookie
+	httpRequest  *http.Request
+	httpResponse http.ResponseWriter
+	cache        map[string]*bytes.Buffer
+}
+
+func NewCookieHandler(secureCookie *SecureCookie, resp http.ResponseWriter, request *http.Request) *wrappedCookie {
+	return &wrappedCookie{
+		secureCookie: secureCookie,
+		httpRequest:  request,
+		httpResponse: resp,
+		cache:        make(map[string]*bytes.Buffer),
+	}
+}
+
+func (this *wrappedCookie) Set(key string, value interface{}) (err error) {
+	err = this.secureCookie.SetCookie(this.httpResponse, key, value)
+	if err == nil {
+		var buff bytes.Buffer
+		enc := gob.NewEncoder(&buff)
+		if err2 := enc.Encode(value); err2 == nil {
+			this.cache[key] = &buff
+		}
+	}
+	return err
+}
+
+func (this *wrappedCookie) Get(key string, value interface{}) (err error) {
+	// return cached value if exists, this is because we know that
+	// it will be set when sending http response anyway.
+	if v, ok := this.cache[key]; ok {
+		dec := gob.NewDecoder(v)
+		return dec.Decode(value)
+	}
+	return this.secureCookie.ReadCookie(this.httpRequest, key, value)
 }
 
 func NewSecureCookie(hmacKey []byte, optionalEncryptionKey []byte) (sc *SecureCookie, err error) {

@@ -10,6 +10,7 @@ import (
 	"github.com/qorio/omni/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -23,11 +24,25 @@ type Settings struct {
 
 type RoutingRule struct {
 
+	// Matching rule -- all or any of the Match<type> properties
+	MatchAll bool `json:"match-all"`
+
 	// Specify one of the following matching criteria: platform, os, make, or browser
 	MatchPlatform string `json:"platform,omitempty"`
 	MatchOS       string `json:"os,omitempty"`
 	MatchMake     string `json:"make,omitempty"`
 	MatchBrowser  string `json:"browser,omitempty"`
+
+	MatchMobile   string `json:"mobile",omitempty`
+	MatchReferrer string `json:"referer",omitempty`
+
+	// True to check if there's an install of the app by AppUrlScheme
+	MatchInstalled string `json:"installed",omitempty`
+
+	// For specifying mobile appstore install url and app custom url scheme
+	// If specified, check cookie to see if the app's url scheme exists, if not, direct to appstore
+	AppUrlScheme string `json:"scheme",omitempty`
+	AppStoreUrl  string `json:"appstore",omitempty`
 
 	// Destination resource url - can be app url on mobile device
 	Destination string `json:"destination"`
@@ -35,42 +50,89 @@ type RoutingRule struct {
 	// Inline html.  Inline html takes precedence over destination.
 	InlineContent string `json:"inline",omitempty`
 
-	// For specifying mobile appstore install url and app custom url scheme
-	// If specified, check cookie to see if the app's url scheme exists, if not, direct to appstore
-	AppUrlScheme string `json:"scheme",omitempty`
-	AppStoreUrl  string `json:"appstore",omitempty`
+	// Fetch content from url
+	FetchFromUrl string `json:"fetch-from",omitempty`
 
-	// For matching on mobile=true and referer is equal to the value
-	MatchMobileReferrer string `json:"x-mobile-referer",omitempty`
+	// True to harvest the cookied uuid via a redirect to a url containing the uuid
+	HarvestCookiedUUID bool `json:"x-harvest-cookied-uuid",omitempty`
 }
 
-func (this *RoutingRule) Match(ua *http.UserAgent, origin *http.RequestOrigin) (destination string, match bool) {
+func (this *RoutingRule) Match(service Shorty, ua *http.UserAgent, origin *http.RequestOrigin, cookies http.Cookies) bool {
+	// use bit mask to match
+	var actual, expect int = 0, 0
+
 	if len(this.MatchPlatform) > 0 {
+		expect |= 1 << 0
 		if matches, _ := regexp.MatchString(this.MatchPlatform, ua.Platform); matches {
-			return this.Destination, true
+			actual |= 1 << 0
+			if !this.MatchAll {
+				return true
+			}
 		}
 	}
 	if len(this.MatchOS) > 0 {
+		expect |= 1 << 1
 		if matches, _ := regexp.MatchString(this.MatchOS, ua.OS); matches {
-			return this.Destination, true
+			actual |= 1 << 1
+			if !this.MatchAll {
+				return true
+			}
 		}
 	}
 	if len(this.MatchMake) > 0 {
+		expect |= 1 << 2
 		if matches, _ := regexp.MatchString(this.MatchMake, ua.Make); matches {
-			return this.Destination, true
+			actual |= 1 << 2
+			if !this.MatchAll {
+				return true
+			}
 		}
 	}
 	if len(this.MatchBrowser) > 0 {
+		expect |= 1 << 3
 		if matches, _ := regexp.MatchString(this.MatchBrowser, ua.Browser); matches {
-			return this.Destination, true
+			actual |= 1 << 3
+			if !this.MatchAll {
+				return true
+			}
 		}
 	}
-	if origin != nil && ua.Mobile && len(this.MatchMobileReferrer) > 0 {
-		if matches, _ := regexp.MatchString(this.MatchMobileReferrer, origin.Referrer); matches {
-			return this.Destination, true
+	if len(this.MatchMobile) > 0 {
+		expect |= 1 << 4
+		if matches, _ := regexp.MatchString(this.MatchMobile, strconv.FormatBool(ua.Mobile)); matches {
+			actual |= 1 << 4
+			if !this.MatchAll {
+				return true
+			}
 		}
 	}
-	return "", false
+	if len(this.MatchReferrer) > 0 {
+		expect |= 1 << 5
+		if matches, _ := regexp.MatchString(this.MatchReferrer, origin.Referrer); matches {
+			actual |= 1 << 5
+			if !this.MatchAll {
+				return true
+			}
+		}
+	}
+	if len(this.MatchInstalled) > 0 {
+		expect |= 1 << 6
+		if this.AppUrlScheme != "" {
+			uuid := ""
+			cookies.Get("uuid", &uuid)
+			_, found, _ := service.FindInstall(uuid, this.AppUrlScheme)
+			glog.Infoln("checking install", uuid, this.AppUrlScheme, found)
+			if matches, _ := regexp.MatchString(this.MatchInstalled, strconv.FormatBool(found)); matches {
+				actual |= 1 << 6
+				if !this.MatchAll {
+					return true
+				}
+			}
+		}
+	}
+
+	// By the time we get here, we have done a match all
+	return actual == expect && expect > 0
 }
 
 type ShortUrl struct {
