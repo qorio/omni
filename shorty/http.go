@@ -319,7 +319,7 @@ func (this *ShortyEndPoint) HarvestCookiedUUIDHandler(resp http.ResponseWriter, 
 	vars := mux.Vars(req)
 	uuid := vars["uuid"]
 	shortUrl, err := this.service.Find(vars["shortUrlId"])
-
+	glog.Infoln("________________")
 	glog.Infoln("Harvesting uuid", uuid, shortUrl)
 
 	if err != nil {
@@ -353,6 +353,8 @@ func (this *ShortyEndPoint) HarvestCookiedUUIDHandler(resp http.ResponseWriter, 
 	if len(shortUrl.Rules) > 0 {
 		userAgent := omni_http.ParseUserAgent(req)
 		origin, _ := this.requestParser.Parse(req)
+
+		glog.Infoln(">>>>referer=", origin.Referrer, "user agent", *userAgent)
 
 		for _, rule := range shortUrl.Rules {
 			if match := rule.Match(this.service, userAgent, origin, cookies); match {
