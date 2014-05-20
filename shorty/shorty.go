@@ -132,14 +132,15 @@ func (this *RoutingRule) Match(service Shorty, ua *http.UserAgent, origin *http.
 }
 
 type ShortUrl struct {
-	Id          string        `json:"id"`
-	Rules       []RoutingRule `json:"rules"`
-	Destination string        `json:"destination"`
-	Created     time.Time     `json:"created"`
-	Origin      string        `json:"origin"`
-	AppKey      string        `json:"appKey"`
-	CampaignKey string        `json:"campaignKey"`
-	service     *shortyImpl
+	Id                string        `json:"id"`
+	Rules             []RoutingRule `json:"rules"`
+	Destination       string        `json:"destination"`
+	Created           time.Time     `json:"created"`
+	Origin            string        `json:"origin"`
+	AppKey            string        `json:"appKey"`
+	CampaignKey       string        `json:"campaignKey"`
+	InstallTTLSeconds int64         `json:"installTTLSeconds"`
+	service           *shortyImpl
 }
 
 type DecodeEvent struct {
@@ -185,7 +186,7 @@ type Shorty interface {
 	DecodeEventChannel() <-chan *DecodeEvent
 	InstallEventChannel() <-chan *InstallEvent
 	Link(shortyUUIDContextPrev, shortyUUIDContextCurrent, appUrlScheme, shortUrlId string) error
-	TrackInstall(shortyUUID, appUUID, appUrlScheme string) error
+	TrackInstall(shortyUUID, appUrlScheme string, expires int64) error
 	FindInstall(shortyUUID, appUrlScheme string) (appUUID string, found bool, err error)
 	PublishDecode(event *DecodeEvent)
 	PublishInstall(event *InstallEvent)
@@ -390,7 +391,7 @@ func (this *shortyImpl) Link(shortyUUIDContextPrev, shortyUUIDContextCurrent, ap
 	c := this.pool.Get()
 	defer c.Close()
 
-	key := fmt.Sprintf(":%s:%s-%s", appUrlScheme, shortyUUIDContextPrev, shortyUUIDContextCurrent)
+	key := fmt.Sprintf("%s:%s:%s", appUrlScheme, shortyUUIDContextPrev, shortyUUIDContextCurrent)
 	reply, err := c.Do("SET", this.settings.RedisPrefix+"uuid-pair:"+key, shortUrlId)
 	if err == nil && reply != "OK" {
 		err = errors.New("Invalid Redis response")
@@ -398,12 +399,15 @@ func (this *shortyImpl) Link(shortyUUIDContextPrev, shortyUUIDContextCurrent, ap
 	return err
 }
 
-func (this *shortyImpl) TrackInstall(shortyUUID, appUUID, appUrlScheme string) error {
+func (this *shortyImpl) TrackInstall(shortyUUID, appUrlScheme string, expires int64) error {
 	c := this.pool.Get()
 	defer c.Close()
 
-	key := fmt.Sprintf("%s-%s", shortyUUID, appUrlScheme)
-	reply, err := c.Do("SET", this.settings.RedisPrefix+"install:"+key, appUUID)
+	// TODO - look at every pair that contains this uuid, get the other uuid and create
+	// a record as well. This will speed up the read when decoding the shortlink to see if installed.
+	key := fmt.Sprintf("%s:%s", shortyUUID, appUrlScheme)
+	expiration := fmt.Sprintf("%d", expires)
+	reply, err := c.Do("SET", this.settings.RedisPrefix+"install:"+key, expiration)
 	if err == nil && reply != "OK" {
 		err = errors.New("Invalid Redis response")
 	}
@@ -414,10 +418,7 @@ func (this *shortyImpl) FindInstall(shortyUUID, appUrlScheme string) (appUUID st
 	c := this.pool.Get()
 	defer c.Close()
 
-	// TODO - find all keys where uuid-pair:*<shortyUUID>* and for each key found,
-	// do a query and see if there is an install.
-
-	key := fmt.Sprintf("%s-%s", shortyUUID, appUrlScheme)
+	key := fmt.Sprintf("%s:%s", shortyUUID, appUrlScheme)
 	reply, err := c.Do("GET", this.settings.RedisPrefix+"install:"+key)
 	found = reply != nil
 

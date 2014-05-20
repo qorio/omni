@@ -456,28 +456,29 @@ func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *
 
 	var shortUrl *ShortUrl
 	var err error
+	var expiration int64 = 0
+	shortCode := ""
 
 	var destination string = customUrlScheme + "://404"
 	if lastViewed == "" {
 		destination = addQueryParam(destination, "cookie", userId)
 		http.Redirect(resp, req, destination, http.StatusMovedPermanently)
 		goto stat
-	}
-
-	// We need to store the uuid received here.  This is because we can't just
-	// cookie the client to save the 'installed' state on the client side.  On ios, the
-	// apps are sandboxed so the cookied dropped here can't be combined with the cookie (uuid)
-	// dropped when the user tapped on the original short link.
-	this.service.TrackInstall(userId, appUuid, customUrlScheme)
-
-	shortUrl, err = this.service.Find(lastViewed)
-	if err != nil {
-		renderError(resp, req, err.Error(), http.StatusInternalServerError)
-		return
-	} else if shortUrl == nil {
-		destination = addQueryParam(destination, "cookie", userId)
-		http.Redirect(resp, req, destination, http.StatusMovedPermanently)
-		goto stat
+	} else {
+		shortUrl, err = this.service.Find(lastViewed)
+		if err != nil {
+			renderError(resp, req, err.Error(), http.StatusInternalServerError)
+			return
+		} else if shortUrl == nil {
+			destination = addQueryParam(destination, "cookie", userId)
+			http.Redirect(resp, req, destination, http.StatusMovedPermanently)
+			goto stat
+		} else {
+			shortCode = shortUrl.Id
+			if shortUrl.InstallTTLSeconds > 0 {
+				expiration = time.Now().Unix() + shortUrl.InstallTTLSeconds
+			}
+		}
 	}
 
 	// If there are platform-dependent routing
@@ -495,7 +496,10 @@ func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *
 	destination = addQueryParam(destination, "cookie", userId)
 	http.Redirect(resp, req, destination, http.StatusMovedPermanently)
 
-stat: // Record stats asynchronously
+stat:
+	this.service.Link(appUuid, userId, customUrlScheme, shortCode)
+	this.service.TrackInstall(userId, customUrlScheme, expiration)
+
 	go func() {
 		origin, geoParseErr := this.requestParser.Parse(req)
 		origin.Destination = destination
