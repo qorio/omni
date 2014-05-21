@@ -63,6 +63,8 @@ func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty) (api *Short
 		api.router.HandleFunc("/api/v1/stats/{id:"+regex+"}", api.StatsHandler).Methods("GET").Name("stats")
 		api.router.HandleFunc("/api/v1/events/install/{scheme}/{app_uuid}",
 			api.ReportInstallHandler).Methods("GET").Name("app_install")
+		api.router.HandleFunc("/api/v1/events/missing/{scheme}/{id:"+regex+"}",
+			api.ReportDeviceUrlSchemeHandlerMissing).Methods("POST").Name("app_missing")
 
 		return api, nil
 	} else {
@@ -439,6 +441,50 @@ linkevent:
 		})
 
 	}()
+}
+
+func (this *ShortyEndPoint) ReportDeviceUrlSchemeHandlerMissing(resp http.ResponseWriter, req *http.Request) {
+	req.ParseForm()
+	vars := mux.Vars(req)
+	//userAgent := omni_http.ParseUserAgent(req)
+	origin, _ := this.requestParser.Parse(req)
+
+	appUrlScheme := vars["scheme"]
+	shortUrl, err := this.service.Find(vars["id"])
+	if err != nil {
+		renderError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	} else if shortUrl == nil {
+		if this.settings.Redirect404 != "" {
+			originalUrl, err := this.router.Get("redirect").URL("id", vars["id"])
+			if err != nil {
+				renderError(resp, req, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			url404 := strings.Replace(this.settings.Redirect404,
+				"$origURL", url.QueryEscape(fmt.Sprintf("http://%s%s", req.Host, originalUrl.String())), 1)
+			http.Redirect(resp, req, url404, http.StatusTemporaryRedirect)
+			return
+		}
+		renderError(resp, req, "No URL was found with that shorty code", http.StatusNotFound)
+		return
+	}
+
+	omni_http.SetNoCachingHeaders(resp)
+	cookies := omni_http.NewCookieHandler(secureCookie, resp, req)
+	_, _, _, userId := processCookies(cookies, shortUrl)
+
+	glog.Infoln(">>>> APP MISSING", appUrlScheme, shortUrl.Id)
+	// here we get an event that the app is missing...
+	count, _ := this.service.DeleteInstall(userId, appUrlScheme)
+	glog.Infoln("APP MISSING:", userId, appUrlScheme, "found=", count)
+
+	// do another redirect
+	if next, err := this.router.Get("redirect").URL("id", shortUrl.Id); err == nil {
+		cookies.Set("Referer", origin.Referrer)
+		http.Redirect(resp, req, next.String(), http.StatusMovedPermanently)
+		return
+	}
 }
 
 func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *http.Request) {
