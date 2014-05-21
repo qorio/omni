@@ -64,7 +64,7 @@ func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty) (api *Short
 		api.router.HandleFunc("/api/v1/events/install/{scheme}/{app_uuid}",
 			api.ReportInstallHandler).Methods("GET").Name("app_install")
 		api.router.HandleFunc("/api/v1/events/missing/{scheme}/{id:"+regex+"}",
-			api.ReportDeviceUrlSchemeHandlerMissing).Methods("POST").Name("app_missing")
+			api.ReportDeviceUrlSchemeHandlerMissing).Name("app_missing")
 
 		return api, nil
 	} else {
