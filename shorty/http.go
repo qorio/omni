@@ -63,7 +63,6 @@ func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty) (api *Short
 		api.router.HandleFunc("/api/v1/stats/{id:"+regex+"}", api.StatsHandler).Methods("GET").Name("stats")
 		api.router.HandleFunc("/api/v1/events/install/{scheme}/{app_uuid}",
 			api.ReportInstallHandler).Methods("GET").Name("app_install")
-		api.router.HandleFunc("/{id:"+regex+"}", api.RedirectHandler).Methods("POST").Name("missing")
 
 		return api, nil
 	} else {
@@ -283,11 +282,13 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	if _, has := req.Form["404"]; has {
 		// here we get an event that the app is missing...
 		count, _ := this.service.DeleteInstall(userId, rule.AppUrlScheme)
-		resp.Write([]byte(fmt.Sprintf("%d", count)))
 		glog.Infoln("APP MISSING:", userId, rule.AppUrlScheme, "found=", count)
 
-		// TODO - maybe log the app missing event??  This can have a lot of occurrences...
-		return
+		// do another redirect
+		if next, err := this.router.Get("redirect").URL("id", shortUrl.Id); err == nil {
+			http.Redirect(resp, req, next.String(), http.StatusMovedPermanently)
+			return
+		}
 	}
 
 	if renderInline {
