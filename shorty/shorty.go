@@ -167,6 +167,7 @@ type Shorty interface {
 	Link(shortyUUIDContextPrev, shortyUUIDContextCurrent, appUrlScheme, shortUrlId string) error
 	TrackInstall(shortyUUID, appUrlScheme string, expires int64) error
 	FindInstall(shortyUUID, appUrlScheme string) (expiration int64, found bool, err error)
+	DeleteInstall(shortyUUID, appUrlScheme string) (count int, err error)
 	PublishDecode(event *DecodeEvent)
 	PublishInstall(event *InstallEvent)
 	PublishLink(event *LinkEvent)
@@ -404,6 +405,17 @@ func (this *shortyImpl) FindInstall(shortyUUID, appUrlScheme string) (expiration
 	if found {
 		expiration, err = redis.Int64(reply, err)
 	}
+	return
+}
+
+func (this *shortyImpl) DeleteInstall(shortyUUID, appUrlScheme string) (count int, err error) {
+	c := this.pool.Get()
+	defer c.Close()
+
+	key := fmt.Sprintf("%s:%s", shortyUUID, appUrlScheme)
+	reply, err := c.Do("DEL", this.settings.RedisPrefix+"install:"+key)
+
+	count, err = redis.Int(reply, err)
 	return
 }
 

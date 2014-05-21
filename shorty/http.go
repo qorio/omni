@@ -58,11 +58,12 @@ func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty) (api *Short
 			service:       service,
 		}
 		regex := fmt.Sprintf(regexFmt, service.UrlLength())
-		api.router.HandleFunc("/{id:"+regex+"}", api.RedirectHandler).Name("redirect")
+		api.router.HandleFunc("/{id:"+regex+"}", api.RedirectHandler).Methods("GET").Name("redirect")
 		api.router.HandleFunc("/api/v1/url", api.ApiAddHandler).Methods("POST").Name("add")
 		api.router.HandleFunc("/api/v1/stats/{id:"+regex+"}", api.StatsHandler).Methods("GET").Name("stats")
 		api.router.HandleFunc("/api/v1/events/install/{scheme}/{app_uuid}",
 			api.ReportInstallHandler).Methods("GET").Name("app_install")
+		api.router.HandleFunc("/{id:"+regex+"}", api.RedirectHandler).Methods("POST").Name("missing")
 
 		return api, nil
 	} else {
@@ -80,8 +81,9 @@ func NewRedirector(settings ShortyEndPointSettings, service Shorty) (api *Shorty
 		}
 
 		regex := fmt.Sprintf(regexFmt, service.UrlLength())
-		api.router.HandleFunc("/{id:"+regex+"}", api.RedirectHandler).Name("redirect")
-		api.router.HandleFunc("/h/{shortUrlId:"+regex+"}/{uuid}", api.HarvestCookiedUUIDHandler).Name("harvest")
+		api.router.HandleFunc("/{id:"+regex+"}", api.RedirectHandler).Methods("GET").Name("redirect")
+		api.router.HandleFunc("/h/{shortUrlId:"+regex+"}/{uuid}",
+			api.HarvestCookiedUUIDHandler).Methods("GET").Name("harvest")
 
 		return api, nil
 	} else {
@@ -181,6 +183,7 @@ func processCookies(cookies omni_http.Cookies, shortUrl *ShortUrl) (visits int, 
 }
 
 func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.Request) {
+	req.ParseForm()
 	vars := mux.Vars(req)
 	shortUrl, err := this.service.Find(vars["id"])
 
@@ -211,12 +214,13 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 
 	visits, cookied, last, userId := processCookies(cookies, shortUrl)
 
+	var rule RoutingRule
 	// If there are platform-dependent routing
 	if len(shortUrl.Rules) > 0 {
 		userAgent := omni_http.ParseUserAgent(req)
 		origin, _ := this.requestParser.Parse(req)
 
-		for _, rule := range shortUrl.Rules {
+		for _, rule = range shortUrl.Rules {
 			if match := rule.Match(this.service, userAgent, origin, cookies); match {
 
 				destination = rule.Destination // default
@@ -274,6 +278,17 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 			} // if match
 		} // foreach rule
 	} // if there are rules
+
+	// support for /shortCode?404= when app is missing
+	if _, has := req.Form["404"]; has {
+		// here we get an event that the app is missing...
+		count, _ := this.service.DeleteInstall(userId, rule.AppUrlScheme)
+		resp.Write([]byte(fmt.Sprintf("%d", count)))
+		glog.Infoln("APP MISSING:", userId, rule.AppUrlScheme, "found=", count)
+
+		// TODO - maybe log the app missing event??  This can have a lot of occurrences...
+		return
+	}
 
 	if renderInline {
 		resp.Write([]byte(destination))
