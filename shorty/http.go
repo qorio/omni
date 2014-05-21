@@ -348,7 +348,7 @@ func (this *ShortyEndPoint) HarvestCookiedUUIDHandler(resp http.ResponseWriter, 
 	visits, cookied, last, userId := processCookies(cookies, shortUrl)
 
 	userAgent := omni_http.ParseUserAgent(req)
-	origin, _ := this.requestParser.Parse(req)
+	//origin, _ := this.requestParser.Parse(req)
 
 	// Here we check if the two uuids are different.  One uuid is in the url of this request.  This is the uuid
 	// from some context (e.g. from FB webview on iOS).  Another uuid is one in the cookie -- either we assigned
@@ -366,8 +366,10 @@ func (this *ShortyEndPoint) HarvestCookiedUUIDHandler(resp http.ResponseWriter, 
 		// this url in the first place.  So link the two ids together and redirect back to the short url.
 
 		if appUrlScheme, exists := req.Form["s"]; exists {
-			glog.Infoln("LINK", uuid, "<==>", userId, "for", shortUrl.Id, origin.Referrer)
 			this.service.Link(uuid, userId, appUrlScheme[0], shortUrl.Id)
+			// Here we also assume that the user will install the app at some point.
+			// Go ahead and assume that and let other mechanisms to invalidate this.
+			this.service.TrackInstall(uuid, appUrlScheme[0], shortUrl.InstallTTLSeconds)
 		}
 		if next, err := this.router.Get("redirect").URL("id", shortUrl.Id); err != nil {
 			renderJsonError(resp, req, err.Error(), http.StatusBadRequest)

@@ -62,54 +62,36 @@ func (this *RoutingRule) Match(service Shorty, ua *http.UserAgent, origin *http.
 		expect |= 1 << 0
 		if matches, _ := regexp.MatchString(this.MatchPlatform, ua.Platform); matches {
 			actual |= 1 << 0
-			if !this.MatchAll {
-				return true
-			}
 		}
 	}
 	if len(this.MatchOS) > 0 {
 		expect |= 1 << 1
 		if matches, _ := regexp.MatchString(this.MatchOS, ua.OS); matches {
 			actual |= 1 << 1
-			if !this.MatchAll {
-				return true
-			}
 		}
 	}
 	if len(this.MatchMake) > 0 {
 		expect |= 1 << 2
 		if matches, _ := regexp.MatchString(this.MatchMake, ua.Make); matches {
 			actual |= 1 << 2
-			if !this.MatchAll {
-				return true
-			}
 		}
 	}
 	if len(this.MatchBrowser) > 0 {
 		expect |= 1 << 3
 		if matches, _ := regexp.MatchString(this.MatchBrowser, ua.Browser); matches {
 			actual |= 1 << 3
-			if !this.MatchAll {
-				return true
-			}
 		}
 	}
 	if len(this.MatchMobile) > 0 {
 		expect |= 1 << 4
 		if matches, _ := regexp.MatchString(this.MatchMobile, strconv.FormatBool(ua.Mobile)); matches {
 			actual |= 1 << 4
-			if !this.MatchAll {
-				return true
-			}
 		}
 	}
 	if len(this.MatchReferrer) > 0 {
 		expect |= 1 << 5
 		if matches, _ := regexp.MatchString(this.MatchReferrer, origin.Referrer); matches {
 			actual |= 1 << 5
-			if !this.MatchAll {
-				return true
-			}
 		}
 	}
 	if len(this.MatchInstalled) > 0 {
@@ -121,9 +103,6 @@ func (this *RoutingRule) Match(service Shorty, ua *http.UserAgent, origin *http.
 			glog.Infoln("checking install", uuid, this.AppUrlScheme, found)
 			if matches, _ := regexp.MatchString(this.MatchInstalled, strconv.FormatBool(found)); matches {
 				actual |= 1 << 6
-				if !this.MatchAll {
-					return true
-				}
 			}
 		}
 	}
@@ -187,7 +166,7 @@ type Shorty interface {
 	InstallEventChannel() <-chan *InstallEvent
 	Link(shortyUUIDContextPrev, shortyUUIDContextCurrent, appUrlScheme, shortUrlId string) error
 	TrackInstall(shortyUUID, appUrlScheme string, expires int64) error
-	FindInstall(shortyUUID, appUrlScheme string) (appUUID string, found bool, err error)
+	FindInstall(shortyUUID, appUrlScheme string) (expiration int64, found bool, err error)
 	PublishDecode(event *DecodeEvent)
 	PublishInstall(event *InstallEvent)
 	PublishLink(event *LinkEvent)
@@ -414,7 +393,7 @@ func (this *shortyImpl) TrackInstall(shortyUUID, appUrlScheme string, expires in
 	return err
 }
 
-func (this *shortyImpl) FindInstall(shortyUUID, appUrlScheme string) (appUUID string, found bool, err error) {
+func (this *shortyImpl) FindInstall(shortyUUID, appUrlScheme string) (expiration int64, found bool, err error) {
 	c := this.pool.Get()
 	defer c.Close()
 
@@ -423,7 +402,7 @@ func (this *shortyImpl) FindInstall(shortyUUID, appUrlScheme string) (appUUID st
 	found = reply != nil
 
 	if found {
-		appUUID, err = redis.String(reply, err)
+		expiration, err = redis.Int64(reply, err)
 	}
 	return
 }
