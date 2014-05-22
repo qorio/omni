@@ -511,6 +511,28 @@ func (this *ShortyEndPoint) ReportDeviceUrlSchemeHandlerPing(resp http.ResponseW
 	glog.Infoln("App ping:", shortCode, appUrlScheme, appUuid, "uuid=", uuid)
 
 	this.service.TrackInstall(uuid, appUrlScheme, 0) // TOOD - fix the TTL
+	this.service.Link(uuid, appUuid, appUrlScheme, shortCode)
+
+	go func() {
+		origin, _ := this.requestParser.Parse(req)
+
+		installOrigin, installAppKey, installCampaignKey := "NONE", appUrlScheme, "DIRECT"
+		if shortUrl, err := this.service.Find(shortCode); shortUrl != nil && err == nil {
+			origin.ShortCode = shortUrl.Id
+			installOrigin = shortUrl.Origin
+			installAppKey = shortUrl.AppKey
+			installCampaignKey = shortUrl.CampaignKey
+		}
+		this.service.PublishLink(&LinkEvent{
+			RequestOrigin: origin,
+			ShortyUUID_A:  uuid,
+			ShortyUUID_B:  appUuid,
+			Origin:        installOrigin,
+			AppKey:        installAppKey,
+			CampaignKey:   installCampaignKey,
+		})
+
+	}()
 }
 
 func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *http.Request) {
