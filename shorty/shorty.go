@@ -151,7 +151,16 @@ type LinkEvent struct {
 	Origin        string
 	AppKey        string
 	CampaignKey   string
-	AppPresent    bool
+}
+
+type AppOpenEvent struct {
+	RequestOrigin *http.RequestOrigin
+	AppUrlScheme  string
+	ShortyUUID_A  string
+	ShortyUUID_B  string
+	Origin        string
+	AppKey        string
+	CampaignKey   string
 }
 
 type Shorty interface {
@@ -162,15 +171,20 @@ type Shorty interface {
 	// Validates the url, rules and create a new instance with the default properties set in the defaults param.
 	VanityUrl(vanity, url string, optionalRules []RoutingRule, defaults ShortUrl) (*ShortUrl, error)
 	Find(id string) (*ShortUrl, error)
-	DecodeEventChannel() <-chan *DecodeEvent
-	InstallEventChannel() <-chan *InstallEvent
 	Link(shortyUUIDContextPrev, shortyUUIDContextCurrent, appUrlScheme, shortUrlId string) error
 	TrackInstall(shortyUUID, appUrlScheme string, expires int64) error
 	FindInstall(shortyUUID, appUrlScheme string) (expiration int64, found bool, err error)
 	DeleteInstall(shortyUUID, appUrlScheme string) (count int, err error)
+
+	DecodeEventChannel() <-chan *DecodeEvent
+	InstallEventChannel() <-chan *InstallEvent
+	AppOpenEventChannel() <-chan *AppOpenEvent
+
 	PublishDecode(event *DecodeEvent)
 	PublishInstall(event *InstallEvent)
 	PublishLink(event *LinkEvent)
+	PublishAppOpen(event *AppOpenEvent)
+
 	Close()
 }
 
@@ -182,6 +196,7 @@ type shortyImpl struct {
 	decodeEventChannel  chan *DecodeEvent
 	installEventChannel chan *InstallEvent
 	linkEventChannel    chan *LinkEvent
+	appOpenEventChannel chan *AppOpenEvent
 }
 
 const (
@@ -227,6 +242,12 @@ func (this *shortyImpl) PublishInstall(event *InstallEvent) {
 	}
 }
 
+func (this *shortyImpl) PublishAppOpen(event *AppOpenEvent) {
+	if this.appOpenEventChannel != nil {
+		this.appOpenEventChannel <- event
+	}
+}
+
 func (this *shortyImpl) PublishLink(event *LinkEvent) {
 	if this.linkEventChannel != nil {
 		this.linkEventChannel <- event
@@ -252,6 +273,13 @@ func (this *shortyImpl) InstallEventChannel() <-chan *InstallEvent {
 		this.installEventChannel = make(chan *InstallEvent)
 	}
 	return this.installEventChannel
+}
+
+func (this *shortyImpl) AppOpenEventChannel() <-chan *AppOpenEvent {
+	if this.appOpenEventChannel == nil {
+		this.appOpenEventChannel = make(chan *AppOpenEvent)
+	}
+	return this.appOpenEventChannel
 }
 
 func (this *shortyImpl) UrlLength() int {

@@ -523,15 +523,14 @@ func (this *ShortyEndPoint) ReportDeviceUrlSchemeHandlerPing(resp http.ResponseW
 			installAppKey = shortUrl.AppKey
 			installCampaignKey = shortUrl.CampaignKey
 		}
-		// TODO - maybe rename this as a app-open event
-		this.service.PublishLink(&LinkEvent{
+
+		this.service.PublishAppOpen(&AppOpenEvent{
 			RequestOrigin: origin,
 			ShortyUUID_A:  uuid,
 			ShortyUUID_B:  appUuid,
 			Origin:        installOrigin,
 			AppKey:        installAppKey,
 			CampaignKey:   installCampaignKey,
-			AppPresent:    true,
 		})
 
 	}()
@@ -581,9 +580,13 @@ func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *
 		// but not tied to a particular shortlink.
 	}
 
+	contextUuidKey := "__xrlc"
+	appUrlSchemeKey := "__xrlp"
+	shortCodeKey := "__xrls"
+
 	var destination string = appUrlScheme + "://404"
 	if lastViewed == "" {
-		destination = addQueryParam(destination, "cookie", userId)
+		destination = addQueryParam(destination, contextUuidKey, userId)
 		http.Redirect(resp, req, destination, http.StatusMovedPermanently)
 		goto stat
 	} else {
@@ -592,7 +595,7 @@ func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *
 			renderError(resp, req, err.Error(), http.StatusInternalServerError)
 			return
 		} else if shortUrl == nil {
-			destination = addQueryParam(destination, "cookie", userId)
+			destination = addQueryParam(destination, contextUuidKey, userId)
 			http.Redirect(resp, req, destination, http.StatusMovedPermanently)
 			goto stat
 		} else {
@@ -615,7 +618,9 @@ func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *
 		}
 	}
 
-	destination = addQueryParam(destination, "cookie", userId)
+	destination = addQueryParam(destination, contextUuidKey, userId)
+	destination = addQueryParam(destination, appUrlSchemeKey, appUrlScheme)
+	destination = addQueryParam(destination, shortCodeKey, shortCode)
 	http.Redirect(resp, req, destination, http.StatusMovedPermanently)
 
 stat:
