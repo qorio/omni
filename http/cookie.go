@@ -21,6 +21,8 @@ type Cookies interface {
 	Get(key string, value interface{}) (err error)
 	SetPlain(key string, value interface{}) (err error)
 	GetPlain(key string, value interface{}) (err error)
+	SetPlainString(key, value string) (err error)
+	GetPlainString(key string) (value string, err error)
 }
 
 type wrappedCookie struct {
@@ -47,6 +49,17 @@ func (this *wrappedCookie) Set(key string, value interface{}) (err error) {
 		if err2 := enc.Encode(value); err2 == nil {
 			this.cache[key] = &buff
 		}
+	}
+	return err
+}
+
+func (this *wrappedCookie) SetPlainString(key, value string) (err error) {
+	http.SetCookie(this.httpResponse, &http.Cookie{
+		Name:  key,
+		Value: value,
+	})
+	if err == nil {
+		this.cache[key] = bytes.NewBufferString(value)
 	}
 	return err
 }
@@ -90,6 +103,19 @@ func (this *wrappedCookie) GetPlain(key string, value interface{}) (err error) {
 		return dec.Decode(value)
 	}
 	return this.secureCookie.ReadCookie(this.httpRequest, key, value, false)
+}
+
+func (this *wrappedCookie) GetPlainString(key string) (value string, err error) {
+	// return cached value if exists, this is because we know that
+	// it will be set when sending http response anyway.
+	if v, ok := this.cache[key]; ok {
+		value = v.String()
+	}
+	cookie, err := this.httpRequest.Cookie(key)
+	if err == nil {
+		value = cookie.Value
+	}
+	return
 }
 
 func NewSecureCookie(hmacKey []byte, optionalEncryptionKey []byte) (sc *SecureCookie, err error) {

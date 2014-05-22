@@ -97,8 +97,7 @@ func (this *RoutingRule) Match(service Shorty, ua *http.UserAgent, origin *http.
 	if len(this.MatchInstalled) > 0 {
 		expect |= 1 << 6
 		if this.AppUrlScheme != "" {
-			uuid := ""
-			cookies.GetPlain("uuid", &uuid)
+			uuid, _ := cookies.GetPlainString("uuid")
 			_, found, _ := service.FindInstall(uuid, this.AppUrlScheme)
 			glog.Infoln("checking install", uuid, this.AppUrlScheme, found)
 			if matches, _ := regexp.MatchString(this.MatchInstalled, strconv.FormatBool(found)); matches {

@@ -170,10 +170,10 @@ func processCookies(cookies omni_http.Cookies, shortUrl *ShortUrl) (visits int, 
 
 	var cookieError error
 
-	cookies.GetPlain("uuid", &uuid)
+	uuid, _ = cookies.GetPlainString("uuid")
 	if uuid == "" {
 		if uuid, _ = newUUID(); uuid != "" {
-			cookieError = cookies.SetPlain("uuid", uuid)
+			cookieError = cookies.SetPlainString("uuid", uuid)
 			cookied = cookieError == nil
 		}
 	}
@@ -502,18 +502,13 @@ func (this *ShortyEndPoint) ReportDeviceUrlSchemeHandlerMissing(resp http.Respon
 
 func (this *ShortyEndPoint) ReportDeviceUrlSchemeHandlerPing(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	//cookies := omni_http.NewCookieHandler(secureCookie, resp, req)
 
 	appUrlScheme := vars["scheme"]
 	appUuid := vars["app_uuid"]
-	cookieValue := vars["uuid"]
+	uuid := vars["uuid"]
 	shortCode := vars["id"]
 
-	// The uuid is a value from the cookie -- so this must be decoded.
-	uuid := ""
-	err := omni_http.DecodePlain(cookieValue, &uuid)
-
-	glog.Infoln("App ping:", shortCode, appUrlScheme, appUuid, "decoded=", uuid, "err=", err)
+	glog.Infoln("App ping:", shortCode, appUrlScheme, appUuid, "uuid=", uuid)
 
 	this.service.TrackInstall(uuid, appUrlScheme, 0) // TOOD - fix the TTL
 }
