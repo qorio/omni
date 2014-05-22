@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/gob"
 	"errors"
 	"github.com/gorilla/securecookie"
@@ -18,6 +19,8 @@ type SecureCookie struct {
 type Cookies interface {
 	Set(key string, value interface{}) (err error)
 	Get(key string, value interface{}) (err error)
+	SetPlain(key string, value interface{}) (err error)
+	GetPlain(key string, value interface{}) (err error)
 }
 
 type wrappedCookie struct {
@@ -37,7 +40,7 @@ func NewCookieHandler(secureCookie *SecureCookie, resp http.ResponseWriter, requ
 }
 
 func (this *wrappedCookie) Set(key string, value interface{}) (err error) {
-	err = this.secureCookie.SetCookie(this.httpResponse, key, value)
+	err = this.secureCookie.SetCookie(this.httpResponse, key, value, true)
 	if err == nil {
 		var buff bytes.Buffer
 		enc := gob.NewEncoder(&buff)
@@ -48,6 +51,27 @@ func (this *wrappedCookie) Set(key string, value interface{}) (err error) {
 	return err
 }
 
+func (this *wrappedCookie) SetPlain(key string, value interface{}) (err error) {
+	err = this.secureCookie.SetCookie(this.httpResponse, key, value, false)
+	if err == nil {
+		var buff bytes.Buffer
+		enc := gob.NewEncoder(&buff)
+		if err2 := enc.Encode(value); err2 == nil {
+			this.cache[key] = &buff
+		}
+	}
+	return err
+}
+
+func DecodePlain(raw string, value interface{}) (err error) {
+	if buff, err := base64.StdEncoding.DecodeString(raw); err == nil {
+		b := bytes.NewBuffer(buff)
+		dec := gob.NewDecoder(b)
+		return dec.Decode(value)
+	}
+	return
+}
+
 func (this *wrappedCookie) Get(key string, value interface{}) (err error) {
 	// return cached value if exists, this is because we know that
 	// it will be set when sending http response anyway.
@@ -55,7 +79,17 @@ func (this *wrappedCookie) Get(key string, value interface{}) (err error) {
 		dec := gob.NewDecoder(v)
 		return dec.Decode(value)
 	}
-	return this.secureCookie.ReadCookie(this.httpRequest, key, value)
+	return this.secureCookie.ReadCookie(this.httpRequest, key, value, true)
+}
+
+func (this *wrappedCookie) GetPlain(key string, value interface{}) (err error) {
+	// return cached value if exists, this is because we know that
+	// it will be set when sending http response anyway.
+	if v, ok := this.cache[key]; ok {
+		dec := gob.NewDecoder(v)
+		return dec.Decode(value)
+	}
+	return this.secureCookie.ReadCookie(this.httpRequest, key, value, false)
 }
 
 func NewSecureCookie(hmacKey []byte, optionalEncryptionKey []byte) (sc *SecureCookie, err error) {
@@ -81,29 +115,39 @@ func (this *SecureCookie) EncryptKeyString() string {
 	return string(this.encryptKey)
 }
 
-func (this *SecureCookie) SetCookie(w http.ResponseWriter, key string, value interface{}) (err error) {
+func (this *SecureCookie) SetCookie(w http.ResponseWriter, key string, value interface{}, encrypt bool) (err error) {
 	gob.Register(value)
-	if encoded, err := this.secureCookie.Encode(key, value); err == nil {
-		cookie := &http.Cookie{
-			Name:  key,
-			Value: encoded,
+
+	cookieVal := ""
+	if encrypt {
+		if encoded, err := this.secureCookie.Encode(key, value); err == nil {
+			cookieVal = encoded
 		}
-		if len(this.Path) > 0 {
-			cookie.Path = this.Path
+	} else {
+		var buff bytes.Buffer
+		enc := gob.NewEncoder(&buff)
+		if err2 := enc.Encode(value); err2 == nil {
+			cookieVal = base64.StdEncoding.EncodeToString(buff.Bytes())
 		}
-		http.SetCookie(w, cookie)
 	}
+	cookie := &http.Cookie{
+		Name:  key,
+		Value: cookieVal,
+	}
+	if len(this.Path) > 0 {
+		cookie.Path = this.Path
+	}
+	http.SetCookie(w, cookie)
 	return
 }
 
-func (this *SecureCookie) ReadCookie(r *http.Request, key string, value interface{}) (err error) {
+func (this *SecureCookie) ReadCookie(r *http.Request, key string, value interface{}, encrypt bool) (err error) {
 	if cookie, err := r.Cookie(key); err == nil {
-		err = this.secureCookie.Decode(key, cookie.Value, value)
+		if encrypt {
+			err = this.secureCookie.Decode(key, cookie.Value, value)
+		} else {
+			return DecodePlain(cookie.Value, value)
+		}
 	}
-	return
-}
-
-func (this *SecureCookie) Decode(key, encoded string, value interface{}) (err error) {
-	err = this.secureCookie.Decode(key, encoded, value)
 	return
 }

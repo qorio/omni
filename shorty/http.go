@@ -165,15 +165,15 @@ func (this *ShortyEndPoint) ApiAddHandler(resp http.ResponseWriter, req *http.Re
 
 // cookied = if the user uuid is cookied
 func processCookies(cookies omni_http.Cookies, shortUrl *ShortUrl) (visits int, cookied bool, last, uuid string) {
-	cookies.Get("uuid", &uuid)
 	cookies.Get("last", &last)
 	cookies.Get(shortUrl.Id, &visits)
 
 	var cookieError error
 
+	cookies.GetPlain("uuid", &uuid)
 	if uuid == "" {
 		if uuid, _ = newUUID(); uuid != "" {
-			cookieError = cookies.Set("uuid", uuid)
+			cookieError = cookies.SetPlain("uuid", uuid)
 			cookied = cookieError == nil
 		}
 	}
@@ -502,17 +502,18 @@ func (this *ShortyEndPoint) ReportDeviceUrlSchemeHandlerMissing(resp http.Respon
 
 func (this *ShortyEndPoint) ReportDeviceUrlSchemeHandlerPing(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
+	//cookies := omni_http.NewCookieHandler(secureCookie, resp, req)
 
 	appUrlScheme := vars["scheme"]
 	appUuid := vars["app_uuid"]
-	uuidEncoded := vars["uuid"]
+	cookieValue := vars["uuid"]
 	shortCode := vars["id"]
 
 	// The uuid is a value from the cookie -- so this must be decoded.
 	uuid := ""
-	secureCookie.Decode("uuid", uuidEncoded, &uuid)
+	err := omni_http.DecodePlain(cookieValue, &uuid)
 
-	glog.Infoln("App ping:", shortCode, appUrlScheme, appUuid, uuid)
+	glog.Infoln("App ping:", shortCode, appUrlScheme, appUuid, "decoded=", uuid, "err=", err)
 
 	this.service.TrackInstall(uuid, appUrlScheme, 0) // TOOD - fix the TTL
 }
