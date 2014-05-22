@@ -505,8 +505,12 @@ func (this *ShortyEndPoint) ReportDeviceUrlSchemeHandlerPing(resp http.ResponseW
 
 	appUrlScheme := vars["scheme"]
 	appUuid := vars["app_uuid"]
-	uuid := vars["uuid"]
+	uuidEncoded := vars["uuid"]
 	shortCode := vars["id"]
+
+	// The uuid is a value from the cookie -- so this must be decoded.
+	uuid := ""
+	secureCookie.Decode("uuid", uuidEncoded, &uuid)
 
 	glog.Infoln("App ping:", shortCode, appUrlScheme, appUuid, uuid)
 

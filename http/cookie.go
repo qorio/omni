@@ -102,3 +102,8 @@ func (this *SecureCookie) ReadCookie(r *http.Request, key string, value interfac
 	}
 	return
 }
+
+func (this *SecureCookie) Decode(key, encoded string, value interface{}) (err error) {
+	err = this.secureCookie.Decode(key, encoded, value)
+	return
+}
