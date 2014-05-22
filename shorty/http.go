@@ -378,16 +378,19 @@ func (this *ShortyEndPoint) HarvestCookiedUUIDHandler(resp http.ResponseWriter, 
 	// the short link that the user was looking at that got them to see the harvest url in the first place.
 	// Otherwise, show the static content which may tell them to try again in a different browser/context.
 
+	appUrlScheme := ""
+
 	if uuid != userId {
 
 		// We got the user to come here via a different context (browser) than the one that created
 		// this url in the first place.  So link the two ids together and redirect back to the short url.
 
-		if appUrlScheme, exists := req.Form["s"]; exists {
-			this.service.Link(uuid, userId, appUrlScheme[0], shortUrl.Id)
+		if appUrlSchemeParam, exists := req.Form["s"]; exists {
+			appUrlScheme = appUrlSchemeParam[0]
+			this.service.Link(uuid, userId, appUrlSchemeParam[0], shortUrl.Id)
 			// Here we also assume that the user will install the app at some point.
 			// Go ahead and assume that and let other mechanisms to invalidate this.
-			this.service.TrackInstall(uuid, appUrlScheme[0], shortUrl.InstallTTLSeconds)
+			this.service.TrackInstall(uuid, appUrlSchemeParam[0], shortUrl.InstallTTLSeconds)
 		}
 		if next, err := this.router.Get("redirect").URL("id", shortUrl.Id); err != nil {
 			renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
@@ -418,7 +421,15 @@ linkevent:
 		origin.Visits = visits
 		origin.LastVisit = last
 		origin.Destination = content
-		origin.ShortCode = shortUrl.Id
+
+		installOrigin, installAppKey, installCampaignKey := "NONE", appUrlScheme, "DIRECT"
+		if shortUrl != nil {
+			origin.ShortCode = shortUrl.Id
+			installOrigin = shortUrl.Origin
+			installAppKey = shortUrl.AppKey
+			installCampaignKey = shortUrl.CampaignKey
+		}
+
 		if geoParseErr != nil {
 			glog.Warningln("can-not-determine-location", geoParseErr)
 		}
@@ -435,9 +446,9 @@ linkevent:
 			RequestOrigin: origin,
 			ShortyUUID_A:  uuid,
 			ShortyUUID_B:  userId,
-			Origin:        shortUrl.Origin,
-			AppKey:        shortUrl.AppKey,
-			CampaignKey:   shortUrl.CampaignKey,
+			Origin:        installOrigin,
+			AppKey:        installAppKey,
+			CampaignKey:   installCampaignKey,
 		})
 
 	}()
@@ -497,8 +508,8 @@ func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *
 	// 1. app custom url scheme -> this allows us to key by mobile app per user
 	// 2. some uuid for the app -> this tracks a user. on ios, idfa uuid is used.
 
-	customUrlScheme := vars["scheme"]
-	if customUrlScheme == "" {
+	appUrlScheme := vars["scheme"]
+	if appUrlScheme == "" {
 		renderError(resp, req, "No app customer url scheme", http.StatusBadRequest)
 		return
 	}
@@ -523,7 +534,7 @@ func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *
 	var expiration int64 = 0
 	shortCode := ""
 
-	var destination string = customUrlScheme + "://404"
+	var destination string = appUrlScheme + "://404"
 	if lastViewed == "" {
 		destination = addQueryParam(destination, "cookie", userId)
 		http.Redirect(resp, req, destination, http.StatusMovedPermanently)
@@ -561,15 +572,20 @@ func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *
 	http.Redirect(resp, req, destination, http.StatusMovedPermanently)
 
 stat:
-	this.service.Link(appUuid, userId, customUrlScheme, shortCode)
-	this.service.TrackInstall(userId, customUrlScheme, expiration)
+	this.service.Link(appUuid, userId, appUrlScheme, shortCode)
+	this.service.TrackInstall(userId, appUrlScheme, expiration)
 
 	go func() {
 		origin, geoParseErr := this.requestParser.Parse(req)
 		origin.Destination = destination
 
+		installOrigin, installAppKey, installCampaignKey := "NONE", appUrlScheme, "DIRECT"
+
 		if shortUrl != nil {
 			origin.ShortCode = shortUrl.Id
+			installOrigin = shortUrl.Origin
+			installAppKey = shortUrl.AppKey
+			installCampaignKey = shortUrl.CampaignKey
 		}
 
 		if geoParseErr != nil {
@@ -585,12 +601,12 @@ stat:
 		this.service.PublishInstall(&InstallEvent{
 			RequestOrigin: origin,
 			Destination:   destination,
-			AppUrlScheme:  customUrlScheme,
+			AppUrlScheme:  appUrlScheme,
 			AppUUID:       appUuid,
 			ShortyUUID:    userId,
-			Origin:        shortUrl.Origin,
-			AppKey:        shortUrl.AppKey,
-			CampaignKey:   shortUrl.CampaignKey,
+			Origin:        installOrigin,
+			AppKey:        installAppKey,
+			CampaignKey:   installCampaignKey,
 		})
 	}()
 }
