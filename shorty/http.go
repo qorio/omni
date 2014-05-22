@@ -65,6 +65,8 @@ func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty) (api *Short
 			api.ReportInstallHandler).Methods("GET").Name("app_install")
 		api.router.HandleFunc("/api/v1/events/missing/{scheme}/{id:"+regex+"}",
 			api.ReportDeviceUrlSchemeHandlerMissing).Name("app_missing")
+		api.router.HandleFunc("/api/v1/events/ping/{scheme}/{id:"+regex+"}/{uuid}/{app_uuid}",
+			api.ReportDeviceUrlSchemeHandlerPing).Methods("POST").Name("app_ping")
 
 		return api, nil
 	} else {
@@ -498,6 +500,19 @@ func (this *ShortyEndPoint) ReportDeviceUrlSchemeHandlerMissing(resp http.Respon
 	}
 }
 
+func (this *ShortyEndPoint) ReportDeviceUrlSchemeHandlerPing(resp http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+
+	appUrlScheme := vars["scheme"]
+	appUuid := vars["app_uuid"]
+	uuid := vars["uuid"]
+	shortCode := vars["id"]
+
+	glog.Infoln("App ping:", shortCode, appUrlScheme, appUuid, uuid)
+
+	this.service.TrackInstall(uuid, appUrlScheme, 0) // TOOD - fix the TTL
+}
+
 func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *http.Request) {
 	omni_http.SetNoCachingHeaders(resp)
 
@@ -533,6 +548,14 @@ func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *
 	var err error
 	var expiration int64 = 0
 	shortCode := ""
+
+	if userId == "" && lastViewed == "" {
+		// This is an organic install - install not driven by short link
+
+		// TODO - Send a Thank you page, where onLoad, a deeplink to return to the app is triggered.
+		// The url / content for the thank you page must be associated to a scheme and platform
+		// but not tied to a particular shortlink.
+	}
 
 	var destination string = appUrlScheme + "://404"
 	if lastViewed == "" {
