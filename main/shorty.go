@@ -115,6 +115,7 @@ func translateLink(linkEvent *shorty.LinkEvent) (event *tally.Event) {
 	event.SetAttribute("origin", linkEvent.Origin)
 	event.SetAttribute("app_key", linkEvent.AppKey)
 	event.SetAttribute("campaign_key", linkEvent.CampaignKey)
+	event.SetAttributeBool("app_present", linkEvent.AppPresent)
 	return
 }
 

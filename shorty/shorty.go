@@ -151,6 +151,7 @@ type LinkEvent struct {
 	Origin        string
 	AppKey        string
 	CampaignKey   string
+	AppPresent    bool
 }
 
 type Shorty interface {

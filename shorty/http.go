@@ -523,6 +523,7 @@ func (this *ShortyEndPoint) ReportDeviceUrlSchemeHandlerPing(resp http.ResponseW
 			installAppKey = shortUrl.AppKey
 			installCampaignKey = shortUrl.CampaignKey
 		}
+		// TODO - maybe rename this as a app-open event
 		this.service.PublishLink(&LinkEvent{
 			RequestOrigin: origin,
 			ShortyUUID_A:  uuid,
@@ -530,6 +531,7 @@ func (this *ShortyEndPoint) ReportDeviceUrlSchemeHandlerPing(resp http.ResponseW
 			Origin:        installOrigin,
 			AppKey:        installAppKey,
 			CampaignKey:   installCampaignKey,
+			AppPresent:    true,
 		})
 
 	}()
