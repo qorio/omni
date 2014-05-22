@@ -1,0 +1,43 @@
+{
+        "token": "Deeplink Demo",
+        "campaign": "test-campaign-1",
+        "longUrl": "http://sfbay.craigslist.org/sfc/cto/4474325837.html",
+        "origin": "test-user-1",
+	"rules": [
+            {
+                "scheme": "qldeeplink",
+		"platform": "iPod|iPhone|iPad",
+	    	"header": "FBAN|FBIOS",
+		"installed": "true",
+		"fetch-from":"https://web1.qor.io/static/opentest.html"
+            },
+            {
+                "scheme": "qldeeplink",
+		"platform": "iPod*|iPhone*|iPad*",
+	    	"header": "FBAN|FBIOS",
+		"installed": "false",
+		"x-harvest-cookied-uuid": true,
+		"fetch-from":"https://web1.qor.io/static/fb_noapp.html"
+            },
+            {
+	        "scheme": "qldeeplink",
+		"installed": "false",
+		"mobile": "true",
+		"platform": "iPod*|iPhone*|iPad*",
+	    	"referer": "t\\.co",
+		"fetch-from":"https://web1.qor.io/static/twitter.html"
+            },
+            {
+                "platform": "iPhone*|iPod*|iPad*",
+                "destination": "qldeeplink://content?url=http%3A%2F%2Fsfbay.craigslist.org%2Fsfc%2Fcto%2F4474325837.html",
+                "scheme": "qldeeplink",
+                "appstore": "http://testflightapp.com/install/78e089376ae5badff24869875274c8a7-MTEwNDU0ODI/"
+            },
+            {
+                "os": "Android",
+                "destination": "http://sfbay.craigslist.org/sfc/cto/4474325837.html",
+                "scheme": "qldeeplink",
+                "appstore": "https://play.google.com/store/apps/details?id=com.yuilop"
+            }
+        ]
+}
