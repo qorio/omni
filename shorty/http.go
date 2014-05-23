@@ -230,15 +230,16 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 
 	visits, cookied, last, userId := processCookies(cookies, shortUrl.Id)
 
-	var rule RoutingRule
+	var matchedRule *RoutingRule
 	// If there are platform-dependent routing
 	if len(shortUrl.Rules) > 0 {
 		userAgent := omni_http.ParseUserAgent(req)
 		origin, _ := this.requestParser.Parse(req)
 
-		for _, rule = range shortUrl.Rules {
+		for _, rule := range shortUrl.Rules {
 			if match := rule.Match(this.service, userAgent, origin, cookies); match {
 
+				matchedRule = &rule
 				destination = rule.Destination // default
 
 				switch {
@@ -308,10 +309,10 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	} // if there are rules
 
 	// support for /shortCode?404= when app is missing
-	if _, has := req.Form["404"]; has {
+	if _, has := req.Form["404"]; has && matchedRule != nil {
 		// here we get an event that the app is missing...
-		count, _ := this.service.DeleteInstall(userId, rule.AppUrlScheme)
-		glog.Infoln("APP MISSING:", userId, rule.AppUrlScheme, "found=", count)
+		count, _ := this.service.DeleteInstall(userId, matchedRule.AppUrlScheme)
+		glog.Infoln("APP MISSING:", userId, matchedRule.AppUrlScheme, "found=", count)
 
 		// do another redirect
 		if next, err := this.router.Get("redirect").URL("id", shortUrl.Id); err == nil {
@@ -325,10 +326,12 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	} else {
 
 		// TODO - check to see if the app has SDK.  If there's SDK send extra params
-		if parsedUrl, pErr := url.Parse(destination); pErr == nil && parsedUrl.Scheme != rule.AppUrlScheme {
-			destination = addQueryParam(destination, contextQueryParam, userId)
-			destination = addQueryParam(destination, appUrlSchemeParam, rule.AppUrlScheme)
-			destination = addQueryParam(destination, shortCodeParam, shortUrl.Id)
+		if matchedRule != nil {
+			if parsedUrl, pErr := url.Parse(destination); pErr == nil && parsedUrl.Scheme != matchedRule.AppUrlScheme {
+				destination = addQueryParam(destination, contextQueryParam, userId)
+				destination = addQueryParam(destination, appUrlSchemeParam, matchedRule.AppUrlScheme)
+				destination = addQueryParam(destination, shortCodeParam, shortUrl.Id)
+			}
 		}
 		http.Redirect(resp, req, destination, http.StatusMovedPermanently)
 	}
