@@ -231,16 +231,18 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	visits, cookied, last, userId := processCookies(cookies, shortUrl.Id)
 
 	var matchedRule *RoutingRule
+	var matchedRuleIndex int = -1
+
 	// If there are platform-dependent routing
 	if len(shortUrl.Rules) > 0 {
 		userAgent := omni_http.ParseUserAgent(req)
 		origin, _ := this.requestParser.Parse(req)
 
-		for _, rule := range shortUrl.Rules {
+		for i, rule := range shortUrl.Rules {
 			if match := rule.Match(this.service, userAgent, origin, cookies); match {
 
 				matchedRule = &rule
-				destination = rule.Destination // default
+				matchedRuleIndex = i
 
 				switch {
 
@@ -290,10 +292,10 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 						renderInline = true
 						destination = omni_http.FetchFromUrl(userAgent.Header, rule.FetchFromUrl)
 
-					case rule.AppUrlScheme != "" && !rule.NoAppStoreRedirect:
+					case rule.AppUrlScheme != "":
 						renderInline = false
 						_, found, _ := this.service.FindInstall(userId, rule.AppUrlScheme)
-						if !found {
+						if !found && !rule.NoAppStoreRedirect {
 							destination = rule.AppStoreUrl
 						}
 
@@ -324,6 +326,8 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	if renderInline {
 		resp.Write([]byte(destination))
 	} else {
+
+		glog.Infoln(">>> Matched Rule = ", matchedRule)
 
 		// TODO - check to see if the app has SDK.  If there's SDK send extra params
 		if matchedRule != nil {
@@ -361,12 +365,13 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 			"cookied", cookied)
 
 		this.service.PublishDecode(&DecodeEvent{
-			RequestOrigin: origin,
-			Destination:   destination,
-			ShortyUUID:    userId,
-			Origin:        shortUrl.Origin,
-			AppKey:        shortUrl.AppKey,
-			CampaignKey:   shortUrl.CampaignKey,
+			RequestOrigin:    origin,
+			Destination:      destination,
+			ShortyUUID:       userId,
+			Origin:           shortUrl.Origin,
+			AppKey:           shortUrl.AppKey,
+			CampaignKey:      shortUrl.CampaignKey,
+			MatchedRuleIndex: matchedRuleIndex,
 		})
 		shortUrl.Record(origin, visits > 1)
 	}()

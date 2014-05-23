@@ -147,6 +147,8 @@ type DecodeEvent struct {
 	Origin      string
 	AppKey      string
 	CampaignKey string
+
+	MatchedRuleIndex int
 }
 
 type InstallEvent struct {

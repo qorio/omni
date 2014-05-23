@@ -88,6 +88,8 @@ func translateDecode(decodeEvent *shorty.DecodeEvent) (event *tally.Event) {
 	event.SetAttribute("origin", decodeEvent.Origin)
 	event.SetAttribute("app_key", decodeEvent.AppKey)
 	event.SetAttribute("campaign_key", decodeEvent.CampaignKey)
+	event.SetAttributeInt("matched_rule", decodeEvent.MatchedRuleIndex)
+
 	return
 }
 
