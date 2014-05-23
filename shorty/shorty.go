@@ -52,6 +52,9 @@ type RoutingRule struct {
 
 	// True to harvest the cookied uuid via a redirect to a url containing the uuid
 	HarvestCookiedUUID bool `json:"x-harvest-cookied-uuid",omitempty`
+
+	// True to redirect to the test open url
+	CollectContext bool `json:"x-collect-context"`
 }
 
 func (this *RoutingRule) Match(service Shorty, ua *http.UserAgent, origin *http.RequestOrigin, cookies http.Cookies) bool {
@@ -119,6 +122,15 @@ type ShortUrl struct {
 	CampaignKey       string        `json:"campaignKey"`
 	InstallTTLSeconds int64         `json:"installTTLSeconds"`
 	service           *shortyImpl
+}
+
+type Campaign struct {
+	AppKey            string        `json:"appKey"`
+	Id                string        `json:"id"`
+	Rules             []RoutingRule `json:"rules"`
+	Created           time.Time     `json:"created"`
+	InstallTTLSeconds int64         `json:"installTTLSeconds"`
+	AppHasSDK         bool          `json:"appHasSDK"`
 }
 
 type DecodeEvent struct {
