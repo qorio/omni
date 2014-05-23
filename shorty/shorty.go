@@ -58,6 +58,9 @@ type RoutingRule struct {
 
 	// True to disasble app store redirection
 	NoAppStoreRedirect bool `json:"x-no-app-store-redirect"`
+
+	// True to indicate that this is a http url destination but mapped in the intent filter to an app.
+	IsAndroidIntentFilter bool `json:"x-android-intent-filter"`
 }
 
 func (this *RoutingRule) Match(service Shorty, ua *http.UserAgent, origin *http.RequestOrigin, cookies http.Cookies) bool {

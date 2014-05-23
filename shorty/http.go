@@ -327,7 +327,11 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 
 		// TODO - check to see if the app has SDK.  If there's SDK send extra params
 		if matchedRule != nil {
-			if parsedUrl, pErr := url.Parse(destination); pErr == nil && parsedUrl.Scheme != matchedRule.AppUrlScheme {
+			parsedUrl, pErr := url.Parse(destination)
+			// If the schemes match, then it's a deeplink.  Add additional params if the destination is
+			// a deeplink or a http url that is mapped in Android's intent filter (where an app can also handle
+			// url with http as scheme.
+			if pErr == nil && (parsedUrl.Scheme == matchedRule.AppUrlScheme || matchedRule.IsAndroidIntentFilter) {
 				destination = addQueryParam(destination, contextQueryParam, userId)
 				destination = addQueryParam(destination, appUrlSchemeParam, matchedRule.AppUrlScheme)
 				destination = addQueryParam(destination, shortCodeParam, shortUrl.Id)
