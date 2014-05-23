@@ -289,7 +289,7 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 						renderInline = true
 						destination = omni_http.FetchFromUrl(userAgent.Header, rule.FetchFromUrl)
 
-					case rule.AppUrlScheme != "":
+					case rule.AppUrlScheme != "" && !rule.NoAppStoreRedirect:
 						renderInline = false
 						_, found, _ := this.service.FindInstall(userId, rule.AppUrlScheme)
 						if !found {
@@ -325,9 +325,11 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	} else {
 
 		// TODO - check to see if the app has SDK.  If there's SDK send extra params
-		destination = addQueryParam(destination, contextQueryParam, userId)
-		destination = addQueryParam(destination, appUrlSchemeParam, rule.AppUrlScheme)
-		destination = addQueryParam(destination, shortCodeParam, shortUrl.Id)
+		if parsedUrl, pErr := url.Parse(destination); pErr == nil && parsedUrl.Scheme != rule.AppUrlScheme {
+			destination = addQueryParam(destination, contextQueryParam, userId)
+			destination = addQueryParam(destination, appUrlSchemeParam, rule.AppUrlScheme)
+			destination = addQueryParam(destination, shortCodeParam, shortUrl.Id)
+		}
 		http.Redirect(resp, req, destination, http.StatusMovedPermanently)
 	}
 

@@ -55,6 +55,9 @@ type RoutingRule struct {
 
 	// True to redirect to the test open url
 	CollectContext bool `json:"x-collect-context"`
+
+	// True to disasble app store redirection
+	NoAppStoreRedirect bool `json:"x-no-app-store-redirect"`
 }
 
 func (this *RoutingRule) Match(service Shorty, ua *http.UserAgent, origin *http.RequestOrigin, cookies http.Cookies) bool {
@@ -322,43 +325,41 @@ func (this *shortyImpl) VanityUrl(vanity, data string, rules []RoutingRule, defa
 	}
 
 	entity = &ShortUrl{Destination: u.String(), Created: time.Now(), service: this}
-	if len(rules) > 0 {
-		for _, rule := range entity.Rules {
-			if len(rule.Destination) > 0 {
-				if _, err = url.Parse(rule.Destination); err != nil {
-					return
-				}
-			}
-
-			matching := 0
-			if c, err := regexp.Compile(rule.MatchPlatform); err != nil {
-				return nil, errors.New("Bad platform regex " + rule.MatchPlatform)
-			} else if c != nil {
-				matching++
-			}
-			if c, err := regexp.Compile(rule.MatchOS); err != nil {
-				return nil, errors.New("Bad os regex " + rule.MatchOS)
-			} else if c != nil {
-				matching++
-			}
-			if c, err := regexp.Compile(rule.MatchMake); err != nil {
-				return nil, errors.New("Bad make regex " + rule.MatchMake)
-			} else if c != nil {
-				matching++
-			}
-			if c, err := regexp.Compile(rule.MatchBrowser); err != nil {
-				return nil, errors.New("Bad browser regex " + rule.MatchBrowser)
-			} else if c != nil {
-				matching++
-			}
-			// Must have 1 or more matching regexp
-			if matching == 0 {
-				err = errors.New("bad-routing-rule:no matching regexp")
+	for _, rule := range entity.Rules {
+		if len(rule.Destination) > 0 {
+			if _, err = url.Parse(rule.Destination); err != nil {
 				return
 			}
 		}
-		entity.Rules = rules
+
+		matching := 0
+		if c, err := regexp.Compile(rule.MatchPlatform); err != nil {
+			return nil, errors.New("Bad platform regex " + rule.MatchPlatform)
+		} else if c != nil {
+			matching++
+		}
+		if c, err := regexp.Compile(rule.MatchOS); err != nil {
+			return nil, errors.New("Bad os regex " + rule.MatchOS)
+		} else if c != nil {
+			matching++
+		}
+		if c, err := regexp.Compile(rule.MatchMake); err != nil {
+			return nil, errors.New("Bad make regex " + rule.MatchMake)
+		} else if c != nil {
+			matching++
+		}
+		if c, err := regexp.Compile(rule.MatchBrowser); err != nil {
+			return nil, errors.New("Bad browser regex " + rule.MatchBrowser)
+		} else if c != nil {
+			matching++
+		}
+		// Must have 1 or more matching regexp
+		if matching == 0 {
+			err = errors.New("bad-routing-rule:no matching regexp")
+			return
+		}
 	}
+	entity.Rules = rules
 
 	c := this.pool.Get()
 	defer c.Close()
