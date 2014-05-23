@@ -41,14 +41,13 @@ mkdir -p $BUILD/target
 GOPATH=$WORKING/third_party:$BUILD:$GOPATH
 
 # build the embedfs utility
-echo "Building embedfs utility"
-cd $WORKING/third_party/src/github.com/qorio/embedfs/pkg
-go run ../main.go -destDir=../resources -match="/fs\\.go$" -generate=true .
-cd $WORKING
-go build -o $WORKING/third_party/bin/embedfs $WORKING/third_party/src/github.com/qorio/embedfs/main.go
-
-export PATH=$(pwd)/third_party/bin:$PATH
-which embedfs
+#echo "Building embedfs utility"
+#cd $WORKING/third_party/src/github.com/qorio/embedfs/pkg
+#go run ../main.go -destDir=../resources -match="/fs\\.go$" -generate=true .
+#cd $WORKING
+#go build -o $WORKING/third_party/bin/embedfs $WORKING/third_party/src/github.com/qorio/embedfs/main.go
+#export PATH=$(pwd)/third_party/bin:$PATH
+#which embedfs
 
 
 ROOTDIR=$BUILD/src/$GITHUB
