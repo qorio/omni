@@ -48,13 +48,13 @@ type RoutingRule struct {
 	Destination string `json:"destination"`
 
 	// Fetch content from url
-	FetchFromUrl string `json:"fetch-from",omitempty`
+	ContentSourceUrl string `json:"content-src-url",omitempty`
 
 	// True to harvest the cookied uuid via a redirect to a url containing the uuid
 	HarvestCookiedUUID bool `json:"x-harvest-cookied-uuid",omitempty`
 
-	// True to redirect to the test open url
-	CollectContext bool `json:"x-collect-context"`
+	// Send to an interstitial page
+	SendToInterstitial bool `json:"x-send-to-interstitial"`
 
 	// True to disasble app store redirection
 	NoAppStoreRedirect bool `json:"x-no-app-store-redirect"`
@@ -106,7 +106,7 @@ func (this *RoutingRule) Match(service Shorty, ua *http.UserAgent, origin *http.
 	if len(this.MatchInstalled) > 0 {
 		expect |= 1 << 6
 		if this.AppUrlScheme != "" {
-			uuid, _ := cookies.GetPlainString("uuid")
+			uuid, _ := cookies.GetPlainString(uuidCookieKey)
 			_, found, _ := service.FindInstall(uuid, this.AppUrlScheme)
 			glog.Infoln("checking install", uuid, this.AppUrlScheme, found)
 			if matches, _ := regexp.MatchString(this.MatchInstalled, strconv.FormatBool(found)); matches {
