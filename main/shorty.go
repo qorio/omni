@@ -112,8 +112,9 @@ func translateAppOpen(appOpenEvent *shorty.AppOpenEvent) (event *tally.Event) {
 	eventType := "app-open"
 	event.Type = &eventType
 	event.SetAttribute("app_url_scheme", appOpenEvent.AppUrlScheme)
-	event.SetAttribute("uuid1", appOpenEvent.ShortyUUID_A)
-	event.SetAttribute("uuid2", appOpenEvent.ShortyUUID_B)
+	event.SetAttribute("app_uuid", appOpenEvent.AppUUID)
+	event.SetAttribute("uuid", appOpenEvent.SourceUUID)
+	event.SetAttribute("source_application", appOpenEvent.SourceApplication)
 	event.SetAttribute("origin", appOpenEvent.Origin)
 	event.SetAttribute("app_key", appOpenEvent.AppKey)
 	event.SetAttribute("campaign_key", appOpenEvent.CampaignKey)

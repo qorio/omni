@@ -174,13 +174,15 @@ type LinkEvent struct {
 }
 
 type AppOpenEvent struct {
-	RequestOrigin *http.RequestOrigin
-	AppUrlScheme  string
-	ShortyUUID_A  string
-	ShortyUUID_B  string
-	Origin        string
-	AppKey        string
-	CampaignKey   string
+	RequestOrigin     *http.RequestOrigin
+	AppUrlScheme      string
+	AppUUID           string
+	Destination       string
+	SourceUUID        string
+	SourceApplication string
+	Origin            string
+	AppKey            string
+	CampaignKey       string
 }
 
 type Shorty interface {

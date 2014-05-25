@@ -163,7 +163,6 @@ func (this *ShortyEndPoint) ApiReportAppOpenUrl(resp http.ResponseWriter, req *h
 }
 
 func (this *ShortyEndPoint) handleAppOpen(appUrlScheme, appUuid string, appOpen *AppOpen, req *http.Request) error {
-
 	this.service.Link(appOpen.UUID, appUuid, appUrlScheme, appOpen.ShortCode)
 	this.service.TrackAppOpen(appUrlScheme, appUuid, appOpen.UUID, appOpen.SourceApplication, appOpen.ShortCode)
 
@@ -201,15 +200,16 @@ func (this *ShortyEndPoint) handleAppOpen(appUrlScheme, appUuid string, appOpen 
 			"location:", *origin.Location,
 			"useragent:", origin.UserAgent.Header)
 
-		this.service.PublishInstall(&InstallEvent{
-			RequestOrigin: origin,
-			Destination:   appOpen.Deeplink,
-			AppUrlScheme:  appUrlScheme,
-			AppUUID:       appUuid,
-			ShortyUUID:    appOpen.UUID,
-			Origin:        installOrigin,
-			AppKey:        installAppKey,
-			CampaignKey:   installCampaignKey,
+		this.service.PublishAppOpen(&AppOpenEvent{
+			RequestOrigin:     origin,
+			Destination:       appOpen.Deeplink,
+			AppUrlScheme:      appUrlScheme,
+			AppUUID:           appUuid,
+			SourceUUID:        appOpen.UUID,
+			SourceApplication: appOpen.SourceApplication,
+			Origin:            installOrigin,
+			AppKey:            installAppKey,
+			CampaignKey:       installCampaignKey,
 		})
 	}()
 	return nil
