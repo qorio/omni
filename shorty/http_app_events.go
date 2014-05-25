@@ -214,6 +214,16 @@ func (this *ShortyEndPoint) handleAppOpen(appUrlScheme, appUuid string, appOpen 
 			AppKey:            installAppKey,
 			CampaignKey:       installCampaignKey,
 		})
+
+		this.service.PublishLink(&LinkEvent{
+			RequestOrigin: origin,
+			ShortyUUID_A:  appUuid,
+			ShortyUUID_B:  appOpen.UUID,
+			Origin:        installOrigin,
+			AppKey:        installAppKey,
+			CampaignKey:   installCampaignKey,
+		})
+
 	}()
 	return nil
 }
@@ -270,6 +280,18 @@ func (this *ShortyEndPoint) handleInstall(appUrlScheme, appUuid string, appOpen 
 			AppKey:            installAppKey,
 			CampaignKey:       installCampaignKey,
 		})
+
+		if appOpen.UUID != "" {
+			this.service.PublishLink(&LinkEvent{
+				RequestOrigin: origin,
+				ShortyUUID_A:  appUuid,
+				ShortyUUID_B:  appOpen.UUID,
+				Origin:        installOrigin,
+				AppKey:        installAppKey,
+				CampaignKey:   installCampaignKey,
+			})
+		}
+
 	}()
 	return nil
 }
