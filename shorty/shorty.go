@@ -192,7 +192,8 @@ type Shorty interface {
 	VanityUrl(vanity, url string, optionalRules []RoutingRule, defaults ShortUrl) (*ShortUrl, error)
 	Find(id string) (*ShortUrl, error)
 	Link(shortyUUIDContextPrev, shortyUUIDContextCurrent, appUrlScheme, shortUrlId string) error
-	TrackInstall(shortyUUID, appUrlScheme string, expires int64) error
+	TrackInstall(shortyUUID, appUrlScheme string) error
+	TrackAppOpen(appUrlScheme, appUuid, uuid, sourceApplication, shortCode string) error
 	FindInstall(shortyUUID, appUrlScheme string) (expiration int64, found bool, err error)
 	DeleteInstall(shortyUUID, appUrlScheme string) (count int, err error)
 
@@ -417,7 +418,8 @@ func (this *shortyImpl) Link(shortyUUIDContextPrev, shortyUUIDContextCurrent, ap
 	c := this.pool.Get()
 	defer c.Close()
 
-	key := fmt.Sprintf("%s:%s:%s", appUrlScheme, shortyUUIDContextPrev, shortyUUIDContextCurrent)
+	// The key allows searching A:B or B:A by making it A:B:A
+	key := fmt.Sprintf("%s:%s:%s:%s", appUrlScheme, shortyUUIDContextPrev, shortyUUIDContextCurrent, shortyUUIDContextPrev)
 	reply, err := c.Do("SET", this.settings.RedisPrefix+"uuid-pair:"+key, shortUrlId)
 	if err == nil && reply != "OK" {
 		err = errors.New("Invalid Redis response")
@@ -425,15 +427,26 @@ func (this *shortyImpl) Link(shortyUUIDContextPrev, shortyUUIDContextCurrent, ap
 	return err
 }
 
-func (this *shortyImpl) TrackInstall(shortyUUID, appUrlScheme string, expires int64) error {
+func (this *shortyImpl) TrackInstall(shortyUUID, appUrlScheme string) error {
 	c := this.pool.Get()
 	defer c.Close()
 
 	// TODO - look at every pair that contains this uuid, get the other uuid and create
 	// a record as well. This will speed up the read when decoding the shortlink to see if installed.
 	key := fmt.Sprintf("%s:%s", shortyUUID, appUrlScheme)
-	expiration := fmt.Sprintf("%d", expires)
-	reply, err := c.Do("SET", this.settings.RedisPrefix+"install:"+key, expiration)
+	reply, err := c.Do("SET", this.settings.RedisPrefix+"install:"+key, timestamp())
+	if err == nil && reply != "OK" {
+		err = errors.New("Invalid Redis response")
+	}
+	return err
+}
+
+func (this *shortyImpl) TrackAppOpen(appUrlScheme, appUuid, uuid, sourceApplication, shortCode string) error {
+	c := this.pool.Get()
+	defer c.Close()
+
+	key := fmt.Sprintf("%s:%s:%s:%s:%s", appUrlScheme, appUuid, uuid, shortCode, sourceApplication)
+	reply, err := c.Do("SET", this.settings.RedisPrefix+"app-open:"+key, timestamp())
 	if err == nil && reply != "OK" {
 		err = errors.New("Invalid Redis response")
 	}
@@ -518,4 +531,8 @@ func (this *ShortUrl) Delete() error {
 	}
 
 	return nil
+}
+
+func timestamp() int64 {
+	return time.Now().Unix()
 }

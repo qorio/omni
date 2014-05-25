@@ -9,11 +9,9 @@ import (
 	omni_http "github.com/qorio/omni/http"
 	"io"
 	"io/ioutil"
-	"math"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 )
 
 var (
@@ -69,13 +67,15 @@ func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty) (api *Short
 		regex := fmt.Sprintf(regexFmt, service.UrlLength())
 		api.router.HandleFunc("/{id:"+regex+"}", api.RedirectHandler).Methods("GET").Name("redirect")
 		api.router.HandleFunc("/api/v1/url", api.ApiAddHandler).Methods("POST").Name("add")
-		api.router.HandleFunc("/api/v1/stats/{id:"+regex+"}", api.StatsHandler).Methods("GET").Name("stats")
+
 		api.router.HandleFunc("/api/v1/events/install/{scheme}/{app_uuid}",
-			api.ReportInstallHandler).Methods("GET").Name("app_install")
+			api.ApiReportInstallOnReferredAppLaunch).Methods("POST").Name("app_install_referred_launch")
+
+		api.router.HandleFunc("/api/v1/events/openurl/{scheme}/{app_uuid}",
+			api.ApiReportAppOpenUrl).Methods("POST").Name("app_ping")
+
 		api.router.HandleFunc("/api/v1/events/missing/{scheme}/{id:"+regex+"}",
 			api.ReportDeviceUrlSchemeHandlerMissing).Name("app_missing")
-		api.router.HandleFunc("/api/v1/events/ping/{scheme}/{id:"+regex+"}/{uuid}/{app_uuid}",
-			api.ReportDeviceUrlSchemeHandlerPing).Methods("POST").Name("app_ping")
 
 		return api, nil
 	} else {
@@ -94,12 +94,18 @@ func NewRedirector(settings ShortyEndPointSettings, service Shorty) (api *Shorty
 
 		regex := fmt.Sprintf(regexFmt, service.UrlLength())
 		api.router.HandleFunc("/{id:"+regex+"}", api.RedirectHandler).Methods("GET").Name("redirect")
+
+		// Install reporting when no context is known (organic install, first launch)
+		api.router.HandleFunc("/i/{scheme}/{app_uuid}",
+			api.ReportInstallOnDirectAppLaunch).Methods("GET").Name("app_install_on_direct_launch")
+
 		api.router.HandleFunc("/h/{shortUrlId:"+regex+"}/{uuid}",
 			api.HarvestCookiedUUIDHandler).Methods("GET").Name("harvest")
 
 		// Intermediary points where information about the current context of the short link gets collected.
 		api.router.HandleFunc("/c/{scheme}/{shortCode:"+regex+"}/{uuid}/{fetchUrl}",
 			api.CollectContextHandler).Methods("GET").Name("collect_context")
+
 		// Dynamically generated so that any html @fetchUrl loaded by above can reference it as src="../deeplink.js"
 		api.router.HandleFunc("/c/{scheme}/{shortCode:"+regex+"}/{uuid}/deeplink.js",
 			api.DeeplinkJavaScriptHandler).Methods("GET").Name("collect_context")
@@ -182,7 +188,12 @@ func (this *ShortyEndPoint) ApiAddHandler(resp http.ResponseWriter, req *http.Re
 // cookied = if the user uuid is cookied
 func processCookies(cookies omni_http.Cookies, shortCode string) (visits int, cookied bool, last, uuid string) {
 	cookies.Get(lastViewedCookieKey, &last)
-	cookies.Get(shortCode, &visits)
+
+	sc := shortCode
+	if sc == "" {
+		sc = last
+	}
+	cookies.Get(sc, &visits)
 
 	var cookieError error
 
@@ -195,8 +206,8 @@ func processCookies(cookies omni_http.Cookies, shortCode string) (visits int, co
 	}
 
 	visits++
-	cookieError = cookies.Set(lastViewedCookieKey, shortCode)
-	cookieError = cookies.Set(shortCode, visits)
+	cookieError = cookies.Set(lastViewedCookieKey, sc)
+	cookieError = cookies.Set(sc, visits)
 
 	return
 }
@@ -326,19 +337,7 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	} else {
 
 		glog.Infoln(">>> Matched Rule = ", matchedRule)
-
-		// TODO - check to see if the app has SDK.  If there's SDK send extra params
-		if matchedRule != nil {
-			parsedUrl, pErr := url.Parse(destination)
-			// If the schemes match, then it's a deeplink.  Add additional params if the destination is
-			// a deeplink or a http url that is mapped in Android's intent filter (where an app can also handle
-			// url with http as scheme.
-			if pErr == nil && (parsedUrl.Scheme == matchedRule.AppUrlScheme || matchedRule.IsAndroidIntentFilter) {
-				destination = addQueryParam(destination, contextQueryParam, userId)
-				destination = addQueryParam(destination, appUrlSchemeParam, matchedRule.AppUrlScheme)
-				destination = addQueryParam(destination, shortCodeParam, shortUrl.Id)
-			}
-		}
+		destination = injectContext(destination, matchedRule, shortUrl, userId)
 		http.Redirect(resp, req, destination, http.StatusMovedPermanently)
 	}
 
@@ -434,7 +433,7 @@ func (this *ShortyEndPoint) HarvestCookiedUUIDHandler(resp http.ResponseWriter, 
 			this.service.Link(uuid, userId, appUrlSchemeParam[0], shortUrl.Id)
 			// Here we also assume that the user will install the app at some point.
 			// Go ahead and assume that and let other mechanisms to invalidate this.
-			this.service.TrackInstall(uuid, appUrlSchemeParam[0], shortUrl.InstallTTLSeconds)
+			this.service.TrackInstall(uuid, appUrlSchemeParam[0])
 		}
 		if next, err := this.router.Get("redirect").URL("id", shortUrl.Id); err != nil {
 			renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
@@ -612,252 +611,40 @@ func (this *ShortyEndPoint) ReportDeviceUrlSchemeHandlerMissing(resp http.Respon
 	}
 }
 
-func (this *ShortyEndPoint) ReportDeviceUrlSchemeHandlerPing(resp http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-
-	appUrlScheme := vars["scheme"]
-	appUuid := vars["app_uuid"]
-	uuid := vars["uuid"]
-	shortCode := vars["id"]
-
-	glog.Infoln("App ping:", shortCode, appUrlScheme, appUuid, "uuid=", uuid)
-
-	this.service.TrackInstall(uuid, appUrlScheme, 0) // TOOD - fix the TTL
-	this.service.Link(uuid, appUuid, appUrlScheme, shortCode)
-
-	go func() {
-		origin, _ := this.requestParser.Parse(req)
-
-		installOrigin, installAppKey, installCampaignKey := "NONE", appUrlScheme, "DIRECT"
-		if shortUrl, err := this.service.Find(shortCode); shortUrl != nil && err == nil {
-			origin.ShortCode = shortUrl.Id
-			installOrigin = shortUrl.Origin
-			installAppKey = shortUrl.AppKey
-			installCampaignKey = shortUrl.CampaignKey
-		}
-
-		this.service.PublishAppOpen(&AppOpenEvent{
-			RequestOrigin: origin,
-			ShortyUUID_A:  uuid,
-			ShortyUUID_B:  appUuid,
-			Origin:        installOrigin,
-			AppKey:        installAppKey,
-			CampaignKey:   installCampaignKey,
-		})
-
-	}()
-}
-
-func (this *ShortyEndPoint) ReportInstallHandler(resp http.ResponseWriter, req *http.Request) {
-	omni_http.SetNoCachingHeaders(resp)
-
-	vars := mux.Vars(req)
-	cookies := omni_http.NewCookieHandler(secureCookie, resp, req)
-
-	// Two parameters
-	// 1. app custom url scheme -> this allows us to key by mobile app per user
-	// 2. some uuid for the app -> this tracks a user. on ios, idfa uuid is used.
-
-	appUrlScheme := vars["scheme"]
-	if appUrlScheme == "" {
-		renderError(resp, req, "No app customer url scheme", http.StatusBadRequest)
+func (this *ShortyEndPoint) match(shortCode string, resp http.ResponseWriter, req *http.Request) (shortUrl *ShortUrl, match *RoutingRule, err error) {
+	shortUrl, err = this.service.Find(shortCode)
+	if err != nil {
 		return
 	}
 
-	appUuid := vars["app_uuid"]
-	if appUuid == "" {
-		renderError(resp, req, "No uuid", http.StatusBadRequest)
-		return
-	}
-
-	// read the cookies that have been set before when user clicked a short link
-	// this allows us to send a redirect as appropriate; otherwise, send a app url with 404
-
-	// a unique user identifier -- generated by us and the lastViewed short code
-	userId, lastViewed := "", ""
-
-	cookies.Get(uuidCookieKey, &userId)
-	cookies.Get(lastViewedCookieKey, &lastViewed)
-
-	var shortUrl *ShortUrl
-	var err error
-	var expiration int64 = 0
-	shortCode := ""
-
-	if userId == "" && lastViewed == "" {
-		// This is an organic install - install not driven by short link
-
-		// TODO - Send a Thank you page, where onLoad, a deeplink to return to the app is triggered.
-		// The url / content for the thank you page must be associated to a scheme and platform
-		// but not tied to a particular shortlink.
-	}
-
-	var destination string = appUrlScheme + "://404"
-	if lastViewed == "" {
-		destination = addQueryParam(destination, contextQueryParam, userId)
-		http.Redirect(resp, req, destination, http.StatusMovedPermanently)
-		goto stat
-	} else {
-		shortUrl, err = this.service.Find(lastViewed)
-		if err != nil {
-			renderError(resp, req, err.Error(), http.StatusInternalServerError)
-			return
-		} else if shortUrl == nil {
-			destination = addQueryParam(destination, contextQueryParam, userId)
-			http.Redirect(resp, req, destination, http.StatusMovedPermanently)
-			goto stat
-		} else {
-			shortCode = shortUrl.Id
-			if shortUrl.InstallTTLSeconds > 0 {
-				expiration = time.Now().Unix() + shortUrl.InstallTTLSeconds
-			}
-		}
-	}
-
-	// If there are platform-dependent routing
-	if len(shortUrl.Rules) > 0 {
+	if shortUrl != nil && len(shortUrl.Rules) > 0 {
 		userAgent := omni_http.ParseUserAgent(req)
+		cookies := omni_http.NewCookieHandler(secureCookie, resp, req)
 		origin, _ := this.requestParser.Parse(req)
 		for _, rule := range shortUrl.Rules {
-			if match := rule.Match(this.service, userAgent, origin, cookies); match {
-				destination = rule.Destination
-				break
+			if matched := rule.Match(this.service, userAgent, origin, cookies); matched {
+				match = &rule
+				return
 			}
 		}
 	}
+	return
+}
 
-	// TODO - check to see if the app has SDK
-	destination = addQueryParam(destination, contextQueryParam, userId)
-	destination = addQueryParam(destination, appUrlSchemeParam, appUrlScheme)
-	destination = addQueryParam(destination, shortCodeParam, shortCode)
-	http.Redirect(resp, req, destination, http.StatusMovedPermanently)
-
-stat:
-	this.service.Link(appUuid, userId, appUrlScheme, shortCode)
-	this.service.TrackInstall(userId, appUrlScheme, expiration)
-
-	go func() {
-		origin, geoParseErr := this.requestParser.Parse(req)
-		origin.Destination = destination
-
-		installOrigin, installAppKey, installCampaignKey := "NONE", appUrlScheme, "DIRECT"
-
-		if shortUrl != nil {
-			origin.ShortCode = shortUrl.Id
-			installOrigin = shortUrl.Origin
-			installAppKey = shortUrl.AppKey
-			installCampaignKey = shortUrl.CampaignKey
+func injectContext(dest string, matchedRule *RoutingRule, shortUrl *ShortUrl, userId string) string {
+	destination := dest
+	if matchedRule != nil {
+		parsedUrl, pErr := url.Parse(destination)
+		// If the schemes match, then it's a deeplink.  Add additional params if the destination is
+		// a deeplink or a http url that is mapped in Android's intent filter (where an app can also handle
+		// url with http as scheme.
+		if pErr == nil && (parsedUrl.Scheme == matchedRule.AppUrlScheme || matchedRule.IsAndroidIntentFilter) {
+			destination = addQueryParam(destination, contextQueryParam, userId)
+			destination = addQueryParam(destination, appUrlSchemeParam, matchedRule.AppUrlScheme)
+			destination = addQueryParam(destination, shortCodeParam, shortUrl.Id)
 		}
-
-		if geoParseErr != nil {
-			glog.Warningln("can-not-determine-location", geoParseErr)
-		}
-		glog.Infoln("send-to:", destination,
-			"ip:", origin.Ip, "mobile:", origin.UserAgent.Mobile,
-			"platform:", origin.UserAgent.Platform, "os:", origin.UserAgent.OS, "make:", origin.UserAgent.Make,
-			"browser:", origin.UserAgent.Browser, "version:", origin.UserAgent.BrowserVersion,
-			"location:", *origin.Location,
-			"useragent:", origin.UserAgent.Header)
-
-		this.service.PublishInstall(&InstallEvent{
-			RequestOrigin: origin,
-			Destination:   destination,
-			AppUrlScheme:  appUrlScheme,
-			AppUUID:       appUuid,
-			ShortyUUID:    userId,
-			Origin:        installOrigin,
-			AppKey:        installAppKey,
-			CampaignKey:   installCampaignKey,
-		})
-	}()
-}
-
-type StatsSummary struct {
-	Id      string      `json:"id"`
-	Created string      `json:"when"`
-	Hits    int         `json:"hits"`
-	Uniques int         `json:"uniques"`
-	Summary OriginStats `json:"summary"`
-	Config  ShortUrl    `json:"config"`
-}
-
-func (this *ShortyEndPoint) StatsHandler(resp http.ResponseWriter, req *http.Request) {
-	omni_http.SetCORSHeaders(resp)
-
-	vars := mux.Vars(req)
-	shortyUrl, err := this.service.Find(vars["id"])
-	if err != nil {
-		renderError(resp, req, err.Error(), http.StatusInternalServerError)
-		return
-	} else if shortyUrl == nil {
-		renderError(resp, req, "No URL was found with short code", http.StatusNotFound)
-		return
 	}
-
-	hits, err := shortyUrl.Hits()
-	if err != nil {
-		renderError(resp, req, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	uniques, err := shortyUrl.Uniques()
-	if err != nil {
-		renderError(resp, req, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	originStats, err := shortyUrl.Sources(true)
-	if err != nil {
-		renderError(resp, req, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	summary := StatsSummary{
-		Id:      shortyUrl.Id,
-		Created: relativeTime(time.Now().Sub(shortyUrl.Created)),
-		Hits:    hits,
-		Uniques: uniques,
-		Summary: originStats,
-		Config:  *shortyUrl,
-	}
-
-	buff, err := json.Marshal(summary)
-	if err != nil {
-		renderJsonError(resp, req, "Malformed summary", http.StatusInternalServerError)
-		return
-	}
-	resp.Write(buff)
-}
-
-func relativeTime(duration time.Duration) string {
-	hours := int64(math.Abs(duration.Hours()))
-	minutes := int64(math.Abs(duration.Minutes()))
-	when := ""
-	switch {
-	case hours >= (365 * 24):
-		when = "Over an year ago"
-	case hours > (30 * 24):
-		when = fmt.Sprintf("%d months ago", int64(hours/(30*24)))
-	case hours == (30 * 24):
-		when = "a month ago"
-	case hours > 24:
-		when = fmt.Sprintf("%d days ago", int64(hours/24))
-	case hours == 24:
-		when = "yesterday"
-	case hours >= 2:
-		when = fmt.Sprintf("%d hours ago", hours)
-	case hours > 1:
-		when = "over an hour ago"
-	case hours == 1:
-		when = "an hour ago"
-	case minutes >= 2:
-		when = fmt.Sprintf("%d minutes ago", minutes)
-	case minutes > 1:
-		when = "a minute ago"
-	default:
-		when = "just now"
-	}
-	return when
+	return destination
 }
 
 func addQueryParam(url, key, value string) string {
