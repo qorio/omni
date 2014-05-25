@@ -152,11 +152,12 @@ type DecodeEvent struct {
 }
 
 type InstallEvent struct {
-	RequestOrigin *http.RequestOrigin
-	AppUrlScheme  string
-	AppUUID       string
-	Destination   string
-	ShortyUUID    string
+	RequestOrigin     *http.RequestOrigin
+	AppUrlScheme      string
+	AppUUID           string
+	Destination       string
+	SourceUUID        string
+	SourceApplication string
 	// for tracking campaigns
 	Origin      string
 	AppKey      string

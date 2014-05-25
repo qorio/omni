@@ -56,7 +56,7 @@ func (this *ShortyEndPoint) ReportInstallOnDirectAppLaunch(resp http.ResponseWri
 		SourceApplication: ".",
 	}
 
-	this.service.TrackInstall(appUuid, appUrlScheme)
+	this.handleInstall(appUrlScheme, appUuid, appOpen, req)
 	this.handleAppOpen(appUrlScheme, appUuid, appOpen, req)
 
 	switch {
@@ -112,7 +112,10 @@ func (this *ShortyEndPoint) ApiReportInstallOnReferredAppLaunch(resp http.Respon
 		}
 	}
 
-	this.service.TrackInstall(appUuid, appUrlScheme)
+	if err := this.handleInstall(appUrlScheme, appUuid, appOpen, req); err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	if err := this.handleAppOpen(appUrlScheme, appUuid, appOpen, req); err != nil {
 		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
@@ -201,6 +204,62 @@ func (this *ShortyEndPoint) handleAppOpen(appUrlScheme, appUuid string, appOpen 
 			"useragent:", origin.UserAgent.Header)
 
 		this.service.PublishAppOpen(&AppOpenEvent{
+			RequestOrigin:     origin,
+			Destination:       appOpen.Deeplink,
+			AppUrlScheme:      appUrlScheme,
+			AppUUID:           appUuid,
+			SourceUUID:        appOpen.UUID,
+			SourceApplication: appOpen.SourceApplication,
+			Origin:            installOrigin,
+			AppKey:            installAppKey,
+			CampaignKey:       installCampaignKey,
+		})
+	}()
+	return nil
+}
+
+func (this *ShortyEndPoint) handleInstall(appUrlScheme, appUuid string, appOpen *AppOpen, req *http.Request) error {
+	if appOpen.UUID != "" {
+		this.service.Link(appOpen.UUID, appUuid, appUrlScheme, appOpen.ShortCode)
+	}
+
+	this.service.TrackInstall(appUuid, appUrlScheme)
+
+	shortUrl, err := this.service.Find(appOpen.ShortCode)
+	if err != nil {
+		return err
+	}
+
+	if shortUrl == nil {
+		// Problem - we can't do attribution
+		glog.Warningln("cannot-determine-short-code")
+	}
+
+	go func() {
+
+		origin, geoParseErr := this.requestParser.Parse(req)
+		origin.Destination = appOpen.Deeplink
+
+		installOrigin, installAppKey, installCampaignKey := "NONE", appUrlScheme, "ORGANIC"
+
+		if shortUrl != nil {
+			origin.ShortCode = shortUrl.Id
+			installOrigin = shortUrl.Origin
+			installAppKey = shortUrl.AppKey
+			installCampaignKey = shortUrl.CampaignKey
+		}
+
+		if geoParseErr != nil {
+			glog.Warningln("can-not-determine-location", geoParseErr)
+		}
+		glog.Infoln("send-to:", appOpen.Deeplink,
+			"ip:", origin.Ip, "mobile:", origin.UserAgent.Mobile,
+			"platform:", origin.UserAgent.Platform, "os:", origin.UserAgent.OS, "make:", origin.UserAgent.Make,
+			"browser:", origin.UserAgent.Browser, "version:", origin.UserAgent.BrowserVersion,
+			"location:", *origin.Location,
+			"useragent:", origin.UserAgent.Header)
+
+		this.service.PublishInstall(&InstallEvent{
 			RequestOrigin:     origin,
 			Destination:       appOpen.Deeplink,
 			AppUrlScheme:      appUrlScheme,
