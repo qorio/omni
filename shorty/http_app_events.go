@@ -48,6 +48,8 @@ func (this *ShortyEndPoint) ApiTryMatchInstallOnOrganicAppLaunch(resp http.Respo
 	fingerprint := omni_http.FingerPrint(origin)
 	score, visit, _ := this.service.MatchFingerPrint(fingerprint)
 
+	glog.Infoln("Matching fingerprint: score=", score, "visit=", visit)
+
 	// TOOD - make the min score configurable
 	if score > 0.8 {
 
