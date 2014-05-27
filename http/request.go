@@ -63,7 +63,7 @@ func FingerPrint(origin *RequestOrigin) string {
 }
 
 func GetFingerPrintMatchQuery(fingerprint string) string {
-	return fingerprint + ":*"
+	return fingerprint + "*"
 }
 
 func MatchFingerPrint(fp string, fingerprints []string) (match string, score float64) {
