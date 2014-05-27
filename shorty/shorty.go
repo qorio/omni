@@ -486,7 +486,10 @@ func (this *shortyImpl) MatchFingerPrint(fingerprint string) (score float64, vis
 		glog.Warningln("Error", err)
 		return
 	}
+	glog.Infoln("matching fingerprint: fingerprint=", fingerprint, "q=", q, "result=", reply)
 	match, matchScore := http.MatchFingerPrint(fingerprint, reply)
+	glog.Infoln("matching fingerprint: match=", match, "score=", score)
+
 	value, err2 := redis.Bytes(c.Do("GET", this.settings.RedisPrefix+"fingerprint:"+match))
 	if err2 != nil {
 		glog.Warningln("Error", err2)
