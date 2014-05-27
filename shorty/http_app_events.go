@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type AppOpen struct {
@@ -51,7 +52,8 @@ func (this *ShortyEndPoint) ApiTryMatchInstallOnOrganicAppLaunch(resp http.Respo
 	glog.Infoln("Matching fingerprint: score=", score, "visit=", visit)
 
 	// TOOD - make the min score configurable
-	if score > 0.8 {
+	// Also make sure the last visit was no more than 5 minutes ago
+	if score > 0.8 && (time.Now().Unix()-visit.Timestamp) < 5*60 {
 
 		// Good enough - tell the SDK to go on.  No need to try to report conversion
 		appOpen := &AppOpen{

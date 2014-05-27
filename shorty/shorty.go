@@ -487,7 +487,13 @@ func (this *shortyImpl) MatchFingerPrint(fingerprint string) (score float64, vis
 		return
 	}
 	glog.Infoln("matching fingerprint: fingerprint=", fingerprint, "q=", q, "result=", reply)
-	match, matchScore := http.MatchFingerPrint(fingerprint, reply)
+
+	// need to remove the prefix before matching
+	candidates := make([]string, len(reply))
+	for i, v := range reply {
+		candidates[i] = strings.Split(v, this.settings.RedisPrefix+"fingerprint:")[1]
+	}
+	match, matchScore := http.MatchFingerPrint(fingerprint, candidates)
 	glog.Infoln("matching fingerprint: match=", match, "score=", score)
 
 	value, err2 := redis.Bytes(c.Do("GET", this.settings.RedisPrefix+"fingerprint:"+match))
