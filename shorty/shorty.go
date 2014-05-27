@@ -22,6 +22,15 @@ type Settings struct {
 	UrlLength      int
 }
 
+type MatchableVisit struct {
+	Fingerprint string
+	UUID        string `json:"uuid"`
+	ShortCode   string `json:"shortCode"`
+	Deeplink    string `json:"deeplink"`
+	Timestamp   int64
+	Referrer    string
+}
+
 type RoutingRule struct {
 
 	// Matching rule -- all or any of the Match<type> properties
@@ -158,10 +167,12 @@ type InstallEvent struct {
 	Destination       string
 	SourceUUID        string
 	SourceApplication string
-	// for tracking campaigns
+
 	Origin      string
 	AppKey      string
 	CampaignKey string
+
+	ReportingMethod string // 'fingerprint', 'browser-switch', 'referred-app-open'
 }
 
 type LinkEvent struct {
@@ -169,9 +180,10 @@ type LinkEvent struct {
 	AppUrlScheme  string
 	ShortyUUID_A  string
 	ShortyUUID_B  string
-	Origin        string
-	AppKey        string
-	CampaignKey   string
+
+	Origin      string
+	AppKey      string
+	CampaignKey string
 }
 
 type AppOpenEvent struct {
@@ -181,9 +193,10 @@ type AppOpenEvent struct {
 	Destination       string
 	SourceUUID        string
 	SourceApplication string
-	Origin            string
-	AppKey            string
-	CampaignKey       string
+
+	Origin      string
+	AppKey      string
+	CampaignKey string
 }
 
 type Shorty interface {
@@ -198,7 +211,11 @@ type Shorty interface {
 	TrackInstall(shortyUUID, appUrlScheme string) error
 	TrackAppOpen(appUrlScheme, appUuid, uuid, sourceApplication, shortCode string) error
 	FindInstall(shortyUUID, appUrlScheme string) (expiration int64, found bool, err error)
+	FindLink(appUuid, uuid string) (found bool, err error)
 	DeleteInstall(shortyUUID, appUrlScheme string) (count int, err error)
+
+	SaveMatchableVisit(visit *MatchableVisit) error
+	MatchFingerPrint(fingerprint string) (score float64, visit *MatchableVisit, err error)
 
 	DecodeEventChannel() <-chan *DecodeEvent
 	InstallEventChannel() <-chan *InstallEvent
@@ -428,6 +445,55 @@ func (this *shortyImpl) Link(shortyUUIDContextPrev, shortyUUIDContextCurrent, ap
 		err = errors.New("Invalid Redis response")
 	}
 	return err
+}
+
+func (this *shortyImpl) FindLink(appUuid, uuid string) (found bool, err error) {
+	c := this.pool.Get()
+	defer c.Close()
+
+	// The key allows searching A:B or B:A by making it A:B:A
+	wildcard := fmt.Sprintf("*%s:%s*", appUuid, uuid)
+	reply, err := redis.String(c.Do("GET", this.settings.RedisPrefix+"uuid-pair:"+wildcard))
+	if err == nil && reply != "" {
+		found = true
+		return
+	}
+	return
+}
+
+func (this *shortyImpl) SaveMatchableVisit(visit *MatchableVisit) error {
+	c := this.pool.Get()
+	defer c.Close()
+
+	value, err := json.Marshal(visit)
+	if err != nil {
+		return err
+	}
+	reply, err := c.Do("SET", this.settings.RedisPrefix+"fingerprint:"+visit.Fingerprint, value)
+	if err == nil && reply != "OK" {
+		err = errors.New("Invalid Redis response")
+	}
+	return err
+}
+
+func (this *shortyImpl) MatchFingerPrint(fingerprint string) (score float64, visit *MatchableVisit, err error) {
+	c := this.pool.Get()
+	defer c.Close()
+
+	q := http.GetFingerPrintMatchQuery(fingerprint)
+	reply, err := redis.Strings(c.Do("KEYS", this.settings.RedisPrefix+"fingerprint:"+q))
+	if err == nil {
+		match, matchScore := http.MatchFingerPrint(fingerprint, reply)
+		value, err2 := redis.Bytes(c.Do("GET", this.settings.RedisPrefix+"fingerprint:"+match))
+		if err2 == nil {
+			if err3 := json.Unmarshal(value, &visit); err3 == nil {
+				score = matchScore
+				return
+			}
+		}
+	}
+
+	return
 }
 
 func (this *shortyImpl) TrackInstall(shortyUUID, appUrlScheme string) error {

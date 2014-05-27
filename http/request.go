@@ -2,6 +2,7 @@ package http
 
 import (
 	"errors"
+	"fmt"
 	"github.com/mssola/user_agent"
 	"github.com/nranchev/go-libGeoIP"
 	"net/http"
@@ -44,6 +45,41 @@ type RequestOrigin struct {
 	Destination string
 	ShortCode   string
 	LastVisit   string
+}
+
+func FingerPrint(origin *RequestOrigin) string {
+	if origin.Location == nil {
+		return origin.Ip // Not very good...
+	}
+	return strings.Join([]string{
+		origin.Ip,
+		fmt.Sprintf("%.4f", origin.Location.Longitude),
+		fmt.Sprintf("%.4f", origin.Location.Latitude),
+		origin.Location.CountryCode,
+		origin.Location.PostalCode,
+		origin.Location.Region,
+		origin.Location.City,
+	}, ":")
+}
+
+func GetFingerPrintMatchQuery(fingerprint string) string {
+	return fingerprint + ":*"
+}
+
+func MatchFingerPrint(fp string, fingerprints []string) (match string, score float64) {
+	// TODO - given list of candidates, return the highest score match
+	for _, test := range fingerprints {
+		if test == fp {
+			return test, 1.0
+		}
+
+		// TODO - Otherwise, look for partial matches
+		parts := strings.Split(test, ":")
+		if test == parts[0] { // by ip
+			return test, 0.8
+		}
+	}
+	return "", 0.
 }
 
 func NewRequestParser(geoDb string) (parser *RequestParser, err error) {

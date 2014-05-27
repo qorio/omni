@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 var (
@@ -68,6 +69,12 @@ func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty) (api *Short
 		api.router.HandleFunc("/{id:"+regex+"}", api.RedirectHandler).Methods("GET").Name("redirect")
 		api.router.HandleFunc("/api/v1/url", api.ApiAddHandler).Methods("POST").Name("add")
 
+		// First attempt if the app starts up organically -- this gives the server an opportunity
+		// to match by fingerprinting.  If fingerprinting cannot match a user then the response will tell
+		// the SDK to use safari for first launch install reporting.
+		api.router.HandleFunc("/api/v1/tryfp/{scheme}/{app_uuid}",
+			api.ApiTryMatchInstallOnOrganicAppLaunch).Methods("POST").Name("app_install_try_fingerprint")
+
 		api.router.HandleFunc("/api/v1/events/install/{scheme}/{app_uuid}",
 			api.ApiReportInstallOnReferredAppLaunch).Methods("POST").Name("app_install_referred_launch")
 
@@ -97,7 +104,7 @@ func NewRedirector(settings ShortyEndPointSettings, service Shorty) (api *Shorty
 
 		// Install reporting when no context is known (organic install, first launch)
 		api.router.HandleFunc("/i/{scheme}/{app_uuid}",
-			api.ReportInstallOnDirectAppLaunch).Methods("GET").Name("app_install_on_direct_launch")
+			api.ReportInstallOnOrganicAppLaunch).Methods("GET").Name("app_install_on_direct_launch")
 
 		api.router.HandleFunc("/h/{shortUrlId:"+regex+"}/{uuid}",
 			api.HarvestCookiedUUIDHandler).Methods("GET").Name("harvest")
@@ -335,13 +342,13 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	if renderInline {
 		resp.Write([]byte(destination))
 	} else {
-
-		glog.Infoln(">>> Matched Rule = ", matchedRule)
 		destination = injectContext(destination, matchedRule, shortUrl, userId)
 		http.Redirect(resp, req, destination, http.StatusMovedPermanently)
 	}
 
 	// Record stats asynchronously
+	timestamp := time.Now().Unix()
+
 	go func() {
 		origin, geoParseErr := this.requestParser.Parse(req)
 		origin.Cookied = cookied
@@ -360,6 +367,17 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 			"location:", *origin.Location,
 			"useragent:", origin.UserAgent.Header,
 			"cookied", cookied)
+
+		// Save a fingerprint
+		fingerprint := omni_http.FingerPrint(origin)
+		this.service.SaveMatchableVisit(&MatchableVisit{
+			Fingerprint: fingerprint,
+			UUID:        userId,
+			ShortCode:   shortUrl.Id,
+			Deeplink:    destination,
+			Timestamp:   timestamp,
+			Referrer:    origin.Referrer,
+		})
 
 		this.service.PublishDecode(&DecodeEvent{
 			RequestOrigin:    origin,
