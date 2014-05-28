@@ -2,6 +2,7 @@ package shorty
 
 import (
 	"encoding/json"
+	"flag"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	omni_http "github.com/qorio/omni/http"
@@ -10,6 +11,11 @@ import (
 	"net/http"
 	"strings"
 	"time"
+)
+
+var (
+	fingerPrintExpirationMinutes = flag.Int64("fingerprint_expiration_minutes", 2, "Minutes TTL matching by fingerprint")
+	fingerPrintMinMatchingScore  = flag.Float64("fingerprint_min_score", 0.8, "Minimum score to match by fingerprint")
 )
 
 type AppOpen struct {
@@ -53,7 +59,7 @@ func (this *ShortyEndPoint) ApiTryMatchInstallOnOrganicAppLaunch(resp http.Respo
 
 	// TOOD - make the min score configurable
 	// Also make sure the last visit was no more than 5 minutes ago
-	if score > 0.8 && (time.Now().Unix()-visit.Timestamp) < 5*60 {
+	if score > *fingerPrintMinMatchingScore && (time.Now().Unix()-visit.Timestamp) < *fingerPrintExpirationMinutes*60 {
 
 		// Good enough - tell the SDK to go on.  No need to try to report conversion
 		appOpen := &AppOpen{
