@@ -28,7 +28,7 @@ type MatchableVisit struct {
 	ShortCode   string `json:"shortCode"`
 	Deeplink    string `json:"deeplink"`
 	Timestamp   int64
-	Referrer    string
+	Referrer    string `json:"sourceApplication"`
 }
 
 type RoutingRule struct {
