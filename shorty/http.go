@@ -15,6 +15,8 @@ import (
 	"time"
 )
 
+var secureCookie *omni_http.SecureCookie
+
 var (
 	contextQueryParam = "__xrlc"
 	appUrlSchemeParam = "__xrlp"
@@ -22,16 +24,9 @@ var (
 
 	uuidCookieKey       = "uuid"
 	lastViewedCookieKey = "last"
-)
 
-type ShortyAddRequest struct {
-	Vanity   string        `json:"vanity"`
-	LongUrl  string        `json:"longUrl"`
-	Rules    []RoutingRule `json:"rules"`
-	Origin   string        `json:"origin"`
-	ApiToken string        `json:"token"` // user facing token that resolves to appKey
-	Campaign string        `json:"campaign"`
-}
+	regexFmt string = "[_A-Za-z0-9\\.\\-]{%d,}"
+)
 
 type ShortyEndPointSettings struct {
 	Redirect404     string
@@ -44,9 +39,6 @@ type ShortyEndPoint struct {
 	requestParser *omni_http.RequestParser
 	service       Shorty
 }
-
-var secureCookie *omni_http.SecureCookie
-var regexFmt string = "[_A-Za-z0-9\\.\\-]{%d,}"
 
 func init() {
 	var err error

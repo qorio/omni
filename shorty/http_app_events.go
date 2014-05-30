@@ -18,13 +18,6 @@ var (
 	fingerPrintMinMatchingScore  = flag.Float64("fingerprint_min_score", 0.8, "Minimum score to match by fingerprint")
 )
 
-type AppOpen struct {
-	SourceApplication string `json:"sourceApplication"`
-	UUID              UUID   `json:"uuid"`
-	ShortCode         string `json:"shortCode"`
-	Deeplink          string `json:"deeplink"`
-}
-
 // /api/v1/events/try/{scheme}/{app_uuid}
 // This handler is hit first when the app starts up organically.  So in this case, nothing is known,
 // other than the scheme and app_uuid.  So we try to see if there's an existing decode record by the
