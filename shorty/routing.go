@@ -5,6 +5,7 @@ import (
 	"github.com/qorio/omni/http"
 	"regexp"
 	"strconv"
+	"time"
 )
 
 func (this *RoutingRule) Match(service Shorty, ua *http.UserAgent, origin *http.RequestOrigin, cookies http.Cookies) bool {
@@ -47,15 +48,22 @@ func (this *RoutingRule) Match(service Shorty, ua *http.UserAgent, origin *http.
 			actual |= 1 << 5
 		}
 	}
-	if len(this.MatchInstalled) > 0 {
+	if len(this.MatchInstalled) > 0 && this.AppUrlScheme != "" {
 		expect |= 1 << 6
-		if this.AppUrlScheme != "" {
-			uuid, _ := cookies.GetPlainString(uuidCookieKey)
-			_, found, _ := service.FindInstall(UrlScheme(this.AppUrlScheme), UUID(uuid))
-			glog.Infoln("checking install", uuid, this.AppUrlScheme, found)
-			if matches, _ := regexp.MatchString(this.MatchInstalled, strconv.FormatBool(found)); matches {
-				actual |= 1 << 6
-			}
+		uuid, _ := cookies.GetPlainString(uuidCookieKey)
+		_, found, _ := service.FindInstall(UrlScheme(this.AppUrlScheme), UUID(uuid))
+		glog.Infoln("checking install", uuid, this.AppUrlScheme, found)
+		if matches, _ := regexp.MatchString(this.MatchInstalled, strconv.FormatBool(found)); matches {
+			actual |= 1 << 6
+		}
+	}
+	if this.MatchNoAppOpenInXDays > 0 && this.AppUrlScheme != "" {
+		expect |= 1 << 7
+		uuid, _ := cookies.GetPlainString(uuidCookieKey)
+		timestamp, found, _ := service.FindAppOpen(UrlScheme(this.AppUrlScheme), UUID(uuid))
+		glog.Infoln("checking app-open", uuid, this.AppUrlScheme, found, timestamp)
+		if !found || time.Now().Unix()-timestamp >= this.MatchNoAppOpenInXDays*24*60*60 {
+			actual |= 1 << 7
 		}
 	}
 	// By the time we get here, we have done a match all

@@ -41,6 +41,9 @@ type RoutingRule struct {
 	// True to check if there's an install of the app by AppUrlScheme
 	MatchInstalled string `json:"installed",omitempty`
 
+	// Match by no app-open or if app-open is X days ago
+	MatchNoAppOpenInXDays int64 `json:"no-app-open-in-x-days",omitempty`
+
 	// For specifying mobile appstore install url and app custom url scheme
 	// If specified, check cookie to see if the app's url scheme exists, if not, direct to appstore
 	AppUrlScheme string `json:"scheme",omitempty`
@@ -56,13 +59,13 @@ type RoutingRule struct {
 	HarvestCookiedUUID bool `json:"x-harvest-cookied-uuid",omitempty`
 
 	// Send to an interstitial page
-	SendToInterstitial bool `json:"x-send-to-interstitial"`
+	SendToInterstitial bool `json:"x-send-to-interstitial",omitempty`
 
 	// True to disasble app store redirection
-	NoAppStoreRedirect bool `json:"x-no-app-store-redirect"`
+	NoAppStoreRedirect bool `json:"x-no-app-store-redirect",omitempty`
 
 	// True to indicate that this is a http url destination but mapped in the intent filter to an app.
-	IsAndroidIntentFilter bool `json:"x-android-intent-filter"`
+	IsAndroidIntentFilter bool `json:"x-android-intent-filter",omitempty`
 }
 
 type ShortUrl struct {
