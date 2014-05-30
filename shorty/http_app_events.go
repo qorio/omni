@@ -20,7 +20,7 @@ var (
 
 type AppOpen struct {
 	SourceApplication string `json:"sourceApplication"`
-	UUID              string `json:"uuid"`
+	UUID              UUID   `json:"uuid"`
 	ShortCode         string `json:"shortCode"`
 	Deeplink          string `json:"deeplink"`
 }
@@ -36,14 +36,14 @@ func (this *ShortyEndPoint) ApiTryMatchInstallOnOrganicAppLaunch(resp http.Respo
 
 	vars := mux.Vars(req)
 
-	appUrlScheme := vars["scheme"]
-	if appUrlScheme == "" {
+	app := vars["scheme"]
+	if app == "" {
 		renderError(resp, req, "No app customer url scheme", http.StatusBadRequest)
 		return
 	}
 
-	appUuid := vars["app_uuid"]
-	if appUuid == "" {
+	appContext := vars["app_uuid"]
+	if appContext == "" {
 		renderError(resp, req, "No uuid", http.StatusBadRequest)
 		return
 	}
@@ -68,11 +68,11 @@ func (this *ShortyEndPoint) ApiTryMatchInstallOnOrganicAppLaunch(resp http.Respo
 			ShortCode:         visit.ShortCode,
 			Deeplink:          visit.Deeplink,
 		}
-		if err := this.handleInstall(appUrlScheme, appUuid, appOpen, req, "fingerprint"); err != nil {
+		if err := this.handleInstall(UrlScheme(app), UUID(appContext), appOpen, req, "fingerprint"); err != nil {
 			renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		if err := this.handleAppOpen(appUrlScheme, appUuid, appOpen, req); err != nil {
+		if err := this.handleAppOpen(UrlScheme(app), UUID(appContext), appOpen, req); err != nil {
 			renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -103,14 +103,14 @@ func (this *ShortyEndPoint) ReportInstallOnOrganicAppLaunch(resp http.ResponseWr
 	vars := mux.Vars(req)
 	cookies := omni_http.NewCookieHandler(secureCookie, resp, req)
 
-	appUrlScheme := vars["scheme"]
-	if appUrlScheme == "" {
+	app := vars["scheme"]
+	if app == "" {
 		renderError(resp, req, "No app customer url scheme", http.StatusBadRequest)
 		return
 	}
 
-	appUuid := vars["app_uuid"]
-	if appUuid == "" {
+	appContext := vars["app_uuid"]
+	if appContext == "" {
 		renderError(resp, req, "No uuid", http.StatusBadRequest)
 		return
 	}
@@ -124,14 +124,14 @@ func (this *ShortyEndPoint) ReportInstallOnOrganicAppLaunch(resp http.ResponseWr
 
 	// Construct a AppOpen object using what is read from the http headers / cookies
 	appOpen := &AppOpen{
-		UUID:              userId,
+		UUID:              UUID(userId),
 		ShortCode:         lastViewed,
 		Deeplink:          ".", // The app opened itself without referrer
 		SourceApplication: "ORGANIC",
 	}
 
-	this.handleInstall(appUrlScheme, appUuid, appOpen, req, "browser-switch")
-	this.handleAppOpen(appUrlScheme, appUuid, appOpen, req)
+	this.handleInstall(UrlScheme(app), UUID(appContext), appOpen, req, "browser-switch")
+	this.handleAppOpen(UrlScheme(app), UUID(appContext), appOpen, req)
 
 	switch {
 
@@ -141,7 +141,7 @@ func (this *ShortyEndPoint) ReportInstallOnOrganicAppLaunch(resp http.ResponseWr
 
 	default:
 		// Ok to add extra param -- this handler is called only from SDK.
-		destination := appUrlScheme + "://404"
+		destination := app + "://404"
 		destination = addQueryParam(destination, contextQueryParam, userId)
 		http.Redirect(resp, req, destination, http.StatusMovedPermanently)
 		return
@@ -157,14 +157,14 @@ func (this *ShortyEndPoint) ApiReportInstallOnReferredAppLaunch(resp http.Respon
 
 	vars := mux.Vars(req)
 
-	appUrlScheme := vars["scheme"]
-	if appUrlScheme == "" {
+	app := vars["scheme"]
+	if app == "" {
 		renderError(resp, req, "No app customer url scheme", http.StatusBadRequest)
 		return
 	}
 
-	appUuid := vars["app_uuid"]
-	if appUuid == "" {
+	appContext := vars["app_uuid"]
+	if appContext == "" {
 		renderError(resp, req, "No uuid", http.StatusBadRequest)
 		return
 	}
@@ -186,11 +186,11 @@ func (this *ShortyEndPoint) ApiReportInstallOnReferredAppLaunch(resp http.Respon
 		}
 	}
 
-	if err := this.handleInstall(appUrlScheme, appUuid, appOpen, req, "referred-app-open"); err != nil {
+	if err := this.handleInstall(UrlScheme(app), UUID(appContext), appOpen, req, "referred-app-open"); err != nil {
 		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if err := this.handleAppOpen(appUrlScheme, appUuid, appOpen, req); err != nil {
+	if err := this.handleAppOpen(UrlScheme(app), UUID(appContext), appOpen, req); err != nil {
 		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -204,14 +204,14 @@ func (this *ShortyEndPoint) ApiReportAppOpenUrl(resp http.ResponseWriter, req *h
 
 	vars := mux.Vars(req)
 
-	appUrlScheme := vars["scheme"]
-	if appUrlScheme == "" {
+	app := vars["scheme"]
+	if app == "" {
 		renderError(resp, req, "No app customer url scheme", http.StatusBadRequest)
 		return
 	}
 
-	appUuid := vars["app_uuid"]
-	if appUuid == "" {
+	appContext := vars["app_uuid"]
+	if appContext == "" {
 		renderError(resp, req, "No uuid", http.StatusBadRequest)
 		return
 	}
@@ -233,15 +233,15 @@ func (this *ShortyEndPoint) ApiReportAppOpenUrl(resp http.ResponseWriter, req *h
 		}
 	}
 
-	if err := this.handleAppOpen(appUrlScheme, appUuid, appOpen, req); err != nil {
+	if err := this.handleAppOpen(UrlScheme(app), UUID(appContext), appOpen, req); err != nil {
 		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
-func (this *ShortyEndPoint) handleAppOpen(appUrlScheme, appUuid string, appOpen *AppOpen, req *http.Request) error {
-	this.service.Link(UrlScheme(appUrlScheme), UUID(appOpen.UUID), UUID(appUuid), appOpen.ShortCode)
-	this.service.TrackAppOpen(appUrlScheme, appUuid, appOpen.UUID, appOpen.SourceApplication, appOpen.ShortCode)
+func (this *ShortyEndPoint) handleAppOpen(app UrlScheme, appContext UUID, appOpen *AppOpen, req *http.Request) error {
+	this.service.Link(app, appOpen.UUID, appContext, appOpen.ShortCode)
+	this.service.TrackAppOpen(app, appContext, appOpen.UUID, appOpen.SourceApplication, appOpen.ShortCode)
 
 	shortUrl, err := this.service.Find(appOpen.ShortCode)
 	if err != nil {
@@ -258,7 +258,7 @@ func (this *ShortyEndPoint) handleAppOpen(appUrlScheme, appUuid string, appOpen 
 		origin, geoParseErr := this.requestParser.Parse(req)
 		origin.Destination = appOpen.Deeplink
 
-		installOrigin, installAppKey, installCampaignKey := "NONE", appUrlScheme, "ORGANIC"
+		installOrigin, installAppKey, installCampaignKey := "NONE", string(app), "ORGANIC"
 
 		if shortUrl != nil {
 			origin.ShortCode = shortUrl.Id
@@ -274,20 +274,20 @@ func (this *ShortyEndPoint) handleAppOpen(appUrlScheme, appUuid string, appOpen 
 		this.service.PublishAppOpen(&AppOpenEvent{
 			RequestOrigin:     origin,
 			Destination:       appOpen.Deeplink,
-			AppUrlScheme:      appUrlScheme,
-			AppUUID:           appUuid,
-			SourceUUID:        appOpen.UUID,
+			App:               app,
+			AppContext:        appContext,
+			SourceContext:     appOpen.UUID,
 			SourceApplication: appOpen.SourceApplication,
 			Origin:            installOrigin,
 			AppKey:            installAppKey,
 			CampaignKey:       installCampaignKey,
 		})
 
-		if found, _ := this.service.FindLink(UUID(appUuid), UUID(appOpen.UUID)); !found {
+		if found, _ := this.service.FindLink(UUID(appContext), appOpen.UUID); !found {
 			this.service.PublishLink(&LinkEvent{
 				RequestOrigin: origin,
-				ShortyUUID_A:  appUuid,
-				ShortyUUID_B:  appOpen.UUID,
+				Context1:      appContext,
+				Context2:      appOpen.UUID,
 				Origin:        installOrigin,
 				AppKey:        installAppKey,
 				CampaignKey:   installCampaignKey,
@@ -297,13 +297,13 @@ func (this *ShortyEndPoint) handleAppOpen(appUrlScheme, appUuid string, appOpen 
 	return nil
 }
 
-func (this *ShortyEndPoint) handleInstall(appUrlScheme, appUuid string, appOpen *AppOpen, req *http.Request, reportingMethod string) error {
+func (this *ShortyEndPoint) handleInstall(app UrlScheme, appContext UUID, appOpen *AppOpen, req *http.Request, reportingMethod string) error {
 
 	if appOpen.UUID != "" {
-		this.service.Link(UrlScheme(appUrlScheme), UUID(appOpen.UUID), UUID(appUuid), appOpen.ShortCode)
+		this.service.Link(app, appOpen.UUID, appContext, appOpen.ShortCode)
 	}
 
-	this.service.TrackInstall(appUuid, appUrlScheme)
+	this.service.TrackInstall(app, appContext)
 
 	shortUrl, err := this.service.Find(appOpen.ShortCode)
 	if err != nil {
@@ -320,7 +320,7 @@ func (this *ShortyEndPoint) handleInstall(appUrlScheme, appUuid string, appOpen 
 		origin, geoParseErr := this.requestParser.Parse(req)
 		origin.Destination = appOpen.Deeplink
 
-		installOrigin, installAppKey, installCampaignKey := "NONE", appUrlScheme, "ORGANIC"
+		installOrigin, installAppKey, installCampaignKey := "NONE", string(app), "ORGANIC"
 
 		if shortUrl != nil {
 			origin.ShortCode = shortUrl.Id
@@ -336,9 +336,9 @@ func (this *ShortyEndPoint) handleInstall(appUrlScheme, appUuid string, appOpen 
 		this.service.PublishInstall(&InstallEvent{
 			RequestOrigin:     origin,
 			Destination:       appOpen.Deeplink,
-			AppUrlScheme:      appUrlScheme,
-			AppUUID:           appUuid,
-			SourceUUID:        appOpen.UUID,
+			App:               app,
+			AppContext:        appContext,
+			SourceContext:     appOpen.UUID,
 			SourceApplication: appOpen.SourceApplication,
 			Origin:            installOrigin,
 			AppKey:            installAppKey,
@@ -347,11 +347,11 @@ func (this *ShortyEndPoint) handleInstall(appUrlScheme, appUuid string, appOpen 
 		})
 
 		if appOpen.UUID != "" {
-			if found, _ := this.service.FindLink(UUID(appUuid), UUID(appOpen.UUID)); !found {
+			if found, _ := this.service.FindLink(appContext, appOpen.UUID); !found {
 				this.service.PublishLink(&LinkEvent{
 					RequestOrigin: origin,
-					ShortyUUID_A:  appUuid,
-					ShortyUUID_B:  appOpen.UUID,
+					Context1:      appContext,
+					Context2:      appOpen.UUID,
 					Origin:        installOrigin,
 					AppKey:        installAppKey,
 					CampaignKey:   installCampaignKey,

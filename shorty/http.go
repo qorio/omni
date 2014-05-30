@@ -372,7 +372,7 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 		fingerprint := omni_http.FingerPrint(origin)
 		this.service.SaveFingerprintedVisit(&FingerprintedVisit{
 			Fingerprint: fingerprint,
-			UUID:        userId,
+			UUID:        UUID(userId),
 			ShortCode:   shortUrl.Id,
 			Deeplink:    destination,
 			Timestamp:   timestamp,
@@ -382,7 +382,7 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 		this.service.PublishDecode(&DecodeEvent{
 			RequestOrigin:    origin,
 			Destination:      destination,
-			ShortyUUID:       userId,
+			Context:          UUID(userId),
 			Origin:           shortUrl.Origin,
 			AppKey:           shortUrl.AppKey,
 			CampaignKey:      shortUrl.CampaignKey,
@@ -451,7 +451,7 @@ func (this *ShortyEndPoint) HarvestCookiedUUIDHandler(resp http.ResponseWriter, 
 			this.service.Link(UrlScheme(appUrlSchemeParam[0]), UUID(uuid), UUID(userId), shortUrl.Id)
 			// Here we also assume that the user will install the app at some point.
 			// Go ahead and assume that and let other mechanisms to invalidate this.
-			this.service.TrackInstall(uuid, appUrlSchemeParam[0])
+			this.service.TrackInstall(UrlScheme(appUrlSchemeParam[0]), UUID(uuid))
 		}
 		if next, err := this.router.Get("redirect").URL("id", shortUrl.Id); err != nil {
 			renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
@@ -505,8 +505,8 @@ linkevent:
 
 		this.service.PublishLink(&LinkEvent{
 			RequestOrigin: origin,
-			ShortyUUID_A:  uuid,
-			ShortyUUID_B:  userId,
+			Context1:      UUID(uuid),
+			Context2:      UUID(userId),
 			Origin:        installOrigin,
 			AppKey:        installAppKey,
 			CampaignKey:   installCampaignKey,

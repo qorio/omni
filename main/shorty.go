@@ -84,7 +84,7 @@ func translateDecode(decodeEvent *shorty.DecodeEvent) (event *tally.Event) {
 	eventType := "decode"
 	event.Type = &eventType
 	event.SetAttribute("destination", decodeEvent.Destination)
-	event.SetAttribute("uuid", decodeEvent.ShortyUUID)
+	event.SetAttribute("uuid", string(decodeEvent.Context))
 	event.SetAttribute("origin", decodeEvent.Origin)
 	event.SetAttribute("app_key", decodeEvent.AppKey)
 	event.SetAttribute("campaign_key", decodeEvent.CampaignKey)
@@ -98,9 +98,9 @@ func translateInstall(installEvent *shorty.InstallEvent) (event *tally.Event) {
 	eventType := "install"
 	event.Type = &eventType
 	event.SetAttribute("destination", installEvent.Destination)
-	event.SetAttribute("app_url_scheme", installEvent.AppUrlScheme)
-	event.SetAttribute("app_uuid", installEvent.AppUUID)
-	event.SetAttribute("uuid", installEvent.SourceUUID)
+	event.SetAttribute("app_url_scheme", string(installEvent.App))
+	event.SetAttribute("app_uuid", string(installEvent.AppContext))
+	event.SetAttribute("uuid", string(installEvent.SourceContext))
 	event.SetAttribute("source_application", installEvent.SourceApplication)
 	event.SetAttribute("origin", installEvent.Origin)
 	event.SetAttribute("app_key", installEvent.AppKey)
@@ -112,9 +112,9 @@ func translateAppOpen(appOpenEvent *shorty.AppOpenEvent) (event *tally.Event) {
 	event = translate(appOpenEvent.RequestOrigin)
 	eventType := "app-open"
 	event.Type = &eventType
-	event.SetAttribute("app_url_scheme", appOpenEvent.AppUrlScheme)
-	event.SetAttribute("app_uuid", appOpenEvent.AppUUID)
-	event.SetAttribute("uuid", appOpenEvent.SourceUUID)
+	event.SetAttribute("app_url_scheme", string(appOpenEvent.App))
+	event.SetAttribute("app_uuid", string(appOpenEvent.AppContext))
+	event.SetAttribute("uuid", string(appOpenEvent.SourceContext))
 	event.SetAttribute("source_application", appOpenEvent.SourceApplication)
 	event.SetAttribute("origin", appOpenEvent.Origin)
 	event.SetAttribute("app_key", appOpenEvent.AppKey)
@@ -126,9 +126,9 @@ func translateLink(linkEvent *shorty.LinkEvent) (event *tally.Event) {
 	event = translate(linkEvent.RequestOrigin)
 	eventType := "link-uuid"
 	event.Type = &eventType
-	event.SetAttribute("app_url_scheme", linkEvent.AppUrlScheme)
-	event.SetAttribute("uuid1", linkEvent.ShortyUUID_A)
-	event.SetAttribute("uuid2", linkEvent.ShortyUUID_B)
+	event.SetAttribute("app_url_scheme", string(linkEvent.App))
+	event.SetAttribute("uuid1", string(linkEvent.Context1))
+	event.SetAttribute("uuid2", string(linkEvent.Context2))
 	event.SetAttribute("origin", linkEvent.Origin)
 	event.SetAttribute("app_key", linkEvent.AppKey)
 	event.SetAttribute("campaign_key", linkEvent.CampaignKey)
