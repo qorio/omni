@@ -240,7 +240,7 @@ func (this *ShortyEndPoint) ApiReportAppOpenUrl(resp http.ResponseWriter, req *h
 }
 
 func (this *ShortyEndPoint) handleAppOpen(appUrlScheme, appUuid string, appOpen *AppOpen, req *http.Request) error {
-	this.service.Link(appOpen.UUID, appUuid, appUrlScheme, appOpen.ShortCode)
+	this.service.Link(UrlScheme(appUrlScheme), UUID(appOpen.UUID), UUID(appUuid), appOpen.ShortCode)
 	this.service.TrackAppOpen(appUrlScheme, appUuid, appOpen.UUID, appOpen.SourceApplication, appOpen.ShortCode)
 
 	shortUrl, err := this.service.Find(appOpen.ShortCode)
@@ -283,7 +283,7 @@ func (this *ShortyEndPoint) handleAppOpen(appUrlScheme, appUuid string, appOpen 
 			CampaignKey:       installCampaignKey,
 		})
 
-		if found, _ := this.service.FindLink(appUuid, appOpen.UUID); !found {
+		if found, _ := this.service.FindLink(UUID(appUuid), UUID(appOpen.UUID)); !found {
 			this.service.PublishLink(&LinkEvent{
 				RequestOrigin: origin,
 				ShortyUUID_A:  appUuid,
@@ -300,7 +300,7 @@ func (this *ShortyEndPoint) handleAppOpen(appUrlScheme, appUuid string, appOpen 
 func (this *ShortyEndPoint) handleInstall(appUrlScheme, appUuid string, appOpen *AppOpen, req *http.Request, reportingMethod string) error {
 
 	if appOpen.UUID != "" {
-		this.service.Link(appOpen.UUID, appUuid, appUrlScheme, appOpen.ShortCode)
+		this.service.Link(UrlScheme(appUrlScheme), UUID(appOpen.UUID), UUID(appUuid), appOpen.ShortCode)
 	}
 
 	this.service.TrackInstall(appUuid, appUrlScheme)
@@ -347,7 +347,7 @@ func (this *ShortyEndPoint) handleInstall(appUrlScheme, appUuid string, appOpen 
 		})
 
 		if appOpen.UUID != "" {
-			if found, _ := this.service.FindLink(appUuid, appOpen.UUID); !found {
+			if found, _ := this.service.FindLink(UUID(appUuid), UUID(appOpen.UUID)); !found {
 				this.service.PublishLink(&LinkEvent{
 					RequestOrigin: origin,
 					ShortyUUID_A:  appUuid,

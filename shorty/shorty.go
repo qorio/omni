@@ -22,7 +22,7 @@ type Settings struct {
 	UrlLength      int
 }
 
-type MatchableVisit struct {
+type FingerprintedVisit struct {
 	Fingerprint string
 	UUID        string `json:"uuid"`
 	ShortCode   string `json:"shortCode"`
@@ -199,6 +199,9 @@ type AppOpenEvent struct {
 	CampaignKey string
 }
 
+type UUID string
+type UrlScheme string
+
 type Shorty interface {
 	UrlLength() int
 
@@ -207,15 +210,18 @@ type Shorty interface {
 	// Validates the url, rules and create a new instance with the default properties set in the defaults param.
 	VanityUrl(vanity, url string, optionalRules []RoutingRule, defaults ShortUrl) (*ShortUrl, error)
 	Find(id string) (*ShortUrl, error)
-	Link(shortyUUIDContextPrev, shortyUUIDContextCurrent, appUrlScheme, shortUrlId string) error
-	TrackInstall(shortyUUID, appUrlScheme string) error
-	TrackAppOpen(appUrlScheme, appUuid, uuid, sourceApplication, shortCode string) error
-	FindInstall(shortyUUID, appUrlScheme string) (expiration int64, found bool, err error)
-	FindLink(appUuid, uuid string) (found bool, err error)
-	DeleteInstall(shortyUUID, appUrlScheme string) (count int, err error)
 
-	SaveMatchableVisit(visit *MatchableVisit) error
-	MatchFingerPrint(fingerprint string) (score float64, visit *MatchableVisit, err error)
+	Link(appUrlScheme UrlScheme, shortyUUIDContextPrev, shortyUUIDContextCurrent UUID, shortUrlId string) error
+	FindLink(appUuid, uuid UUID) (found bool, err error)
+
+	TrackInstall(shortyUUID, appUrlScheme string) error
+	FindInstall(shortyUUID, appUrlScheme string) (expiration int64, found bool, err error)
+
+	TrackAppOpen(appUrlScheme, appUuid, uuid, sourceApplication, shortCode string) error
+	FindAppOpen(appUrlScheme, uuid string) (timestamp int64, found bool, err error)
+
+	SaveFingerprintedVisit(visit *FingerprintedVisit) error
+	MatchFingerPrint(fingerprint string) (score float64, visit *FingerprintedVisit, err error)
 
 	DecodeEventChannel() <-chan *DecodeEvent
 	InstallEventChannel() <-chan *InstallEvent
@@ -434,7 +440,7 @@ func (this *shortyImpl) VanityUrl(vanity, data string, rules []RoutingRule, defa
 	}
 }
 
-func (this *shortyImpl) Link(shortyUUIDContextPrev, shortyUUIDContextCurrent, appUrlScheme, shortUrlId string) error {
+func (this *shortyImpl) Link(appUrlScheme UrlScheme, shortyUUIDContextPrev, shortyUUIDContextCurrent UUID, shortUrlId string) error {
 	c := this.pool.Get()
 	defer c.Close()
 
@@ -447,7 +453,7 @@ func (this *shortyImpl) Link(shortyUUIDContextPrev, shortyUUIDContextCurrent, ap
 	return err
 }
 
-func (this *shortyImpl) FindLink(appUuid, uuid string) (found bool, err error) {
+func (this *shortyImpl) FindLink(appUuid, uuid UUID) (found bool, err error) {
 	c := this.pool.Get()
 	defer c.Close()
 
@@ -461,7 +467,7 @@ func (this *shortyImpl) FindLink(appUuid, uuid string) (found bool, err error) {
 	return
 }
 
-func (this *shortyImpl) SaveMatchableVisit(visit *MatchableVisit) error {
+func (this *shortyImpl) SaveFingerprintedVisit(visit *FingerprintedVisit) error {
 	c := this.pool.Get()
 	defer c.Close()
 
@@ -476,7 +482,7 @@ func (this *shortyImpl) SaveMatchableVisit(visit *MatchableVisit) error {
 	return err
 }
 
-func (this *shortyImpl) MatchFingerPrint(fingerprint string) (score float64, visit *MatchableVisit, err error) {
+func (this *shortyImpl) MatchFingerPrint(fingerprint string) (score float64, visit *FingerprintedVisit, err error) {
 	c := this.pool.Get()
 	defer c.Close()
 
@@ -534,6 +540,20 @@ func (this *shortyImpl) TrackAppOpen(appUrlScheme, appUuid, uuid, sourceApplicat
 	return err
 }
 
+func (this *shortyImpl) FindAppOpen(appUrlScheme, shortyUUID string) (timestamp int64, found bool, err error) {
+	c := this.pool.Get()
+	defer c.Close()
+
+	key := fmt.Sprintf("%s:*:%s:*", appUrlScheme, shortyUUID)
+	reply, err := c.Do("GET", this.settings.RedisPrefix+"app-open:"+key)
+	found = reply != nil
+
+	if found {
+		timestamp, err = redis.Int64(reply, err)
+	}
+	return
+}
+
 func (this *shortyImpl) FindInstall(shortyUUID, appUrlScheme string) (expiration int64, found bool, err error) {
 	c := this.pool.Get()
 	defer c.Close()
@@ -545,17 +565,6 @@ func (this *shortyImpl) FindInstall(shortyUUID, appUrlScheme string) (expiration
 	if found {
 		expiration, err = redis.Int64(reply, err)
 	}
-	return
-}
-
-func (this *shortyImpl) DeleteInstall(shortyUUID, appUrlScheme string) (count int, err error) {
-	c := this.pool.Get()
-	defer c.Close()
-
-	key := fmt.Sprintf("%s:%s", shortyUUID, appUrlScheme)
-	reply, err := c.Do("DEL", this.settings.RedisPrefix+"install:"+key)
-
-	count, err = redis.Int(reply, err)
 	return
 }
 

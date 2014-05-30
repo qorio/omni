@@ -81,8 +81,8 @@ func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty) (api *Short
 		api.router.HandleFunc("/api/v1/events/openurl/{scheme}/{app_uuid}",
 			api.ApiReportAppOpenUrl).Methods("POST").Name("app_ping")
 
-		api.router.HandleFunc("/api/v1/events/missing/{scheme}/{id:"+regex+"}",
-			api.ReportDeviceUrlSchemeHandlerMissing).Name("app_missing")
+		// api.router.HandleFunc("/api/v1/events/missing/{scheme}/{id:"+regex+"}",
+		// 	api.ReportDeviceUrlSchemeHandlerMissing).Name("app_missing")
 
 		return api, nil
 	} else {
@@ -327,17 +327,17 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	} // if there are rules
 
 	// support for /shortCode?404= when app is missing
-	if _, has := req.Form["404"]; has && matchedRule != nil {
-		// here we get an event that the app is missing...
-		count, _ := this.service.DeleteInstall(userId, matchedRule.AppUrlScheme)
-		glog.Infoln("APP MISSING:", userId, matchedRule.AppUrlScheme, "found=", count)
+	// if _, has := req.Form["404"]; has && matchedRule != nil {
+	// 	// here we get an event that the app is missing...
+	// 	count, _ := this.service.DeleteInstall(userId, matchedRule.AppUrlScheme)
+	// 	glog.Infoln("APP MISSING:", userId, matchedRule.AppUrlScheme, "found=", count)
 
-		// do another redirect
-		if next, err := this.router.Get("redirect").URL("id", shortUrl.Id); err == nil {
-			http.Redirect(resp, req, next.String(), http.StatusMovedPermanently)
-			return
-		}
-	}
+	// 	// do another redirect
+	// 	if next, err := this.router.Get("redirect").URL("id", shortUrl.Id); err == nil {
+	// 		http.Redirect(resp, req, next.String(), http.StatusMovedPermanently)
+	// 		return
+	// 	}
+	// }
 
 	if renderInline {
 		resp.Write([]byte(destination))
@@ -370,7 +370,7 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 
 		// Save a fingerprint
 		fingerprint := omni_http.FingerPrint(origin)
-		this.service.SaveMatchableVisit(&MatchableVisit{
+		this.service.SaveFingerprintedVisit(&FingerprintedVisit{
 			Fingerprint: fingerprint,
 			UUID:        userId,
 			ShortCode:   shortUrl.Id,
@@ -448,7 +448,7 @@ func (this *ShortyEndPoint) HarvestCookiedUUIDHandler(resp http.ResponseWriter, 
 
 		if appUrlSchemeParam, exists := req.Form["s"]; exists {
 			appUrlScheme = appUrlSchemeParam[0]
-			this.service.Link(uuid, userId, appUrlSchemeParam[0], shortUrl.Id)
+			this.service.Link(UrlScheme(appUrlSchemeParam[0]), UUID(uuid), UUID(userId), shortUrl.Id)
 			// Here we also assume that the user will install the app at some point.
 			// Go ahead and assume that and let other mechanisms to invalidate this.
 			this.service.TrackInstall(uuid, appUrlSchemeParam[0])
@@ -542,7 +542,7 @@ func (this *ShortyEndPoint) CollectContextHandler(resp http.ResponseWriter, req 
 
 	if uuid != userId {
 
-		this.service.Link(uuid, userId, appUrlScheme, shortCode)
+		this.service.Link(UrlScheme(appUrlScheme), UUID(uuid), UUID(userId), shortCode)
 
 		if next, err := this.router.Get("redirect").URL("id", shortCode); err != nil {
 			renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
@@ -576,57 +576,12 @@ func (this *ShortyEndPoint) DeeplinkJavaScriptHandler(resp http.ResponseWriter, 
 
 	if uuid != userId {
 		// Collect
-		this.service.Link(uuid, userId, appUrlScheme, shortCode)
+		this.service.Link(UrlScheme(appUrlScheme), UUID(uuid), UUID(userId), shortCode)
 	}
 
 	content := omni_http.FetchFromUrl(userAgent.Header, fetchUrl)
 	resp.Write([]byte(content))
 	return
-}
-
-func (this *ShortyEndPoint) ReportDeviceUrlSchemeHandlerMissing(resp http.ResponseWriter, req *http.Request) {
-	req.ParseForm()
-	vars := mux.Vars(req)
-	//userAgent := omni_http.ParseUserAgent(req)
-	origin, _ := this.requestParser.Parse(req)
-
-	appUrlScheme := vars["scheme"]
-	shortUrl, err := this.service.Find(vars["id"])
-	if err != nil {
-		renderError(resp, req, err.Error(), http.StatusInternalServerError)
-		return
-	} else if shortUrl == nil {
-
-		if this.settings.Redirect404 != "" {
-			originalUrl, err := this.router.Get("redirect").URL("id", vars["id"])
-			if err != nil {
-				renderError(resp, req, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			url404 := strings.Replace(this.settings.Redirect404,
-				"$origURL", url.QueryEscape(fmt.Sprintf("http://%s%s", req.Host, originalUrl.String())), 1)
-			http.Redirect(resp, req, url404, http.StatusTemporaryRedirect)
-			return
-		}
-		renderError(resp, req, "No URL was found with that shorty code", http.StatusNotFound)
-		return
-	}
-
-	omni_http.SetNoCachingHeaders(resp)
-	cookies := omni_http.NewCookieHandler(secureCookie, resp, req)
-	_, _, _, userId := processCookies(cookies, shortUrl.Id)
-
-	glog.Infoln(">>>> APP MISSING", appUrlScheme, shortUrl.Id)
-	// here we get an event that the app is missing...
-	count, _ := this.service.DeleteInstall(userId, appUrlScheme)
-	glog.Infoln("APP MISSING:", userId, appUrlScheme, "found=", count)
-
-	// do another redirect
-	if next, err := this.router.Get("redirect").URL("id", shortUrl.Id); err == nil {
-		cookies.Set("Referer", origin.Referrer)
-		http.Redirect(resp, req, next.String(), http.StatusMovedPermanently)
-		return
-	}
 }
 
 func (this *ShortyEndPoint) match(shortCode string, resp http.ResponseWriter, req *http.Request) (shortUrl *ShortUrl, match *RoutingRule, err error) {
