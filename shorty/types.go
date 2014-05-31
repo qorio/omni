@@ -26,83 +26,80 @@ type ShortyAddRequest struct {
 
 type RoutingRule struct {
 
-	// Matching rule -- all or any of the Match<type> properties
-	MatchAll bool `json:"match-all"`
-
 	// Specify one of the following matching criteria: platform, os, make, or browser
 	MatchPlatform string `json:"platform,omitempty"`
 	MatchOS       string `json:"os,omitempty"`
 	MatchMake     string `json:"make,omitempty"`
 	MatchBrowser  string `json:"browser,omitempty"`
 
-	MatchMobile   string `json:"mobile",omitempty`
-	MatchReferrer string `json:"referer",omitempty`
+	MatchMobile   string `json:"mobile,omitempty"`
+	MatchReferrer string `json:"referer,omitempty"`
 
 	// True to check if there's an install of the app by AppUrlScheme
-	MatchInstalled string `json:"installed",omitempty`
+	MatchInstalled string `json:"installed,omitempty"`
 
 	// Match by no app-open or if app-open is X days ago
-	MatchNoAppOpenInXDays int64 `json:"no-app-open-in-x-days",omitempty`
+	MatchNoAppOpenInXDays int64 `json:"no-app-open-in-x-days,omitempty"`
 
 	// For specifying mobile appstore install url and app custom url scheme
 	// If specified, check cookie to see if the app's url scheme exists, if not, direct to appstore
-	AppUrlScheme string `json:"scheme",omitempty`
-	AppStoreUrl  string `json:"appstore",omitempty`
+	AppUrlScheme string `json:"scheme,omitempty"`
+	AppStoreUrl  string `json:"appstore,omitempty"`
 
 	// Destination resource url - can be app url on mobile device
-	Destination string `json:"destination"`
+	Destination string `json:"destination,omitempty"`
 
 	// Fetch content from url
-	ContentSourceUrl string `json:"content-src-url",omitempty`
-
-	// True to harvest the cookied uuid via a redirect to a url containing the uuid
-	HarvestCookiedUUID bool `json:"x-harvest-cookied-uuid",omitempty`
+	ContentSourceUrl string `json:"content-src-url,omitempty"`
 
 	// Send to an interstitial page
-	SendToInterstitial bool `json:"x-send-to-interstitial",omitempty`
+	SendToInterstitial bool `json:"x-send-to-interstitial,omitempty"`
 
 	// True to disasble app store redirection
-	NoAppStoreRedirect bool `json:"x-no-app-store-redirect",omitempty`
+	NoAppStoreRedirect bool `json:"x-no-app-store-redirect,omitempty"`
 
 	// True to indicate that this is a http url destination but mapped in the intent filter to an app.
-	IsAndroidIntentFilter bool `json:"x-android-intent-filter",omitempty`
+	IsAndroidIntentFilter bool `json:"x-android-intent-filter,omitempty"`
+
+	Special []RoutingRule `json:"special,omitempty"`
 }
 
 type ShortUrl struct {
-	Id                string        `json:"id"`
-	Rules             []RoutingRule `json:"rules"`
-	Destination       string        `json:"destination"`
-	Created           time.Time     `json:"created"`
-	Origin            string        `json:"origin"`
-	AppKey            string        `json:"appKey"`
-	CampaignKey       string        `json:"campaignKey"`
-	InstallTTLSeconds int64         `json:"installTTLSeconds"`
+	Id                string        `json:"id,omitempty"`
+	Rules             []RoutingRule `json:"rules,omitempty"`
+	Destination       string        `json:"destination,omitempty"`
+	Created           time.Time     `json:"created,omitempty"`
+	Origin            string        `json:"origin,omitempty"`
+	AppKey            string        `json:"appKey,omitempty"`
+	CampaignKey       string        `json:"campaignKey,omitempty"`
+	InstallTTLSeconds int64         `json:"installTTLSeconds,omitempty"`
 	service           *shortyImpl
 }
 
 type Campaign struct {
-	AppKey            string        `json:"appKey"`
-	Id                string        `json:"id"`
-	Rules             []RoutingRule `json:"rules"`
-	Created           time.Time     `json:"created"`
-	InstallTTLSeconds int64         `json:"installTTLSeconds"`
-	AppHasSDK         bool          `json:"appHasSDK"`
+	AppKey    string        `json:"appKey,omitempty"`
+	Id        string        `json:"id,omitempty"`
+	Rules     []RoutingRule `json:"rules,omitempty"`
+	Created   time.Time     `json:"created,omitempty"`
+	AppHasSDK bool          `json:"appHasSDK,omitempty"`
 }
 
 type FingerprintedVisit struct {
 	Fingerprint string
-	UUID        UUID   `json:"uuid"`
-	ShortCode   string `json:"shortCode"`
-	Deeplink    string `json:"deeplink"`
+	Context     UUID   `json:"uuid,omitempty"`
+	ShortCode   string `json:"shortCode,omitempty"`
+	Deeplink    string `json:"deeplink,omitempty"`
 	Timestamp   int64
-	Referrer    string `json:"sourceApplication"`
+	Referrer    string `json:"sourceApplication,omitempty"`
 }
 
 type AppOpen struct {
-	SourceApplication string `json:"sourceApplication"`
-	UUID              UUID   `json:"uuid"`
-	ShortCode         string `json:"shortCode"`
-	Deeplink          string `json:"deeplink"`
+	SourceApplication string `json:"sourceApplication,omitempty"`
+	SourceContext     UUID   `json:"uuid,omitempty"`
+	ShortCode         string `json:"shortCode,omitempty"`
+	Deeplink          string `json:"deeplink,omitempty"`
+	Timestamp         int64
+	AppContext        UUID
 }
 
 type AppOpenEvent struct {
@@ -174,8 +171,8 @@ type Shorty interface {
 	TrackInstall(app UrlScheme, context UUID) error
 	FindInstall(app UrlScheme, context UUID) (expiration int64, found bool, err error)
 
-	TrackAppOpen(app UrlScheme, appContext, sourceContext UUID, sourceApplication, shortCode string) error
-	FindAppOpen(app UrlScheme, context UUID) (timestamp int64, found bool, err error)
+	TrackAppOpen(app UrlScheme, appContext UUID, appOpen *AppOpen) error
+	FindAppOpen(app UrlScheme, context UUID) (appOpen *AppOpen, found bool, err error)
 
 	SaveFingerprintedVisit(visit *FingerprintedVisit) error
 	MatchFingerPrint(fingerprint string) (score float64, visit *FingerprintedVisit, err error)

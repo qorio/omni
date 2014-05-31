@@ -1,12 +1,49 @@
 package shorty
 
 import (
+	"errors"
 	"github.com/golang/glog"
 	"github.com/qorio/omni/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"time"
 )
+
+func (this *RoutingRule) Validate() (err error) {
+	if len(this.Destination) > 0 {
+		if _, err = url.Parse(this.Destination); err != nil {
+			return
+		}
+	}
+	matching := 0
+	if c, err := regexp.Compile(this.MatchPlatform); err != nil {
+		return errors.New("Bad platform regex " + this.MatchPlatform)
+	} else if c != nil {
+		matching++
+	}
+	if c, err := regexp.Compile(this.MatchOS); err != nil {
+		return errors.New("Bad os regex " + this.MatchOS)
+	} else if c != nil {
+		matching++
+	}
+	if c, err := regexp.Compile(this.MatchMake); err != nil {
+		return errors.New("Bad make regex " + this.MatchMake)
+	} else if c != nil {
+		matching++
+	}
+	if c, err := regexp.Compile(this.MatchBrowser); err != nil {
+		return errors.New("Bad browser regex " + this.MatchBrowser)
+	} else if c != nil {
+		matching++
+	}
+	// Must have 1 or more matching regexp
+	if matching == 0 {
+		err = errors.New("bad-routing-rule:no matching regexp")
+		return
+	}
+	return
+}
 
 func (this *RoutingRule) Match(service Shorty, ua *http.UserAgent, origin *http.RequestOrigin, cookies http.Cookies) bool {
 	// use bit mask to match
@@ -51,8 +88,8 @@ func (this *RoutingRule) Match(service Shorty, ua *http.UserAgent, origin *http.
 	if len(this.MatchInstalled) > 0 && this.AppUrlScheme != "" {
 		expect |= 1 << 6
 		uuid, _ := cookies.GetPlainString(uuidCookieKey)
-		_, found, _ := service.FindInstall(UrlScheme(this.AppUrlScheme), UUID(uuid))
-		glog.Infoln("checking install", uuid, this.AppUrlScheme, found)
+		_, found, err := service.FindInstall(UrlScheme(this.AppUrlScheme), UUID(uuid))
+		glog.Infoln("checking install", uuid, this.AppUrlScheme, found, err)
 		if matches, _ := regexp.MatchString(this.MatchInstalled, strconv.FormatBool(found)); matches {
 			actual |= 1 << 6
 		}
@@ -60,9 +97,9 @@ func (this *RoutingRule) Match(service Shorty, ua *http.UserAgent, origin *http.
 	if this.MatchNoAppOpenInXDays > 0 && this.AppUrlScheme != "" {
 		expect |= 1 << 7
 		uuid, _ := cookies.GetPlainString(uuidCookieKey)
-		timestamp, found, _ := service.FindAppOpen(UrlScheme(this.AppUrlScheme), UUID(uuid))
-		glog.Infoln("checking app-open", uuid, this.AppUrlScheme, found, timestamp)
-		if !found || time.Now().Unix()-timestamp >= this.MatchNoAppOpenInXDays*24*60*60 {
+		appOpen, found, err := service.FindAppOpen(UrlScheme(this.AppUrlScheme), UUID(uuid))
+		glog.Infoln("checking app-open", uuid, this.AppUrlScheme, found, appOpen, err)
+		if !found || time.Now().Unix()-appOpen.Timestamp >= this.MatchNoAppOpenInXDays*24*60*60 {
 			actual |= 1 << 7
 		}
 	}

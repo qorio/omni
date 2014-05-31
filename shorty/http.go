@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"text/template"
 	"time"
 )
 
@@ -26,6 +27,9 @@ var (
 	lastViewedCookieKey = "last"
 
 	regexFmt string = "[_A-Za-z0-9\\.\\-]{%d,}"
+
+	deeplinkJsTemplate   = template.New("deeplink.js")
+	openTestHtmlTemplate = template.New("opentest.html")
 )
 
 type ShortyEndPointSettings struct {
@@ -47,6 +51,59 @@ func init() {
 		glog.Warningln("Cannot initialize secure cookie!")
 		panic(err)
 	}
+
+	deeplinkJsTemplate, err = deeplinkJsTemplate.Parse(`
+function getCookie(name) {
+    var value = "; " + document.cookie;
+    var parts = value.split("; " + name + "=");
+    if (parts.length == 2) return parts.pop().split(";").shift();
+}
+function onLoad() {
+    var shortUrl = window.location;
+    var deeplink = "{{.Destination}}";
+    var scheme = deeplink.split("://").shift();
+    var shortCode = shortUrl.pathname.substring(1);
+    deeplink += "&__xrlc=" + getCookie("uuid") + "&__xrlp=" + scheme + "&__xrls=" + shortCode;
+    setTimeout(function() {
+        if (!document.webkitHidden) {
+            var el = document.getElementById("has-app")
+            el.innerHTML = "<h1>Still here?  Try open this in Safari to install the app.</h1>";
+	}
+    }, 2000);
+    window.location = deeplink;
+}
+`)
+	if err != nil {
+		glog.Warningln("Bad template for deeplink.js!")
+		panic(err)
+	}
+
+	openTestHtmlTemplate, err = openTestHtmlTemplate.Parse(`
+html>
+ <head>
+  <title>Getting content...</title>
+  <script type="text/javascript" src="./deeplink.js"></script>
+ </head>
+ <body onload="onLoad()">
+  <!-- Markdown text -->
+  <xmp theme="amelia" style="display:none;">
+  Opening the link in app...
+  </xmp>
+  <img src="https://web1.qor.io/static/img/open-doc.png"/>
+  <div id="has-app"></div>
+  <p style="font-size:small">
+This is a page that tryies to open deeplinked content in an app.
+If the app is not installed on the device, a page will direct the user to install the app through Safari.
+After the user installs the app, the app will open to the deeplinked content when it launches.</p>
+ </body>
+ <script src="http://strapdownjs.com/v/0.2/strapdown.js"></script>
+</html>
+`)
+	if err != nil {
+		glog.Warningln("Bad template for html test/open!")
+		panic(err)
+	}
+
 }
 
 func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty) (api *ShortyEndPoint, err error) {
@@ -73,9 +130,6 @@ func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty) (api *Short
 		api.router.HandleFunc("/api/v1/events/openurl/{scheme}/{app_uuid}",
 			api.ApiReportAppOpenUrl).Methods("POST").Name("app_ping")
 
-		// api.router.HandleFunc("/api/v1/events/missing/{scheme}/{id:"+regex+"}",
-		// 	api.ReportDeviceUrlSchemeHandlerMissing).Name("app_missing")
-
 		return api, nil
 	} else {
 		return nil, err
@@ -98,16 +152,12 @@ func NewRedirector(settings ShortyEndPointSettings, service Shorty) (api *Shorty
 		api.router.HandleFunc("/i/{scheme}/{app_uuid}",
 			api.ReportInstallOnOrganicAppLaunch).Methods("GET").Name("app_install_on_direct_launch")
 
-		api.router.HandleFunc("/h/{shortUrlId:"+regex+"}/{uuid}",
-			api.HarvestCookiedUUIDHandler).Methods("GET").Name("harvest")
-
-		// Intermediary points where information about the current context of the short link gets collected.
-		api.router.HandleFunc("/c/{scheme}/{shortCode:"+regex+"}/{uuid}/{fetchUrl}",
-			api.CollectContextHandler).Methods("GET").Name("collect_context")
+		api.router.HandleFunc("/m/{shortCode:"+regex+"}/{uuid}/",
+			api.InterstitialHandler).Methods("GET").Name("interstitial")
 
 		// Dynamically generated so that any html @fetchUrl loaded by above can reference it as src="../deeplink.js"
-		api.router.HandleFunc("/c/{scheme}/{shortCode:"+regex+"}/{uuid}/deeplink.js",
-			api.DeeplinkJavaScriptHandler).Methods("GET").Name("collect_context")
+		api.router.HandleFunc("/m/{shortCode:"+regex+"}/{uuid}/deeplink.js",
+			api.InterstitialJSHandler).Methods("GET").Name("interstitial_js")
 
 		return api, nil
 	} else {
@@ -246,90 +296,84 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	var matchedRule *RoutingRule
 	var matchedRuleIndex int = -1
 
+	userAgent := omni_http.ParseUserAgent(req)
+	origin, _ := this.requestParser.Parse(req)
+
 	// If there are platform-dependent routing
 	if len(shortUrl.Rules) > 0 {
-		userAgent := omni_http.ParseUserAgent(req)
-		origin, _ := this.requestParser.Parse(req)
-
 		for i, rule := range shortUrl.Rules {
 			if match := rule.Match(this.service, userAgent, origin, cookies); match {
 
 				matchedRule = &rule
 				matchedRuleIndex = i
 
-				switch {
-
-				case rule.HarvestCookiedUUID:
-
-					// Special handling of platforms where apps using webviews don't shared
-					// cookies -- aka sandboxed uuids -- (e.g. iOS):
-					// If the option to harvest the uuid cookie in this context is set to true
-					// then do a redirect to a special harvest url where the uuid in the cookie
-					// can be collected.  The harvest url will directly render content using the
-					// rule's content properties e.g. rule.InlineContent or rule.FetchFromUrl.
-					// This will let the calling browser think it's got the final content.
-					// The user is then prompted to follow that harvest url in another browser
-					// (eg. mobile Safari).  When the user uses another browser to go to that
-					// url (which contains the uuid in this context), the handler of that url
-					// will have a uuid-uuid pair.
-					// For example, if on iOS, the Facebook app accesses the shortlink and arrives
-					// here, we will have the uuid generated (userId).  We then redirect to a harvest
-					// url //harvest/<shortCode>/<userId> and render a static html page instructing
-					// the user to open the harvest url in Safari.  When the user opens the harvest
-					// link in Safari, a different userId is generated (because the original userId
-					// in the FB app webview is not shared).  Because the harvest url has the userId
-					// in the FB app context, an association between the uuid-safari and uuid-fbapp
-					// can be created.
-
-					// If we need to harvest the cookied uuid - then
-					// just redirect to the special landing page url where the cookied uuid (userId)
-					// can be harvested.
-					renderInline = false
-					fetchUrl := url.QueryEscape(rule.ContentSourceUrl)
-					appUrlScheme := url.QueryEscape(rule.AppUrlScheme)
-					destination = fmt.Sprintf("/h/%s/%s?c=%s&s=%s", shortUrl.Id, userId, fetchUrl, appUrlScheme)
-
-				case rule.SendToInterstitial:
-
-					// In this case, redirect to a special page that will collect the uuid, shortCode, etc.
-					renderInline = false
-					fetchUrl := url.QueryEscape(rule.ContentSourceUrl)
-					appUrlScheme := url.QueryEscape(rule.AppUrlScheme)
-					destination = fmt.Sprintf("/c/%s/%s/%s/%s", appUrlScheme, shortUrl.Id, userId, fetchUrl)
-
-				case rule.ContentSourceUrl != "":
-					renderInline = true
-					destination = omni_http.FetchFromUrl(userAgent.Header, rule.ContentSourceUrl)
-
-				case rule.AppUrlScheme != "":
-					renderInline = false
-					if !rule.NoAppStoreRedirect {
-						destination = rule.AppStoreUrl
-					} else {
-						destination = rule.Destination
+				// next level
+				if len(rule.Special) > 0 {
+					// The subRule has been preprocessed to be the merge of
+					// the parent and the overrides
+					for _, subRule := range rule.Special {
+						if matchSub := subRule.Match(this.service, userAgent, origin, cookies); matchSub {
+							matchedRule = &subRule
+							break
+						}
 					}
-
-				default:
-					renderInline = false
-					destination = rule.Destination
 				}
 				break
 			} // if match
 		} // foreach rule
 	} // if there are rules
 
-	// support for /shortCode?404= when app is missing
-	// if _, has := req.Form["404"]; has && matchedRule != nil {
-	// 	// here we get an event that the app is missing...
-	// 	count, _ := this.service.DeleteInstall(userId, matchedRule.AppUrlScheme)
-	// 	glog.Infoln("APP MISSING:", userId, matchedRule.AppUrlScheme, "found=", count)
+	// Rule selected, now decide what to do.
+	if matchedRule != nil {
+		switch {
 
-	// 	// do another redirect
-	// 	if next, err := this.router.Get("redirect").URL("id", shortUrl.Id); err == nil {
-	// 		http.Redirect(resp, req, next.String(), http.StatusMovedPermanently)
-	// 		return
-	// 	}
-	// }
+		case matchedRule.SendToInterstitial:
+
+			// Special handling of platforms where apps using webviews don't shared
+			// cookies -- aka sandboxed uuids -- (e.g. iOS):
+			// If the option to harvest the uuid cookie in this context is set to true
+			// then do a redirect to a special harvest url where the uuid in the cookie
+			// can be collected.  The harvest url will directly render content using the
+			// rule's content properties e.g. rule.InlineContent or rule.FetchFromUrl.
+			// This will let the calling browser think it's got the final content.
+			// The user is then prompted to follow that harvest url in another browser
+			// (eg. mobile Safari).  When the user uses another browser to go to that
+			// url (which contains the uuid in this context), the handler of that url
+			// will have a uuid-uuid pair.
+			// For example, if on iOS, the Facebook app accesses the shortlink and arrives
+			// here, we will have the uuid generated (userId).  We then redirect to a harvest
+			// url //harvest/<shortCode>/<userId> and render a static html page instructing
+			// the user to open the harvest url in Safari.  When the user opens the harvest
+			// link in Safari, a different userId is generated (because the original userId
+			// in the FB app webview is not shared).  Because the harvest url has the userId
+			// in the FB app context, an association between the uuid-safari and uuid-fbapp
+			// can be created.
+
+			// If we need to harvest the cookied uuid - then
+			// just redirect to the special landing page url where the cookied uuid (userId)
+			// can be harvested.
+			renderInline = false
+			fetchUrl := url.QueryEscape(matchedRule.ContentSourceUrl)
+			appUrlScheme := url.QueryEscape(matchedRule.AppUrlScheme)
+			destination = fmt.Sprintf("/m/%s/%s/?f=%s&s=%s", shortUrl.Id, userId, fetchUrl, appUrlScheme)
+
+		case matchedRule.ContentSourceUrl != "":
+			renderInline = true
+			destination = omni_http.FetchFromUrl(userAgent.Header, matchedRule.ContentSourceUrl)
+
+		case matchedRule.AppUrlScheme != "":
+			renderInline = false
+			if !matchedRule.NoAppStoreRedirect {
+				destination = matchedRule.AppStoreUrl
+			} else {
+				destination = matchedRule.Destination
+			}
+
+		default:
+			renderInline = false
+			destination = matchedRule.Destination
+		}
+	}
 
 	if renderInline {
 		resp.Write([]byte(destination))
@@ -364,7 +408,7 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 		fingerprint := omni_http.FingerPrint(origin)
 		this.service.SaveFingerprintedVisit(&FingerprintedVisit{
 			Fingerprint: fingerprint,
-			UUID:        UUID(userId),
+			Context:     UUID(userId),
 			ShortCode:   shortUrl.Id,
 			Deeplink:    destination,
 			Timestamp:   timestamp,
@@ -384,7 +428,7 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	}()
 }
 
-func (this *ShortyEndPoint) HarvestCookiedUUIDHandler(resp http.ResponseWriter, req *http.Request) {
+func (this *ShortyEndPoint) InterstitialHandler(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	uuid := vars["uuid"]
 	shortUrl, err := this.service.Find(vars["shortCode"])
@@ -416,10 +460,10 @@ func (this *ShortyEndPoint) HarvestCookiedUUIDHandler(resp http.ResponseWriter, 
 	cookies := omni_http.NewCookieHandler(secureCookie, resp, req)
 
 	// visits, cookied, last, userId := processCookies(cookies, shortUrl)
-	visits, cookied, last, userId := processCookies(cookies, shortUrl.Id)
+	_, _, _, userId := processCookies(cookies, shortUrl.Id)
 
 	userAgent := omni_http.ParseUserAgent(req)
-	//origin, _ := this.requestParser.Parse(req)
+	origin, _ := this.requestParser.Parse(req)
 
 	// Here we check if the two uuids are different.  One uuid is in the url of this request.  This is the uuid
 	// from some context (e.g. from FB webview on iOS).  Another uuid is one in the cookie -- either we assigned
@@ -439,140 +483,73 @@ func (this *ShortyEndPoint) HarvestCookiedUUIDHandler(resp http.ResponseWriter, 
 		// this url in the first place.  So link the two ids together and redirect back to the short url.
 
 		if appUrlSchemeParam, exists := req.Form["s"]; exists {
+
 			appUrlScheme = appUrlSchemeParam[0]
-			this.service.Link(UrlScheme(appUrlSchemeParam[0]), UUID(uuid), UUID(userId), shortUrl.Id)
-			// Here we also assume that the user will install the app at some point.
-			// Go ahead and assume that and let other mechanisms to invalidate this.
-			this.service.TrackInstall(UrlScheme(appUrlSchemeParam[0]), UUID(uuid))
+			this.service.Link(UrlScheme(appUrlScheme), UUID(uuid), UUID(userId), shortUrl.Id)
+
+			// Now, look for an app-open in context of userId.  If we have somehow opened the app
+			// before, then we can just create an app-open entry for *this* context (uuid) because
+			// we know that the app already exists on the device and was opened in a different context.
+
+			appOpen, found, _ := this.service.FindAppOpen(UrlScheme(appUrlScheme), UUID(userId))
+			if found {
+				// create a record *as if* the app was also opened in the other context
+				appOpen.SourceContext = UUID(uuid)
+				appOpen.SourceApplication = origin.Referrer
+				this.service.TrackAppOpen(UrlScheme(appUrlScheme), appOpen.AppContext, appOpen)
+			}
 		}
-		if next, err := this.router.Get("redirect").URL("id", shortUrl.Id); err != nil {
-			renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
-			return
-		} else {
+		if next, err := this.router.Get("redirect").URL("id", shortUrl.Id); err == nil {
 			http.Redirect(resp, req, next.String(), http.StatusMovedPermanently)
-			goto linkevent
+			return
 		}
+
 	} else {
 
 		// The user is still coming from the same browser context because the two ids are the same.
 		// In this case we just show the static content.
 
-		// we expect the fetch url to be included in the 'c' parameter
-		if fetchFromUrl, exists := req.Form["c"]; exists {
+		// we expect the fetch url to be included in the 'f' parameter
+		if fetchFromUrl, exists := req.Form["f"]; exists {
 			content = omni_http.FetchFromUrl(userAgent.Header, fetchFromUrl[0])
 		}
 		resp.Write([]byte(content))
 
 		return
 	}
-
-linkevent:
-
-	go func() {
-		origin, geoParseErr := this.requestParser.Parse(req)
-		origin.Cookied = cookied
-		origin.Visits = visits
-		origin.LastVisit = last
-		origin.Destination = content
-
-		installOrigin, installAppKey, installCampaignKey := "NONE", appUrlScheme, "DIRECT"
-		if shortUrl != nil {
-			origin.ShortCode = shortUrl.Id
-			installOrigin = shortUrl.Origin
-			installAppKey = shortUrl.AppKey
-			installCampaignKey = shortUrl.CampaignKey
-		}
-
-		if geoParseErr != nil {
-			glog.Warningln("can-not-determine-location", geoParseErr)
-		}
-		glog.Infoln("LINK-UUID",
-			"uuid:", userId, "url:", shortUrl.Id, "send-to:", content,
-			"ip:", origin.Ip, "mobile:", origin.UserAgent.Mobile,
-			"platform:", origin.UserAgent.Platform, "os:", origin.UserAgent.OS, "make:", origin.UserAgent.Make,
-			"browser:", origin.UserAgent.Browser, "version:", origin.UserAgent.BrowserVersion,
-			"location:", *origin.Location,
-			"useragent:", origin.UserAgent.Header,
-			"cookied", cookied)
-
-		this.service.PublishLink(&LinkEvent{
-			RequestOrigin: origin,
-			Context1:      UUID(uuid),
-			Context2:      UUID(userId),
-			Origin:        installOrigin,
-			AppKey:        installAppKey,
-			CampaignKey:   installCampaignKey,
-		})
-
-	}()
 }
 
-func (this *ShortyEndPoint) CollectContextHandler(resp http.ResponseWriter, req *http.Request) {
+func (this *ShortyEndPoint) InterstitialJSHandler(resp http.ResponseWriter, req *http.Request) {
+	omni_http.SetNoCachingHeaders(resp)
+
 	// Everything should be in the url
 	vars := mux.Vars(req)
-	uuid := vars["uuid"]
 	shortCode := vars["shortCode"]
-	appUrlScheme := vars["scheme"]
-	fetchUrl := vars["fetchUrl"]
 
-	omni_http.SetNoCachingHeaders(resp)
+	shortUrl, err := this.service.Find(shortCode)
+	if err != nil || shortUrl == nil {
+		// write nothing
+		renderError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	cookies := omni_http.NewCookieHandler(secureCookie, resp, req)
-
-	// visits, cookied, last, userId := processCookies(cookies, shortUrl)
-	_, _, _, userId := processCookies(cookies, shortCode)
 	userAgent := omni_http.ParseUserAgent(req)
+	origin, _ := this.requestParser.Parse(req)
 
-	// Here we check if the two uuids are different.  One uuid is in the url of this request.  This is the uuid
-	// from some context (e.g. from FB webview on iOS).  Another uuid is one in the cookie -- either we assigned
-	// or read from the client context.  The current context may not be the same as the context of the uuid in
-	// the url.  This is because the user could be visiting the same link from another browser (eg. on Safari)
-	// after being prompted.
-	// If the two uuids do not match -- then we know the contexts are different.  The user is visiting from
-	// some context other than the one with the original link.  So in this case, we can do a redirect back to
-	// the short link that the user was looking at that got them to see the harvest url in the first place.
-	// Otherwise, show the static content which may tell them to try again in a different browser/context.
-
-	if uuid != userId {
-
-		this.service.Link(UrlScheme(appUrlScheme), UUID(uuid), UUID(userId), shortCode)
-
-		if next, err := this.router.Get("redirect").URL("id", shortCode); err != nil {
-			renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
-		} else {
-			http.Redirect(resp, req, next.String(), http.StatusMovedPermanently)
+	var matchedRule *RoutingRule
+	for _, rule := range shortUrl.Rules {
+		if match := rule.Match(this.service, userAgent, origin, cookies); match {
+			matchedRule = &rule
+			break
 		}
-	} else {
-
-		// The user is still coming from the same browser context because the two ids are the same.
-		// In this case we just show the static content.
-		content := omni_http.FetchFromUrl(userAgent.Header, fetchUrl)
-		resp.Write([]byte(content))
 	}
-	return
-}
-
-func (this *ShortyEndPoint) DeeplinkJavaScriptHandler(resp http.ResponseWriter, req *http.Request) {
-	// Everything should be in the url
-	vars := mux.Vars(req)
-	uuid := vars["uuid"]
-	shortCode := vars["shortCode"]
-	appUrlScheme := vars["scheme"]
-	fetchUrl := vars["fetchUrl"]
-
-	omni_http.SetNoCachingHeaders(resp)
-	cookies := omni_http.NewCookieHandler(secureCookie, resp, req)
-
-	// visits, cookied, last, userId := processCookies(cookies, shortUrl)
-	_, _, _, userId := processCookies(cookies, shortCode)
-	userAgent := omni_http.ParseUserAgent(req)
-
-	if uuid != userId {
-		// Collect
-		this.service.Link(UrlScheme(appUrlScheme), UUID(uuid), UUID(userId), shortCode)
+	if matchedRule == nil || matchedRule.Destination == "" {
+		// write nothing
+		renderError(resp, req, "not found", http.StatusNotFound)
+		return
 	}
-
-	content := omni_http.FetchFromUrl(userAgent.Header, fetchUrl)
-	resp.Write([]byte(content))
+	deeplinkJsTemplate.Execute(resp, matchedRule)
 	return
 }
 

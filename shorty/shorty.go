@@ -134,41 +134,37 @@ func (this *shortyImpl) VanityUrl(vanity, data string, rules []RoutingRule, defa
 	}
 
 	entity = &ShortUrl{Destination: u.String(), Created: time.Now(), service: this}
-	for _, rule := range entity.Rules {
-		if len(rule.Destination) > 0 {
-			if _, err = url.Parse(rule.Destination); err != nil {
+	for _, rule := range rules {
+		err = rule.Validate()
+		if err != nil {
+			return
+		}
+		for _, sub := range rule.Special {
+			err = sub.Validate()
+			if err != nil {
 				return
 			}
 		}
-
-		matching := 0
-		if c, err := regexp.Compile(rule.MatchPlatform); err != nil {
-			return nil, errors.New("Bad platform regex " + rule.MatchPlatform)
-		} else if c != nil {
-			matching++
-		}
-		if c, err := regexp.Compile(rule.MatchOS); err != nil {
-			return nil, errors.New("Bad os regex " + rule.MatchOS)
-		} else if c != nil {
-			matching++
-		}
-		if c, err := regexp.Compile(rule.MatchMake); err != nil {
-			return nil, errors.New("Bad make regex " + rule.MatchMake)
-		} else if c != nil {
-			matching++
-		}
-		if c, err := regexp.Compile(rule.MatchBrowser); err != nil {
-			return nil, errors.New("Bad browser regex " + rule.MatchBrowser)
-		} else if c != nil {
-			matching++
-		}
-		// Must have 1 or more matching regexp
-		if matching == 0 {
-			err = errors.New("bad-routing-rule:no matching regexp")
-			return
-		}
 	}
-	entity.Rules = rules
+
+	processed := make([]RoutingRule, len(rules))
+	for i, rule := range rules {
+		// if there are subrules, merge parent attributes into them
+		// use json.  We do this to avoid doing this at serving time.
+		r := &RoutingRule{}
+		*r = rule
+		r.Special = []RoutingRule{} // empty it out
+		if buf, err := json.Marshal(r); err == nil {
+			for j, sub := range rule.Special {
+				// Copy the fields in the struct (all but Special) to the child
+				json.Unmarshal(buf, &sub)
+				rule.Special[j] = sub
+			}
+		}
+		processed[i] = rule
+	}
+
+	entity.Rules = processed
 
 	c := this.pool.Get()
 	defer c.Close()
@@ -305,28 +301,31 @@ func (this *shortyImpl) TrackInstall(app UrlScheme, context UUID) error {
 	return err
 }
 
-func (this *shortyImpl) TrackAppOpen(app UrlScheme, appContext, sourceContext UUID, sourceApplication, shortCode string) error {
+func (this *shortyImpl) TrackAppOpen(app UrlScheme, appContext UUID, appOpen *AppOpen) error {
 	c := this.pool.Get()
 	defer c.Close()
 
-	key := fmt.Sprintf("%s:%s:%s:%s:%s", app, appContext, sourceContext, shortCode, sourceApplication)
-	reply, err := c.Do("SET", this.settings.RedisPrefix+"app-open:"+key, timestamp())
+	key := fmt.Sprintf("%s:%s:%s:%s:%s", app, appContext, appOpen.SourceContext, appOpen.ShortCode, appOpen.SourceApplication)
+	value, err := json.Marshal(appOpen)
+	if err != nil {
+		return err
+	}
+	reply, err := c.Do("SET", this.settings.RedisPrefix+"app-open:"+key, value)
 	if err == nil && reply != "OK" {
 		err = errors.New("Invalid Redis response")
 	}
 	return err
 }
 
-func (this *shortyImpl) FindAppOpen(app UrlScheme, sourceContext UUID) (timestamp int64, found bool, err error) {
+func (this *shortyImpl) FindAppOpen(app UrlScheme, sourceContext UUID) (appOpen *AppOpen, found bool, err error) {
 	c := this.pool.Get()
 	defer c.Close()
 
 	key := fmt.Sprintf("%s:*:%s:*", app, sourceContext)
-	reply, err := c.Do("GET", this.settings.RedisPrefix+"app-open:"+key)
-	found = reply != nil
-
-	if found {
-		timestamp, err = redis.Int64(reply, err)
+	reply, err := redis.Bytes(c.Do("GET", this.settings.RedisPrefix+"app-open:"+key))
+	found = err == nil && reply != nil
+	if err == nil {
+		err = json.Unmarshal(reply, appOpen)
 	}
 	return
 }

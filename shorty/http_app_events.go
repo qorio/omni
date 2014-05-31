@@ -56,7 +56,7 @@ func (this *ShortyEndPoint) ApiTryMatchInstallOnOrganicAppLaunch(resp http.Respo
 
 		// Good enough - tell the SDK to go on.  No need to try to report conversion
 		appOpen := &AppOpen{
-			UUID:              visit.UUID,
+			SourceContext:     visit.Context,
 			SourceApplication: visit.Referrer,
 			ShortCode:         visit.ShortCode,
 			Deeplink:          visit.Deeplink,
@@ -117,7 +117,7 @@ func (this *ShortyEndPoint) ReportInstallOnOrganicAppLaunch(resp http.ResponseWr
 
 	// Construct a AppOpen object using what is read from the http headers / cookies
 	appOpen := &AppOpen{
-		UUID:              UUID(userId),
+		SourceContext:     UUID(userId),
 		ShortCode:         lastViewed,
 		Deeplink:          ".", // The app opened itself without referrer
 		SourceApplication: "ORGANIC",
@@ -233,8 +233,10 @@ func (this *ShortyEndPoint) ApiReportAppOpenUrl(resp http.ResponseWriter, req *h
 }
 
 func (this *ShortyEndPoint) handleAppOpen(app UrlScheme, appContext UUID, appOpen *AppOpen, req *http.Request) error {
-	this.service.Link(app, appOpen.UUID, appContext, appOpen.ShortCode)
-	this.service.TrackAppOpen(app, appContext, appOpen.UUID, appOpen.SourceApplication, appOpen.ShortCode)
+	this.service.Link(app, appOpen.SourceContext, appContext, appOpen.ShortCode)
+	appOpen.Timestamp = timestamp()
+	appOpen.AppContext = appContext
+	this.service.TrackAppOpen(app, appContext, appOpen)
 
 	shortUrl, err := this.service.Find(appOpen.ShortCode)
 	if err != nil {
@@ -269,18 +271,18 @@ func (this *ShortyEndPoint) handleAppOpen(app UrlScheme, appContext UUID, appOpe
 			Destination:       appOpen.Deeplink,
 			App:               app,
 			AppContext:        appContext,
-			SourceContext:     appOpen.UUID,
+			SourceContext:     appOpen.SourceContext,
 			SourceApplication: appOpen.SourceApplication,
 			Origin:            installOrigin,
 			AppKey:            installAppKey,
 			CampaignKey:       installCampaignKey,
 		})
 
-		if found, _ := this.service.FindLink(UUID(appContext), appOpen.UUID); !found {
+		if found, _ := this.service.FindLink(UUID(appContext), appOpen.SourceContext); !found {
 			this.service.PublishLink(&LinkEvent{
 				RequestOrigin: origin,
 				Context1:      appContext,
-				Context2:      appOpen.UUID,
+				Context2:      appOpen.SourceContext,
 				Origin:        installOrigin,
 				AppKey:        installAppKey,
 				CampaignKey:   installCampaignKey,
@@ -292,8 +294,8 @@ func (this *ShortyEndPoint) handleAppOpen(app UrlScheme, appContext UUID, appOpe
 
 func (this *ShortyEndPoint) handleInstall(app UrlScheme, appContext UUID, appOpen *AppOpen, req *http.Request, reportingMethod string) error {
 
-	if appOpen.UUID != "" {
-		this.service.Link(app, appOpen.UUID, appContext, appOpen.ShortCode)
+	if appOpen.SourceContext != "" {
+		this.service.Link(app, appOpen.SourceContext, appContext, appOpen.ShortCode)
 	}
 
 	this.service.TrackInstall(app, appContext)
@@ -331,7 +333,7 @@ func (this *ShortyEndPoint) handleInstall(app UrlScheme, appContext UUID, appOpe
 			Destination:       appOpen.Deeplink,
 			App:               app,
 			AppContext:        appContext,
-			SourceContext:     appOpen.UUID,
+			SourceContext:     appOpen.SourceContext,
 			SourceApplication: appOpen.SourceApplication,
 			Origin:            installOrigin,
 			AppKey:            installAppKey,
@@ -339,12 +341,12 @@ func (this *ShortyEndPoint) handleInstall(app UrlScheme, appContext UUID, appOpe
 			ReportingMethod:   reportingMethod,
 		})
 
-		if appOpen.UUID != "" {
-			if found, _ := this.service.FindLink(appContext, appOpen.UUID); !found {
+		if appOpen.SourceContext != "" {
+			if found, _ := this.service.FindLink(appContext, appOpen.SourceContext); !found {
 				this.service.PublishLink(&LinkEvent{
 					RequestOrigin: origin,
 					Context1:      appContext,
-					Context2:      appOpen.UUID,
+					Context2:      appOpen.SourceContext,
 					Origin:        installOrigin,
 					AppKey:        installAppKey,
 					CampaignKey:   installCampaignKey,
