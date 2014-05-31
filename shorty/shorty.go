@@ -154,11 +154,11 @@ func (this *shortyImpl) VanityUrl(vanity, data string, rules []RoutingRule, defa
 		r := &RoutingRule{}
 		*r = rule
 		r.Special = []RoutingRule{} // empty it out
-		if buf, err := json.Marshal(r); err == nil {
-			for j, sub := range rule.Special {
-				// Copy the fields in the struct (all but Special) to the child
-				json.Unmarshal(buf, &sub)
-				rule.Special[j] = sub
+		for j, sub := range rule.Special {
+			if buf, err := json.Marshal(sub); err == nil {
+				// Copy the child's fields into a copy of the parent to achieve 'overrides'
+				json.Unmarshal(buf, r)
+				rule.Special[j] = *r
 			}
 		}
 		processed[i] = rule
