@@ -53,7 +53,7 @@ type RoutingRule struct {
 	ContentSourceUrl string `json:"content-src-url,omitempty"`
 
 	// Send to an interstitial page
-	SendToInterstitial bool `json:"x-send-to-interstitial,omitempty"`
+	CheckAppInstallViaInterstitial bool `json:"x-check-app-install-via-interstitial,omitempty"`
 
 	// True to disasble app store redirection
 	NoAppStoreRedirect bool `json:"x-no-app-store-redirect,omitempty"`
@@ -61,6 +61,7 @@ type RoutingRule struct {
 	// True to indicate that this is a http url destination but mapped in the intent filter to an app.
 	IsAndroidIntentFilter bool `json:"x-android-intent-filter,omitempty"`
 
+	// Nested rules that can further provide overrides -- e.g. on 'ios', now with FB app
 	Special []RoutingRule `json:"special,omitempty"`
 }
 

@@ -1,0 +1,29 @@
+{
+        "token": "Deeplink Demo",
+        "campaign": "test-campaign-1",
+        "longUrl": "http://sfbay.craigslist.org/sfc/cto/4488387709.html",
+        "origin": "lambo gallardo",
+	"rules": [
+            {
+                "scheme": "qldeeplink",
+                "platform": "iPhone|iPod|iPad",
+                "destination": "qldeeplink://content?url=http%3A%2F%2Fsfbay.craigslist.org%2Fsfc%2Fcto%2F4488387709.html",
+                "appstore": "https://testflightapp.com/install/b98c4c5189905cb9569fbf32959abc5d-MTEzMzMyNDI/",
+		"special" : [
+			     {
+				 "__header": "FBAN|FBIOS",
+				 "referer": "facebook\\.com",
+				 "no-app-open-in-x-days" : 10,
+				 "x-check-app-install-via-interstitial": true,
+				 "content-src-url":"https://web1.qor.io/static/opentest.html"
+			     }
+		]
+            },
+            {
+                "os": "Android",
+                "destination": "http://sfbay.craigslist.org/sfc/cto/4488387709.html",
+                "scheme": "qldeeplink",
+                "appstore": "https://play.google.com/store/apps/details?id=com.yuilop"
+            }
+        ]
+}

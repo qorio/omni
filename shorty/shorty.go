@@ -147,6 +147,10 @@ func (this *shortyImpl) VanityUrl(vanity, data string, rules []RoutingRule, defa
 		}
 	}
 
+	// Each RoutingRule supports overrides via the 'Special' field.  If these are specified,
+	// compute the merged view for each of the special rule.  This is done by first copying
+	// the fields in the top level rule and then overlay the fields in the special/override version.
+	// We use JSON encode and decode to merge the fields in the structs instead of struct copy by value.
 	processed := make([]RoutingRule, len(rules))
 	for i, rule := range rules {
 		// if there are subrules, merge parent attributes into them

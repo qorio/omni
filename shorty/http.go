@@ -3,6 +3,7 @@ package shorty
 import (
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -79,22 +80,17 @@ function onLoad() {
 	}
 
 	openTestHtmlTemplate, err = openTestHtmlTemplate.Parse(`
-html>
+<html>
  <head>
   <title>Getting content...</title>
   <script type="text/javascript" src="./deeplink.js"></script>
  </head>
  <body onload="onLoad()">
-  <!-- Markdown text -->
-  <xmp theme="amelia" style="display:none;">
-  Opening the link in app...
-  </xmp>
-  <img src="https://web1.qor.io/static/img/open-doc.png"/>
   <div id="has-app"></div>
-  <p style="font-size:small">
-This is a page that tryies to open deeplinked content in an app.
-If the app is not installed on the device, a page will direct the user to install the app through Safari.
-After the user installs the app, the app will open to the deeplinked content when it launches.</p>
+  <!-- Markdown text -->
+  <xmp theme="journal" style="display:none;">
+  Opening the link in app...  If the app does not open, open this link via Safari to install the app.
+  </xmp>
  </body>
  <script src="http://strapdownjs.com/v/0.2/strapdown.js"></script>
 </html>
@@ -153,11 +149,11 @@ func NewRedirector(settings ShortyEndPointSettings, service Shorty) (api *Shorty
 			api.ReportInstallOnOrganicAppLaunch).Methods("GET").Name("app_install_on_direct_launch")
 
 		api.router.HandleFunc("/m/{shortCode:"+regex+"}/{uuid}/",
-			api.InterstitialHandler).Methods("GET").Name("interstitial")
+			api.CheckAppInstallInterstitialHandler).Methods("GET").Name("app_install_interstitial")
 
 		// Dynamically generated so that any html @fetchUrl loaded by above can reference it as src="../deeplink.js"
 		api.router.HandleFunc("/m/{shortCode:"+regex+"}/{uuid}/deeplink.js",
-			api.InterstitialJSHandler).Methods("GET").Name("interstitial_js")
+			api.CheckAppInstallInterstitialJSHandler).Methods("GET").Name("app_install_interstitial_js")
 
 		return api, nil
 	} else {
@@ -327,7 +323,7 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	if matchedRule != nil {
 		switch {
 
-		case matchedRule.SendToInterstitial:
+		case matchedRule.CheckAppInstallViaInterstitial:
 
 			// Special handling of platforms where apps using webviews don't shared
 			// cookies -- aka sandboxed uuids -- (e.g. iOS):
@@ -361,6 +357,7 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 			renderInline = true
 			destination = omni_http.FetchFromUrl(userAgent.Header, matchedRule.ContentSourceUrl)
 
+			// TODO - Review this... why is this even necessary?
 		case matchedRule.AppUrlScheme != "":
 			renderInline = false
 			if !matchedRule.NoAppStoreRedirect {
@@ -428,7 +425,22 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	}()
 }
 
-func (this *ShortyEndPoint) InterstitialHandler(resp http.ResponseWriter, req *http.Request) {
+func (this *ShortUrl) MatchRule(service Shorty, userAgent *omni_http.UserAgent,
+	origin *omni_http.RequestOrigin, cookies omni_http.Cookies) (matchedRule *RoutingRule, err error) {
+
+	for _, rule := range this.Rules {
+		if match := rule.Match(this.service, userAgent, origin, cookies); match {
+			matchedRule = &rule
+			break
+		}
+	}
+	if matchedRule == nil || matchedRule.Destination == "" {
+		err = errors.New("not found")
+	}
+	return
+}
+
+func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	uuid := vars["uuid"]
 	shortUrl, err := this.service.Find(vars["shortCode"])
@@ -479,6 +491,8 @@ func (this *ShortyEndPoint) InterstitialHandler(resp http.ResponseWriter, req *h
 
 	if uuid != userId {
 
+		glog.Infoln(">>>> harvest phase")
+
 		// We got the user to come here via a different context (browser) than the one that created
 		// this url in the first place.  So link the two ids together and redirect back to the short url.
 
@@ -492,7 +506,20 @@ func (this *ShortyEndPoint) InterstitialHandler(resp http.ResponseWriter, req *h
 			// we know that the app already exists on the device and was opened in a different context.
 
 			appOpen, found, _ := this.service.FindAppOpen(UrlScheme(appUrlScheme), UUID(userId))
-			if found {
+
+			glog.Infoln("find app-open", appUrlScheme, userId, appOpen, found)
+
+			if !found {
+
+				// no app-open even in another context.... so just send it to the appstore
+				matchedRule, _ := shortUrl.MatchRule(this.service, userAgent, origin, cookies)
+				if matchedRule != nil {
+					http.Redirect(resp, req, matchedRule.AppStoreUrl, http.StatusMovedPermanently)
+					return
+				}
+
+			} else {
+
 				// create a record *as if* the app was also opened in the other context
 				appOpen.SourceContext = UUID(uuid)
 				appOpen.SourceApplication = origin.Referrer
@@ -500,10 +527,11 @@ func (this *ShortyEndPoint) InterstitialHandler(resp http.ResponseWriter, req *h
 			}
 		}
 		if next, err := this.router.Get("redirect").URL("id", shortUrl.Id); err == nil {
+
 			http.Redirect(resp, req, next.String(), http.StatusMovedPermanently)
 			return
-		}
 
+		}
 	} else {
 
 		// The user is still coming from the same browser context because the two ids are the same.
@@ -511,24 +539,27 @@ func (this *ShortyEndPoint) InterstitialHandler(resp http.ResponseWriter, req *h
 
 		// we expect the fetch url to be included in the 'f' parameter
 		if fetchFromUrl, exists := req.Form["f"]; exists {
-			content = omni_http.FetchFromUrl(userAgent.Header, fetchFromUrl[0])
-		}
-		resp.Write([]byte(content))
 
-		return
+			content = omni_http.FetchFromUrl(userAgent.Header, fetchFromUrl[0])
+			resp.Write([]byte(content))
+
+		} else {
+			// Some dummy content
+			openTestHtmlTemplate.Execute(resp, "")
+		}
 	}
+
+	return
 }
 
-func (this *ShortyEndPoint) InterstitialJSHandler(resp http.ResponseWriter, req *http.Request) {
+func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.ResponseWriter, req *http.Request) {
 	omni_http.SetNoCachingHeaders(resp)
 
-	// Everything should be in the url
 	vars := mux.Vars(req)
 	shortCode := vars["shortCode"]
 
 	shortUrl, err := this.service.Find(shortCode)
 	if err != nil || shortUrl == nil {
-		// write nothing
 		renderError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -537,39 +568,12 @@ func (this *ShortyEndPoint) InterstitialJSHandler(resp http.ResponseWriter, req 
 	userAgent := omni_http.ParseUserAgent(req)
 	origin, _ := this.requestParser.Parse(req)
 
-	var matchedRule *RoutingRule
-	for _, rule := range shortUrl.Rules {
-		if match := rule.Match(this.service, userAgent, origin, cookies); match {
-			matchedRule = &rule
-			break
-		}
-	}
-	if matchedRule == nil || matchedRule.Destination == "" {
-		// write nothing
+	matchedRule, notFound := shortUrl.MatchRule(this.service, userAgent, origin, cookies)
+	if notFound != nil {
 		renderError(resp, req, "not found", http.StatusNotFound)
 		return
 	}
 	deeplinkJsTemplate.Execute(resp, matchedRule)
-	return
-}
-
-func (this *ShortyEndPoint) match(shortCode string, resp http.ResponseWriter, req *http.Request) (shortUrl *ShortUrl, match *RoutingRule, err error) {
-	shortUrl, err = this.service.Find(shortCode)
-	if err != nil {
-		return
-	}
-
-	if shortUrl != nil && len(shortUrl.Rules) > 0 {
-		userAgent := omni_http.ParseUserAgent(req)
-		cookies := omni_http.NewCookieHandler(secureCookie, resp, req)
-		origin, _ := this.requestParser.Parse(req)
-		for _, rule := range shortUrl.Rules {
-			if matched := rule.Match(this.service, userAgent, origin, cookies); matched {
-				match = &rule
-				return
-			}
-		}
-	}
 	return
 }
 
@@ -604,17 +608,9 @@ func renderJsonError(resp http.ResponseWriter, req *http.Request, message string
 }
 
 func renderError(resp http.ResponseWriter, req *http.Request, message string, code int) (err error) {
-	/*
-		body, err := render(req, "layout", "error", map[string]string{"Error": message})
-		if err != nil {
-			http.Error(resp, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		resp.WriteHeader(code)
-		resp.Write(body)
-	*/
-	return nil
+	resp.WriteHeader(code)
+	resp.Write([]byte(fmt.Sprintf("<html><body>Error: %s </body></html>", message)))
+	return
 }
 
 // newUUID generates a random UUID according to RFC 4122
