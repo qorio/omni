@@ -1,7 +1,9 @@
 package shorty
 
 import (
+	"bytes"
 	"crypto/rand"
+	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -310,11 +312,14 @@ func (this *shortyImpl) TrackAppOpen(app UrlScheme, appContext UUID, appOpen *Ap
 	defer c.Close()
 
 	key := fmt.Sprintf("%s:%s:%s:%s:%s", app, appContext, appOpen.SourceContext, appOpen.ShortCode, appOpen.SourceApplication)
-	value, err := json.Marshal(appOpen)
+
+	var buff bytes.Buffer
+	enc := gob.NewEncoder(&buff)
+	err := enc.Encode(appOpen)
 	if err != nil {
 		return err
 	}
-	reply, err := c.Do("SET", this.settings.RedisPrefix+"app-open:"+key, value)
+	reply, err := c.Do("SET", this.settings.RedisPrefix+"app-open:"+key, buff.Bytes())
 	if err == nil && reply != "OK" {
 		err = errors.New("Invalid Redis response")
 	}
@@ -331,11 +336,13 @@ func (this *shortyImpl) FindAppOpen(app UrlScheme, sourceContext UUID) (appOpen 
 	if err == nil && len(reply) > 0 {
 		// Do a get on the first hit
 		value, err := redis.Bytes(c.Do("GET", reply[0]))
-		glog.Infoln(">>> APP OPEN", reply[0], value)
 		if err == nil {
-			err = json.Unmarshal(value, appOpen)
+			buff := bytes.NewBuffer(value)
+			dec := gob.NewDecoder(buff)
+			err = dec.Decode(&appOpen)
 			found = err == nil
 		}
+		glog.Infoln(">>> APP OPEN", reply[0], string(value), appOpen, err)
 	}
 	return
 }
