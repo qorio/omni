@@ -379,6 +379,11 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 		http.Redirect(resp, req, destination, http.StatusMovedPermanently)
 	}
 
+	deeplink := ""
+	if matchedRule != nil {
+		deeplink = matchedRule.Destination
+	}
+
 	// Record stats asynchronously
 	timestamp := time.Now().Unix()
 
@@ -407,7 +412,8 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 			Fingerprint: fingerprint,
 			Context:     UUID(userId),
 			ShortCode:   shortUrl.Id,
-			Deeplink:    destination,
+			Visit:       destination,
+			Deeplink:    deeplink,
 			Timestamp:   timestamp,
 			Referrer:    origin.Referrer,
 		})

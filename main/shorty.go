@@ -105,6 +105,7 @@ func translateInstall(installEvent *shorty.InstallEvent) (event *tally.Event) {
 	event.SetAttribute("origin", installEvent.Origin)
 	event.SetAttribute("app_key", installEvent.AppKey)
 	event.SetAttribute("campaign_key", installEvent.CampaignKey)
+	event.SetAttribute("reporting_method", installEvent.ReportingMethod)
 	return
 }
 

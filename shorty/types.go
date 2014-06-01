@@ -90,6 +90,7 @@ type FingerprintedVisit struct {
 	Context     UUID   `json:"uuid,omitempty"`
 	ShortCode   string `json:"shortCode,omitempty"`
 	Deeplink    string `json:"deeplink,omitempty"`
+	Visit       string
 	Timestamp   int64
 	Referrer    string `json:"sourceApplication,omitempty"`
 }
