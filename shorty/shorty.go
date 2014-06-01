@@ -302,7 +302,7 @@ func (this *shortyImpl) MatchFingerPrint(fingerprint string) (score float64, vis
 	if err2 != nil {
 		glog.Warningln("Error", err2)
 	}
-	if err3 := unmarshal(value, &visit); err3 == nil {
+	if err3 := unmarshal(value, visit); err3 == nil {
 		score = matchScore
 		return
 	}
@@ -362,7 +362,7 @@ func (this *shortyImpl) FindAppOpen(app UrlScheme, sourceContext UUID) (appOpen 
 		// Do a get on the first hit
 		value, err := redis.Bytes(c.Do("GET", reply[0]))
 		if err == nil {
-			err = unmarshal(value, &appOpen)
+			err = unmarshal(value, appOpen)
 
 			// buff := bytes.NewBuffer(value)
 			// dec := gob.NewDecoder(buff)

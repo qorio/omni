@@ -1,13 +1,13 @@
 {
         "token": "Deeplink Demo",
         "campaign": "test-campaign-1",
-        "longUrl": "http://sfbay.craigslist.org/sfc/cto/4495478742.html",
-        "origin": "BMW M6",
+        "longUrl": "http://sfbay.craigslist.org/sfc/cto/4492512620.html",
+        "origin": "2009 Mercedes SL63 AMG",
 	"rules": [
             {
                 "scheme": "qldeeplink",
                 "platform": "iPhone|iPod|iPad",
-                "destination": "qldeeplink://content?url=http%3A%2F%2Fsfbay.craigslist.org%2Fsfc%2Fcto%2F4495478742.html",
+                "destination": "qldeeplink://content?url=http%3A%2F%2Fsfbay.craigslist.org%2Fsfc%2Fcto%2F4492512620.html",
                 "appstore": "https://testflightapp.com/install/b98c4c5189905cb9569fbf32959abc5d-MTEzMzMyNDI/",
 		"app-open-ttl-days" : 10,
 		"special" : [
@@ -22,7 +22,7 @@
             },
             {
                 "os": "Android",
-                "destination": "http://sfbay.craigslist.org/sfc/cto/4495478742.html",
+                "destination": "http://sfbay.craigslist.org/sfc/cto/4492512620.html",
                 "scheme": "qldeeplink",
                 "appstore": "https://play.google.com/store/apps/details?id=com.yuilop"
             }
