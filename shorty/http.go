@@ -338,7 +338,7 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	if matchedRule != nil {
 		switch {
 
-		case matchedRule.CheckAppInstallViaInterstitial:
+		case matchedRule.SendToInterstitial:
 
 			// Special handling of platforms where apps using webviews don't shared
 			// cookies -- aka sandboxed uuids -- (e.g. iOS):

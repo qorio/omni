@@ -24,29 +24,31 @@ type ShortyAddRequest struct {
 	Campaign string        `json:"campaign"`
 }
 
+type OnOff string
+type Regex string
+
 type RoutingRule struct {
 	Comment string `json:"comment,omitempty"`
 
-	// Specify one of the following matching criteria: platform, os, make, or browser
-	MatchPlatform string `json:"platform,omitempty"`
-	MatchOS       string `json:"os,omitempty"`
-	MatchMake     string `json:"make,omitempty"`
-	MatchBrowser  string `json:"browser,omitempty"`
-
-	MatchMobile   string `json:"mobile,omitempty"`
-	MatchReferrer string `json:"referer,omitempty"`
-
-	// True to check if there's an install of the app by AppUrlScheme
-	MatchInstalled string `json:"installed,omitempty"`
-
-	// Match by no app-open or if app-open is X days ago
-	MatchNoAppOpenInXDays int64 `json:"no-app-open-in-x-days,omitempty"`
-
 	// For specifying mobile appstore install url and app custom url scheme
 	// If specified, check cookie to see if the app's url scheme exists, if not, direct to appstore
-	AppUrlScheme   string `json:"scheme,omitempty"`
-	AppStoreUrl    string `json:"appstore,omitempty"`
-	AppOpenTTLDays int64  `json:"app-open-ttl-days,omitempty"`
+	AppUrlScheme string `json:"scheme,omitempty"`
+	AppStoreUrl  string `json:"appstore,omitempty"`
+
+	// TTL max days for the app open to be considered expired (eg. app possibly deleted from device)
+	AppOpenTTLDays int64 `json:"app-open-ttl-days,omitempty"`
+
+	// Specify one of the following matching criteria: platform, os, make, or browser
+	MatchPlatform Regex `json:"platform,omitempty"`
+	MatchOS       Regex `json:"os,omitempty"`
+	MatchMake     Regex `json:"make,omitempty"`
+	MatchBrowser  Regex `json:"browser,omitempty"`
+
+	MatchMobile   OnOff `json:"mobile,omitempty"`
+	MatchReferrer Regex `json:"referer,omitempty"`
+
+	// Match by no app-open or if app-open is X days ago -- uses the AppOpenTTLDays
+	MatchNoAppOpenInXDays OnOff `json:"match-no-app-open-in-ttl-days,omitempty"`
 
 	// Destination resource url - can be app url on mobile device
 	Destination string `json:"destination,omitempty"`
@@ -55,10 +57,7 @@ type RoutingRule struct {
 	ContentSourceUrl string `json:"content-src-url,omitempty"`
 
 	// Send to an interstitial page
-	CheckAppInstallViaInterstitial bool `json:"x-check-app-install-via-interstitial,omitempty"`
-
-	// True to disasble app store redirection
-	NoAppStoreRedirect bool `json:"x-no-app-store-redirect,omitempty"`
+	SendToInterstitial bool `json:"x-send-to-interstitial,omitempty"`
 
 	// True to indicate that this is a http url destination but mapped in the intent filter to an app.
 	IsAndroidIntentFilter bool `json:"x-android-intent-filter,omitempty"`
