@@ -326,10 +326,15 @@ func (this *shortyImpl) FindAppOpen(app UrlScheme, sourceContext UUID) (appOpen 
 	defer c.Close()
 
 	key := fmt.Sprintf("%s:*:%s:*", app, sourceContext)
-	reply, err := redis.Bytes(c.Do("GET", this.settings.RedisPrefix+"app-open:"+key))
-	found = err == nil && reply != nil
-	if err == nil {
-		err = json.Unmarshal(reply, appOpen)
+	reply, err := redis.Strings(c.Do("KEYS", this.settings.RedisPrefix+"app-open:"+key))
+
+	found = err == nil && len(reply) > 0
+	if found {
+		// Do a get on the first hit
+		value, err := redis.Bytes(c.Do("GET", reply[0]))
+		if err == nil {
+			err = json.Unmarshal(value, appOpen)
+		}
 	}
 	return
 }
