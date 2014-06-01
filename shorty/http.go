@@ -59,19 +59,30 @@ function getCookie(name) {
     var parts = value.split("; " + name + "=");
     if (parts.length == 2) return parts.pop().split(";").shift();
 }
+function getParameterByName(name) {
+    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+    var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+        results = regex.exec(location.search);
+    return results == null ? null : decodeURIComponent(results[1].replace(/\+/g, " "));
+}
 function onLoad() {
-    var shortUrl = window.location;
-    var deeplink = "{{.Destination}}";
-    var scheme = deeplink.split("://").shift();
-    var shortCode = shortUrl.pathname.substring(1);
-    deeplink += "&__xrlc=" + getCookie("uuid") + "&__xrlp=" + scheme + "&__xrls=" + shortCode;
-    setTimeout(function() {
-        if (!document.webkitHidden) {
-            var el = document.getElementById("has-app")
-            el.innerHTML = "<h1>Still here?  Try open this in Safari to install the app.</h1>";
-	}
-    }, 2000);
-    window.location = deeplink;
+    var interstitialUrl = window.location;
+    var didNotDetectApp = getParameterByName('__xrl_noapp') != null;
+    if (didNotDetectApp) {
+        var el = document.getElementById("has-app")
+        el.innerHTML = "<h1>Still here?  Try open this in Safari to install the app.</h1>";
+    } else {
+        var deeplink = "{{.Destination}}";
+        var scheme = deeplink.split("://").shift();
+        var shortCode = window.location.pathname.substring(1);
+        deeplink += "&__xrlc=" + getCookie("uuid") + "&__xrlp=" + scheme + "&__xrls=" + shortCode;
+        setTimeout(function() {
+            if (!document.webkitHidden) {
+                window.location = interstitialUrl + "&__xrl_noapp=";
+	    }
+        }, 1000);
+        window.location = deeplink;
+    }
 }
 `)
 	if err != nil {
