@@ -239,10 +239,7 @@ func (this *shortyImpl) FindLink(appUuid, uuid UUID) (found bool, err error) {
 	// The key allows searching A:B or B:A by making it A:B:A
 	wildcard := fmt.Sprintf("*%s:%s*", appUuid, uuid)
 	reply, err := redis.String(c.Do("GET", this.settings.RedisPrefix+"uuid-pair:"+wildcard))
-	if err == nil && reply != "" {
-		found = true
-		return
-	}
+	found = err == nil && reply != ""
 	return
 }
 
@@ -332,7 +329,6 @@ func (this *shortyImpl) FindAppOpen(app UrlScheme, sourceContext UUID) (appOpen 
 
 	key := fmt.Sprintf("%s:*:%s:*", app, sourceContext)
 	reply, err := redis.Strings(c.Do("KEYS", this.settings.RedisPrefix+"app-open:"+key))
-	glog.Infoln(">>>> FIND APP OPEN", key, reply, err)
 	if err == nil && len(reply) > 0 {
 		// Do a get on the first hit
 		value, err := redis.Bytes(c.Do("GET", reply[0]))
@@ -342,7 +338,6 @@ func (this *shortyImpl) FindAppOpen(app UrlScheme, sourceContext UUID) (appOpen 
 			err = dec.Decode(&appOpen)
 			found = err == nil
 		}
-		glog.Infoln(">>> APP OPEN", reply[0], string(value), appOpen, err)
 	}
 	return
 }

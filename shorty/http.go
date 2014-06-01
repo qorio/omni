@@ -372,21 +372,14 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 			renderInline = true
 			destination = omni_http.FetchFromUrl(userAgent.Header, matchedRule.ContentSourceUrl)
 
-		// 	// TODO - Review this... why is this even necessary?
-		// case matchedRule.AppUrlScheme != "":
-		// 	renderInline = false
-		// 	if !matchedRule.NoAppStoreRedirect {
-		// 		destination = matchedRule.AppStoreUrl
-		// 	} else {
-		// 		destination = matchedRule.Destination
-		// 	}
-
 		default:
+
 			renderInline = false
+
 			// check if there's been an appOpen
 			appOpen, found, _ := this.service.FindAppOpen(UrlScheme(matchedRule.AppUrlScheme), UUID(userId))
 			glog.Infoln("REDIRECT- checking for appOpen", matchedRule.AppUrlScheme, userId, found, appOpen)
-			if !found {
+			if !found || time.Now().Unix()-appOpen.Timestamp >= matchedRule.MatchNoAppOpenInXDays*24*60*60 {
 				destination = matchedRule.AppStoreUrl
 			} else {
 				destination = matchedRule.Destination
