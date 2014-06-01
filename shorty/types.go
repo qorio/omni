@@ -25,6 +25,7 @@ type ShortyAddRequest struct {
 }
 
 type RoutingRule struct {
+	Comment string `json:"comment,omitempty"`
 
 	// Specify one of the following matching criteria: platform, os, make, or browser
 	MatchPlatform string `json:"platform,omitempty"`

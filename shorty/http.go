@@ -357,20 +357,22 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 			renderInline = true
 			destination = omni_http.FetchFromUrl(userAgent.Header, matchedRule.ContentSourceUrl)
 
-			// TODO - Review this... why is this even necessary?
-		case matchedRule.AppUrlScheme != "":
-			renderInline = false
-			if !matchedRule.NoAppStoreRedirect {
-				destination = matchedRule.AppStoreUrl
-			} else {
-				destination = matchedRule.Destination
-			}
+		// 	// TODO - Review this... why is this even necessary?
+		// case matchedRule.AppUrlScheme != "":
+		// 	renderInline = false
+		// 	if !matchedRule.NoAppStoreRedirect {
+		// 		destination = matchedRule.AppStoreUrl
+		// 	} else {
+		// 		destination = matchedRule.Destination
+		// 	}
 
 		default:
 			renderInline = false
 			destination = matchedRule.Destination
 		}
 	}
+
+	glog.Infoln("REDIRECT: matched rule:", matchedRule, destination)
 
 	if renderInline {
 		resp.Write([]byte(destination))
