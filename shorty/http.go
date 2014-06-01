@@ -383,7 +383,15 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 
 		default:
 			renderInline = false
-			destination = matchedRule.Destination
+			// check if there's been an appOpen
+			appOpen, found, _ := this.service.FindAppOpen(UrlScheme(matchedRule.AppUrlScheme), UUID(userId))
+			glog.Infoln("REDIRECT- checking for appOpen", matchedRule.AppUrlScheme, userId, found, appOpen)
+			if !found {
+				destination = matchedRule.AppStoreUrl
+			} else {
+				destination = matchedRule.Destination
+			}
+
 		}
 	}
 
@@ -537,11 +545,11 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 			if !found {
 
 				// no app-open even in another context.... so just send it to the appstore
-				matchedRule, _ := shortUrl.MatchRule(this.service, userAgent, origin, cookies)
-				if false && matchedRule != nil {
-					http.Redirect(resp, req, matchedRule.AppStoreUrl, http.StatusMovedPermanently)
-					return
-				}
+				// matchedRule, _ := shortUrl.MatchRule(this.service, userAgent, origin, cookies)
+				// if matchedRule != nil {
+				// 	http.Redirect(resp, req, matchedRule.AppStoreUrl, http.StatusMovedPermanently)
+				// 	return
+				// }
 
 			} else {
 
