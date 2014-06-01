@@ -222,7 +222,7 @@ func (this *shortyImpl) Link(appUrlScheme UrlScheme, prevContext, currentContext
 	defer c.Close()
 
 	// The key allows searching A:B or B:A by making it A:B:A
-	key := fmt.Sprintf("%s:%s:%s:%s", appUrlScheme, prevContext, currentContext, prevContext)
+	key := fmt.Sprintf("%s:%s:%s:%s:%s", appUrlScheme, shortUrlId, prevContext, currentContext, prevContext)
 	reply, err := c.Do("SET", this.settings.RedisPrefix+"uuid-pair:"+key, shortUrlId)
 	if err == nil && reply != "OK" {
 		err = errors.New("Invalid Redis response")

@@ -257,12 +257,16 @@ func processCookies(cookies omni_http.Cookies, shortCode string) (visits int, co
 	if uuid == "" {
 		if uuid, _ = newUUID(); uuid != "" {
 			cookieError = cookies.SetPlainString(uuidCookieKey, uuid)
+			glog.Infoln("SET COOKIE", uuidCookieKey, uuid, cookieError)
 			cookied = cookieError == nil
 		}
 	}
 
 	visits++
 	cookieError = cookies.Set(lastViewedCookieKey, sc)
+
+	glog.Infoln("SET COOKIE", lastViewedCookieKey, sc, cookieError)
+
 	cookieError = cookies.Set(sc, visits)
 
 	return
@@ -490,12 +494,12 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 	omni_http.SetNoCachingHeaders(resp)
 	cookies := omni_http.NewCookieHandler(secureCookie, resp, req)
 
+	userAgent := omni_http.ParseUserAgent(req)
+	origin, _ := this.requestParser.Parse(req)
+
 	// visits, cookied, last, userId := processCookies(cookies, shortUrl)
 	_, _, lastViewed, userId := processCookies(cookies, shortUrl.Id)
 	glog.Infoln(">>> harvest - processed cookies", lastViewed, userId, shortUrl.Id)
-
-	userAgent := omni_http.ParseUserAgent(req)
-	origin, _ := this.requestParser.Parse(req)
 
 	// Here we check if the two uuids are different.  One uuid is in the url of this request.  This is the uuid
 	// from some context (e.g. from FB webview on iOS).  Another uuid is one in the cookie -- either we assigned
