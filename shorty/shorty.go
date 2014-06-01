@@ -267,7 +267,7 @@ func (this *shortyImpl) SaveFingerprintedVisit(visit *FingerprintedVisit) error 
 	// if err != nil {
 	// 	return err
 	// }
-	value, err := marshal(visit)
+	value, err := marshal(*visit)
 	if err != nil {
 		return err
 	}
@@ -314,20 +314,6 @@ func (this *shortyImpl) MatchFingerPrint(fingerprint string) (score float64, vis
 	return
 }
 
-func (this *shortyImpl) TrackInstall(app UrlScheme, context UUID) error {
-	c := this.pool.Get()
-	defer c.Close()
-
-	// TODO - look at every pair that contains this uuid, get the other uuid and create
-	// a record as well. This will speed up the read when decoding the shortlink to see if installed.
-	key := fmt.Sprintf("%s:%s", context, app)
-	reply, err := c.Do("SET", this.settings.RedisPrefix+"install:"+key, timestamp())
-	if err == nil && reply != "OK" {
-		err = errors.New("Invalid Redis response")
-	}
-	return err
-}
-
 func (this *shortyImpl) TrackAppOpen(app UrlScheme, appContext UUID, appOpen *AppOpen) error {
 	c := this.pool.Get()
 	defer c.Close()
@@ -341,7 +327,7 @@ func (this *shortyImpl) TrackAppOpen(app UrlScheme, appContext UUID, appOpen *Ap
 	// 	return err
 	// }
 
-	bytes, err := marshal(appOpen)
+	bytes, err := marshal(*appOpen)
 	if err != nil {
 		return err
 	}
@@ -371,6 +357,20 @@ func (this *shortyImpl) FindAppOpen(app UrlScheme, sourceContext UUID) (appOpen 
 		}
 	}
 	return
+}
+
+func (this *shortyImpl) TrackInstall(app UrlScheme, context UUID) error {
+	c := this.pool.Get()
+	defer c.Close()
+
+	// TODO - look at every pair that contains this uuid, get the other uuid and create
+	// a record as well. This will speed up the read when decoding the shortlink to see if installed.
+	key := fmt.Sprintf("%s:%s", context, app)
+	reply, err := c.Do("SET", this.settings.RedisPrefix+"install:"+key, timestamp())
+	if err == nil && reply != "OK" {
+		err = errors.New("Invalid Redis response")
+	}
+	return err
 }
 
 func (this *shortyImpl) FindInstall(app UrlScheme, context UUID) (expiration int64, found bool, err error) {
