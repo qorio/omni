@@ -115,10 +115,16 @@ func (this *ShortyEndPoint) ReportInstallOnOrganicAppLaunch(resp http.ResponseWr
 	userId, _ = cookies.GetPlainString(uuidCookieKey)
 	cookies.Get(lastViewedCookieKey, &lastViewed)
 
+	// The lastViewed may not be the shortcode, but the interstitial
+	sc := lastViewed
+	parts := strings.Split(lastViewed, "/")
+	if len(parts) >= 3 && parts[1] == "m" {
+		sc = parts[2]
+	}
 	// Construct a AppOpen object using what is read from the http headers / cookies
 	appOpen := &AppOpen{
 		SourceContext:     UUID(userId),
-		ShortCode:         lastViewed,
+		ShortCode:         sc,
 		Deeplink:          ".", // The app opened itself without referrer
 		SourceApplication: "ORGANIC",
 	}

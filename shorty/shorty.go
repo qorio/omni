@@ -224,7 +224,7 @@ func (this *shortyImpl) Link(appUrlScheme UrlScheme, prevContext, currentContext
 	defer c.Close()
 
 	// The key allows searching A:B or B:A by making it A:B:A
-	key := fmt.Sprintf("%s:%s:%s:%s:%s", appUrlScheme, shortUrlId, prevContext, currentContext, prevContext)
+	key := fmt.Sprintf("%s:%s:%s:%s", appUrlScheme, prevContext, currentContext, prevContext)
 	reply, err := c.Do("SET", this.settings.RedisPrefix+"uuid-pair:"+key, shortUrlId)
 	if err == nil && reply != "OK" {
 		err = errors.New("Invalid Redis response")
@@ -294,7 +294,7 @@ func (this *shortyImpl) TrackAppOpen(app UrlScheme, appContext UUID, appOpen *Ap
 	c := this.pool.Get()
 	defer c.Close()
 
-	key := fmt.Sprintf("%s:%s:%s:%s:%s", app, appContext, appOpen.SourceContext, appOpen.ShortCode, appOpen.SourceApplication)
+	key := fmt.Sprintf("%s:%s:%s", app, appContext, appOpen.SourceContext)
 
 	var buff bytes.Buffer
 	enc := gob.NewEncoder(&buff)
@@ -314,7 +314,8 @@ func (this *shortyImpl) FindAppOpen(app UrlScheme, sourceContext UUID) (appOpen 
 	c := this.pool.Get()
 	defer c.Close()
 
-	key := fmt.Sprintf("%s:*:%s:*", app, sourceContext)
+	// TODO - this can be changed to a single GET later.
+	key := fmt.Sprintf("%s:*:%s", app, sourceContext)
 	reply, err := redis.Strings(c.Do("KEYS", this.settings.RedisPrefix+"app-open:"+key))
 	if err == nil && len(reply) > 0 {
 		// Do a get on the first hit
