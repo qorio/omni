@@ -516,6 +516,7 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 	if uuid != userId {
 
 		glog.Infoln(">>>> harvest phase")
+		cookies.SetPlainString("shortcode", shortUrl.Id)
 
 		// We got the user to come here via a different context (browser) than the one that created
 		// this url in the first place.  So link the two ids together and redirect back to the short url.
