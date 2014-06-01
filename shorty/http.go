@@ -538,7 +538,7 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 
 				// no app-open even in another context.... so just send it to the appstore
 				matchedRule, _ := shortUrl.MatchRule(this.service, userAgent, origin, cookies)
-				if matchedRule != nil {
+				if false && matchedRule != nil {
 					http.Redirect(resp, req, matchedRule.AppStoreUrl, http.StatusMovedPermanently)
 					return
 				}
