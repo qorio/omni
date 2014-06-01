@@ -243,31 +243,11 @@ func (this *shortyImpl) FindLink(appUuid, uuid UUID) (found bool, err error) {
 	return
 }
 
-func marshal(obj interface{}) (value []byte, err error) {
-	var buff bytes.Buffer
-	enc := gob.NewEncoder(&buff)
-	err = enc.Encode(obj)
-	if err != nil {
-		value = buff.Bytes()
-	}
-	return
-}
-
-func unmarshal(value []byte, obj interface{}) (err error) {
-	dec := gob.NewDecoder(bytes.NewBuffer(value))
-	err = dec.Decode(obj)
-	return
-}
-
 func (this *shortyImpl) SaveFingerprintedVisit(visit *FingerprintedVisit) error {
 	c := this.pool.Get()
 	defer c.Close()
 
-	// value, err := json.Marshal(visit)
-	// if err != nil {
-	// 	return err
-	// }
-	value, err := marshal(*visit)
+	value, err := json.Marshal(visit)
 	if err != nil {
 		return err
 	}
@@ -302,14 +282,10 @@ func (this *shortyImpl) MatchFingerPrint(fingerprint string) (score float64, vis
 	if err2 != nil {
 		glog.Warningln("Error", err2)
 	}
-	if err3 := unmarshal(value, visit); err3 == nil {
+	if err3 := json.Unmarshal(value, &visit); err3 == nil {
 		score = matchScore
 		return
 	}
-	// if err3 := json.Unmarshal(value, &visit); err3 == nil {
-	// 	score = matchScore
-	// 	return
-	// }
 
 	return
 }
@@ -320,18 +296,14 @@ func (this *shortyImpl) TrackAppOpen(app UrlScheme, appContext UUID, appOpen *Ap
 
 	key := fmt.Sprintf("%s:%s:%s:%s:%s", app, appContext, appOpen.SourceContext, appOpen.ShortCode, appOpen.SourceApplication)
 
-	// var buff bytes.Buffer
-	// enc := gob.NewEncoder(&buff)
-	// err := enc.Encode(appOpen)
-	// if err != nil {
-	// 	return err
-	// }
-
-	bytes, err := marshal(*appOpen)
+	var buff bytes.Buffer
+	enc := gob.NewEncoder(&buff)
+	err := enc.Encode(appOpen)
 	if err != nil {
 		return err
 	}
-	reply, err := c.Do("SET", this.settings.RedisPrefix+"app-open:"+key, bytes)
+
+	reply, err := c.Do("SET", this.settings.RedisPrefix+"app-open:"+key, buff.Bytes())
 	if err == nil && reply != "OK" {
 		err = errors.New("Invalid Redis response")
 	}
@@ -348,11 +320,9 @@ func (this *shortyImpl) FindAppOpen(app UrlScheme, sourceContext UUID) (appOpen 
 		// Do a get on the first hit
 		value, err := redis.Bytes(c.Do("GET", reply[0]))
 		if err == nil {
-			err = unmarshal(value, appOpen)
-
-			// buff := bytes.NewBuffer(value)
-			// dec := gob.NewDecoder(buff)
-			// err = dec.Decode(&appOpen)
+			buff := bytes.NewBuffer(value)
+			dec := gob.NewDecoder(buff)
+			err = dec.Decode(&appOpen)
 			found = err == nil
 		}
 	}
