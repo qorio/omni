@@ -307,7 +307,7 @@ func (this *ShortyEndPoint) handleInstall(app UrlScheme, appContext UUID, appOpe
 
 	if shortUrl == nil {
 		// Problem - we can't do attribution
-		glog.Warningln("cannot-determine-short-code")
+		glog.Warningln("cannot-determine-short-code", appOpen)
 	}
 
 	go func() {

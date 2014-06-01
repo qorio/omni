@@ -478,7 +478,8 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 	cookies := omni_http.NewCookieHandler(secureCookie, resp, req)
 
 	// visits, cookied, last, userId := processCookies(cookies, shortUrl)
-	_, _, _, userId := processCookies(cookies, shortUrl.Id)
+	_, _, lastViewed, userId := processCookies(cookies, shortUrl.Id)
+	glog.Infoln(">>> harvest - processed cookies", lastViewed, userId, shortUrl.Id)
 
 	userAgent := omni_http.ParseUserAgent(req)
 	origin, _ := this.requestParser.Parse(req)
