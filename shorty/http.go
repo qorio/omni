@@ -379,7 +379,10 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 			// check if there's been an appOpen
 			appOpen, found, _ := this.service.FindAppOpen(UrlScheme(matchedRule.AppUrlScheme), UUID(userId))
 			glog.Infoln("REDIRECT- checking for appOpen", matchedRule.AppUrlScheme, userId, found, appOpen)
-			if !found || time.Now().Unix()-appOpen.Timestamp >= matchedRule.MatchNoAppOpenInXDays*24*60*60 {
+			if !found ||
+				(matchedRule.AppOpenTTLDays > -1 &&
+					time.Now().Unix()-appOpen.Timestamp >= matchedRule.AppOpenTTLDays*24*60*60) {
+
 				destination = matchedRule.AppStoreUrl
 			} else {
 				destination = matchedRule.Destination

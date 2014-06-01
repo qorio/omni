@@ -44,8 +44,9 @@ type RoutingRule struct {
 
 	// For specifying mobile appstore install url and app custom url scheme
 	// If specified, check cookie to see if the app's url scheme exists, if not, direct to appstore
-	AppUrlScheme string `json:"scheme,omitempty"`
-	AppStoreUrl  string `json:"appstore,omitempty"`
+	AppUrlScheme   string `json:"scheme,omitempty"`
+	AppStoreUrl    string `json:"appstore,omitempty"`
+	AppOpenTTLDays int64  `json:"app-open-ttl-days,omitempty"`
 
 	// Destination resource url - can be app url on mobile device
 	Destination string `json:"destination,omitempty"`
