@@ -16,6 +16,43 @@ import (
 	"time"
 )
 
+type Shorty interface {
+	Campaign() *Campaign
+	FindCampaign(key UUID) (*Campaign, error)
+
+	UrlLength() int
+
+	// Validates the url, rules and create a new instance with the default properties set in the defaults param.
+	ShortUrl(url string, optionalRules []RoutingRule, defaults ShortUrl) (*ShortUrl, error)
+	// Validates the url, rules and create a new instance with the default properties set in the defaults param.
+	VanityUrl(vanity, url string, optionalRules []RoutingRule, defaults ShortUrl) (*ShortUrl, error)
+	FindUrl(id string) (*ShortUrl, error)
+
+	Link(appUrlScheme UrlScheme, prevContext, currentContext UUID, shortUrlId string) error
+	FindLink(appUuid, uuid UUID) (found bool, err error)
+
+	TrackInstall(app UrlScheme, context UUID) error
+	FindInstall(app UrlScheme, context UUID) (expiration int64, found bool, err error)
+
+	TrackAppOpen(app UrlScheme, appContext UUID, appOpen *AppOpen) error
+	FindAppOpen(app UrlScheme, context UUID) (appOpen *AppOpen, found bool, err error)
+
+	SaveFingerprintedVisit(visit *FingerprintedVisit) error
+	MatchFingerPrint(fingerprint string) (score float64, visit *FingerprintedVisit, err error)
+
+	DecodeEventChannel() <-chan *DecodeEvent
+	InstallEventChannel() <-chan *InstallEvent
+	LinkEventChannel() <-chan *LinkEvent
+	AppOpenEventChannel() <-chan *AppOpenEvent
+
+	PublishDecode(event *DecodeEvent)
+	PublishInstall(event *InstallEvent)
+	PublishLink(event *LinkEvent)
+	PublishAppOpen(event *AppOpenEvent)
+
+	Close()
+}
+
 type shortyImpl struct {
 	settings            Settings
 	pool                *redis.Pool
@@ -112,6 +149,12 @@ func (this *shortyImpl) UrlLength() int {
 	return this.settings.UrlLength
 }
 
+func (this *shortyImpl) Campaign() *Campaign {
+	return &Campaign{
+		service: this,
+	}
+}
+
 func (this *shortyImpl) ShortUrl(data string, rules []RoutingRule, defaults ShortUrl) (entity *ShortUrl, err error) {
 	return this.VanityUrl("", data, rules, defaults)
 }
@@ -179,7 +222,7 @@ func (this *shortyImpl) VanityUrl(vanity, data string, rules []RoutingRule, defa
 		if exists, _ := redis.Bool(c.Do("EXISTS", this.settings.RedisPrefix+"url:"+vanity)); !exists {
 			entity.Id = vanity
 		}
-		if exists, _ := this.Find(vanity); exists == nil {
+		if exists, _ := this.FindUrl(vanity); exists == nil {
 			entity.Id = vanity
 		}
 	} else {
@@ -197,7 +240,7 @@ func (this *shortyImpl) VanityUrl(vanity, data string, rules []RoutingRule, defa
 				break
 			}
 
-			if exists, _ := this.Find(id); exists == nil {
+			if exists, _ := this.FindUrl(id); exists == nil {
 				entity.Id = id
 				break
 			}
@@ -358,7 +401,7 @@ func (this *shortyImpl) FindInstall(app UrlScheme, context UUID) (expiration int
 	return
 }
 
-func (this *shortyImpl) Find(id string) (*ShortUrl, error) {
+func (this *shortyImpl) FindUrl(id string) (*ShortUrl, error) {
 	c := this.pool.Get()
 	defer c.Close()
 
@@ -378,6 +421,48 @@ func (this *shortyImpl) Find(id string) (*ShortUrl, error) {
 	}
 
 	return &url, nil
+}
+
+func (this *shortyImpl) FindCampaign(id UUID) (*Campaign, error) {
+	c := this.pool.Get()
+	defer c.Close()
+
+	reply, err := c.Do("GET", this.settings.RedisPrefix+"campaign:"+string(id))
+	if reply == nil {
+		return nil, nil
+	}
+
+	data, err := redis.Bytes(reply, err)
+	if err != nil {
+		return nil, err
+	}
+
+	campaign := &Campaign{service: this}
+	if err := json.Unmarshal(data, campaign); err != nil {
+		return nil, err
+	}
+
+	return campaign, nil
+}
+
+func (this *Campaign) Save() error {
+	c := this.service.pool.Get()
+	defer c.Close()
+
+	data, err := json.Marshal(this)
+	if err != nil {
+		return err
+	}
+
+	reply, err := c.Do("SET", this.service.settings.RedisPrefix+"campaign:"+string(this.Id), data)
+	if err == nil && reply != "OK" {
+		err = errors.New("Invalid Redis response")
+	}
+
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (this *ShortUrl) Save() error {

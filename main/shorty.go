@@ -86,8 +86,8 @@ func translateDecode(decodeEvent *shorty.DecodeEvent) (event *tally.Event) {
 	event.SetAttribute("destination", decodeEvent.Destination)
 	event.SetAttribute("uuid", string(decodeEvent.Context))
 	event.SetAttribute("origin", decodeEvent.Origin)
-	event.SetAttribute("app_key", decodeEvent.AppKey)
-	event.SetAttribute("campaign_key", decodeEvent.CampaignKey)
+	event.SetAttribute("app_key", string(decodeEvent.AppKey))
+	event.SetAttribute("campaign_key", string(decodeEvent.CampaignKey))
 	event.SetAttributeInt("matched_rule", decodeEvent.MatchedRuleIndex)
 
 	return
@@ -103,8 +103,8 @@ func translateInstall(installEvent *shorty.InstallEvent) (event *tally.Event) {
 	event.SetAttribute("uuid", string(installEvent.SourceContext))
 	event.SetAttribute("source_application", installEvent.SourceApplication)
 	event.SetAttribute("origin", installEvent.Origin)
-	event.SetAttribute("app_key", installEvent.AppKey)
-	event.SetAttribute("campaign_key", installEvent.CampaignKey)
+	event.SetAttribute("app_key", string(installEvent.AppKey))
+	event.SetAttribute("campaign_key", string(installEvent.CampaignKey))
 	event.SetAttribute("reporting_method", installEvent.ReportingMethod)
 	return
 }
@@ -118,8 +118,8 @@ func translateAppOpen(appOpenEvent *shorty.AppOpenEvent) (event *tally.Event) {
 	event.SetAttribute("uuid", string(appOpenEvent.SourceContext))
 	event.SetAttribute("source_application", appOpenEvent.SourceApplication)
 	event.SetAttribute("origin", appOpenEvent.Origin)
-	event.SetAttribute("app_key", appOpenEvent.AppKey)
-	event.SetAttribute("campaign_key", appOpenEvent.CampaignKey)
+	event.SetAttribute("app_key", string(appOpenEvent.AppKey))
+	event.SetAttribute("campaign_key", string(appOpenEvent.CampaignKey))
 	return
 }
 
@@ -131,8 +131,8 @@ func translateLink(linkEvent *shorty.LinkEvent) (event *tally.Event) {
 	event.SetAttribute("uuid1", string(linkEvent.Context1))
 	event.SetAttribute("uuid2", string(linkEvent.Context2))
 	event.SetAttribute("origin", linkEvent.Origin)
-	event.SetAttribute("app_key", linkEvent.AppKey)
-	event.SetAttribute("campaign_key", linkEvent.CampaignKey)
+	event.SetAttribute("app_key", string(linkEvent.AppKey))
+	event.SetAttribute("campaign_key", string(linkEvent.CampaignKey))
 	return
 }
 

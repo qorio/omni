@@ -23,7 +23,7 @@ func (this *ShortyEndPoint) StatsHandler(resp http.ResponseWriter, req *http.Req
 	omni_http.SetCORSHeaders(resp)
 
 	vars := mux.Vars(req)
-	shortyUrl, err := this.service.Find(vars["id"])
+	shortyUrl, err := this.service.FindUrl(vars["id"])
 	if err != nil {
 		renderError(resp, req, err.Error(), http.StatusInternalServerError)
 		return

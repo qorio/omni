@@ -1,0 +1,26 @@
+{
+	"name": "Dev campaign 1",
+	"description": "My first campaign",
+	"rules": [
+            {
+                "platform": "iPhone|iPod|iPad",
+                "scheme": "qldeeplink",
+                "appstore": "https://testflightapp.com/install/b98c4c5189905cb9569fbf32959abc5d-MTEzMzMyNDI/",
+		"app-open-ttl-days" : 10,
+		"special" : [
+			     {
+			         "comment": "if opened from fb app, send to the interstitial page",
+				 "referer": "facebook\\.com",
+				 "match-no-app-open-in-ttl-days" : "on",
+				 "x-send-to-interstitial": true,
+				 "content-src-url":"https://web1.qor.io/static/opentest.html"
+			     }
+		]
+            },
+            {
+                "os": "Android",
+                "scheme": "qldeeplink",
+                "appstore": "https://play.google.com/store/apps/details?id=com.yuilop"
+            }
+        ]
+}

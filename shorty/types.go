@@ -24,6 +24,18 @@ type ShortyAddRequest struct {
 	Campaign string        `json:"campaign"`
 }
 
+type Campaign struct {
+	Id          UUID          `json:"id,omitempty"`
+	Name        string        `json:"name,omitempty"`
+	Description string        `json:"description,omitempty"`
+	AppKey      UUID          `json:"appKey,omitempty"`
+	Rules       []RoutingRule `json:"rules,omitempty"`
+	Created     int64         `json:"created,omitempty"`
+	IOS_SDK     bool          `json:"iosSDK,omitempty"`
+
+	service *shortyImpl
+}
+
 type OnOff string
 type Regex string
 
@@ -67,23 +79,14 @@ type RoutingRule struct {
 }
 
 type ShortUrl struct {
-	Id                string        `json:"id,omitempty"`
-	Rules             []RoutingRule `json:"rules,omitempty"`
-	Destination       string        `json:"destination,omitempty"`
-	Created           time.Time     `json:"created,omitempty"`
-	Origin            string        `json:"origin,omitempty"`
-	AppKey            string        `json:"appKey,omitempty"`
-	CampaignKey       string        `json:"campaignKey,omitempty"`
-	InstallTTLSeconds int64         `json:"installTTLSeconds,omitempty"`
-	service           *shortyImpl
-}
-
-type Campaign struct {
-	AppKey    string        `json:"appKey,omitempty"`
-	Id        string        `json:"id,omitempty"`
-	Rules     []RoutingRule `json:"rules,omitempty"`
-	Created   time.Time     `json:"created,omitempty"`
-	AppHasSDK bool          `json:"appHasSDK,omitempty"`
+	Id          string        `json:"id,omitempty"`
+	Rules       []RoutingRule `json:"rules,omitempty"`
+	Destination string        `json:"destination,omitempty"`
+	Created     time.Time     `json:"created,omitempty"`
+	Origin      string        `json:"origin,omitempty"`
+	AppKey      UUID          `json:"appKey,omitempty"`
+	CampaignKey UUID          `json:"campaignKey,omitempty"`
+	service     *shortyImpl
 }
 
 type FingerprintedVisit struct {
@@ -116,8 +119,8 @@ type AppOpenEvent struct {
 	SourceApplication string
 
 	Origin      string
-	AppKey      string
-	CampaignKey string
+	AppKey      UUID
+	CampaignKey UUID
 }
 
 type DecodeEvent struct {
@@ -126,8 +129,8 @@ type DecodeEvent struct {
 	Context       UUID
 
 	Origin      string
-	AppKey      string
-	CampaignKey string
+	AppKey      UUID
+	CampaignKey UUID
 
 	MatchedRuleIndex int
 }
@@ -142,8 +145,8 @@ type InstallEvent struct {
 	SourceApplication string
 
 	Origin      string
-	AppKey      string
-	CampaignKey string
+	AppKey      UUID
+	CampaignKey UUID
 
 	ReportingMethod string // 'fingerprint', 'browser-switch', 'referred-app-open'
 }
@@ -155,40 +158,6 @@ type LinkEvent struct {
 	Context2      UUID
 
 	Origin      string
-	AppKey      string
-	CampaignKey string
-}
-
-type Shorty interface {
-	UrlLength() int
-
-	// Validates the url, rules and create a new instance with the default properties set in the defaults param.
-	ShortUrl(url string, optionalRules []RoutingRule, defaults ShortUrl) (*ShortUrl, error)
-	// Validates the url, rules and create a new instance with the default properties set in the defaults param.
-	VanityUrl(vanity, url string, optionalRules []RoutingRule, defaults ShortUrl) (*ShortUrl, error)
-	Find(id string) (*ShortUrl, error)
-
-	Link(appUrlScheme UrlScheme, prevContext, currentContext UUID, shortUrlId string) error
-	FindLink(appUuid, uuid UUID) (found bool, err error)
-
-	TrackInstall(app UrlScheme, context UUID) error
-	FindInstall(app UrlScheme, context UUID) (expiration int64, found bool, err error)
-
-	TrackAppOpen(app UrlScheme, appContext UUID, appOpen *AppOpen) error
-	FindAppOpen(app UrlScheme, context UUID) (appOpen *AppOpen, found bool, err error)
-
-	SaveFingerprintedVisit(visit *FingerprintedVisit) error
-	MatchFingerPrint(fingerprint string) (score float64, visit *FingerprintedVisit, err error)
-
-	DecodeEventChannel() <-chan *DecodeEvent
-	InstallEventChannel() <-chan *InstallEvent
-	LinkEventChannel() <-chan *LinkEvent
-	AppOpenEventChannel() <-chan *AppOpenEvent
-
-	PublishDecode(event *DecodeEvent)
-	PublishInstall(event *InstallEvent)
-	PublishLink(event *LinkEvent)
-	PublishAppOpen(event *AppOpenEvent)
-
-	Close()
+	AppKey      UUID
+	CampaignKey UUID
 }

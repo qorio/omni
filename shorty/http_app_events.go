@@ -118,8 +118,8 @@ func (this *ShortyEndPoint) ReportInstallOnOrganicAppLaunch(resp http.ResponseWr
 	// The lastViewed may not be the shortcode, but the interstitial
 	sc := lastViewed
 	parts := strings.Split(lastViewed, "/")
-	if len(parts) >= 3 && parts[1] == "m" {
-		sc = parts[2]
+	if len(parts) >= 2 && parts[0] == "m" {
+		sc = parts[1]
 	}
 	// Construct a AppOpen object using what is read from the http headers / cookies
 	appOpen := &AppOpen{
@@ -244,7 +244,7 @@ func (this *ShortyEndPoint) handleAppOpen(app UrlScheme, appContext UUID, appOpe
 	appOpen.AppContext = appContext
 	this.service.TrackAppOpen(app, appContext, appOpen)
 
-	shortUrl, err := this.service.Find(appOpen.ShortCode)
+	shortUrl, err := this.service.FindUrl(appOpen.ShortCode)
 	if err != nil {
 		return err
 	}
@@ -259,7 +259,7 @@ func (this *ShortyEndPoint) handleAppOpen(app UrlScheme, appContext UUID, appOpe
 		origin, geoParseErr := this.requestParser.Parse(req)
 		origin.Destination = appOpen.Deeplink
 
-		installOrigin, installAppKey, installCampaignKey := "NONE", string(app), "ORGANIC"
+		installOrigin, installAppKey, installCampaignKey := "NONE", UUID(app), UUID("ORGANIC")
 
 		if shortUrl != nil {
 			origin.ShortCode = shortUrl.Id
@@ -306,7 +306,7 @@ func (this *ShortyEndPoint) handleInstall(app UrlScheme, appContext UUID, appOpe
 
 	this.service.TrackInstall(app, appContext)
 
-	shortUrl, err := this.service.Find(appOpen.ShortCode)
+	shortUrl, err := this.service.FindUrl(appOpen.ShortCode)
 	if err != nil {
 		return err
 	}
@@ -321,7 +321,7 @@ func (this *ShortyEndPoint) handleInstall(app UrlScheme, appContext UUID, appOpe
 		origin, geoParseErr := this.requestParser.Parse(req)
 		origin.Destination = appOpen.Deeplink
 
-		installOrigin, installAppKey, installCampaignKey := "NONE", string(app), "ORGANIC"
+		installOrigin, installAppKey, installCampaignKey := "NONE", UUID(app), UUID("ORGANIC")
 
 		if shortUrl != nil {
 			origin.ShortCode = shortUrl.Id

@@ -123,7 +123,13 @@ func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty) (api *Short
 		}
 		regex := fmt.Sprintf(regexFmt, service.UrlLength())
 		api.router.HandleFunc("/{id:"+regex+"}", api.RedirectHandler).Methods("GET").Name("redirect")
-		api.router.HandleFunc("/api/v1/url", api.ApiAddHandler).Methods("POST").Name("add")
+
+		api.router.HandleFunc("/api/v1/campaign", api.ApiAddCampaignHandler).
+			Methods("POST").Name("add_campaign")
+		api.router.HandleFunc("/api/v1/campaign/{campaignId}/url", api.ApiAddCampaignUrlHandler).
+			Methods("POST").Name("add_campaign_url")
+		api.router.HandleFunc("/api/v1/url", api.ApiAddUrlHandler).
+			Methods("POST").Name("add")
 
 		// First attempt if the app starts up organically -- this gives the server an opportunity
 		// to match by fingerprinting.  If fingerprinting cannot match a user then the response will tell
@@ -176,7 +182,114 @@ func (this *ShortyEndPoint) ServeHTTP(resp http.ResponseWriter, request *http.Re
 	this.router.ServeHTTP(resp, request)
 }
 
-func (this *ShortyEndPoint) ApiAddHandler(resp http.ResponseWriter, req *http.Request) {
+func (this *ShortyEndPoint) ApiAddCampaignHandler(resp http.ResponseWriter, req *http.Request) {
+	omni_http.SetCORSHeaders(resp)
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	campaign := this.service.Campaign()
+
+	dec := json.NewDecoder(strings.NewReader(string(body)))
+	for {
+		if err := dec.Decode(campaign); err == io.EOF {
+			break
+		} else if err != nil {
+			renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+
+	if campaign.Id == "" {
+		uuidStr, err := newUUID()
+		if err != nil {
+			renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		campaign.Id = UUID(uuidStr)
+	}
+
+	err = campaign.Save()
+	if err != nil {
+		renderJsonError(resp, req, "Failed to save campaign", http.StatusInternalServerError)
+		return
+	}
+
+	buff, err := json.Marshal(campaign)
+	if err != nil {
+		renderJsonError(resp, req, "Malformed campaign", http.StatusInternalServerError)
+		return
+	}
+	resp.Write(buff)
+}
+
+func (this *ShortyEndPoint) ApiAddCampaignUrlHandler(resp http.ResponseWriter, req *http.Request) {
+	omni_http.SetCORSHeaders(resp)
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var message ShortyAddRequest
+	dec := json.NewDecoder(strings.NewReader(string(body)))
+	for {
+		if err := dec.Decode(&message); err == io.EOF {
+			break
+		} else if err != nil {
+			renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+
+	if message.LongUrl == "" {
+		renderJsonError(resp, req, "No URL to shorten", http.StatusBadRequest)
+		return
+	}
+
+	// Set the starting values, and the api will validate the rules and return a saved reference.
+	shortUrl := &ShortUrl{
+		Origin: message.Origin,
+
+		// TODO - add lookup of api token to valid apiKey.
+		// A api token is used by client as a way to authenticate and identify the actual app.
+		// This way, we can revoke the token and shut down a client.
+		AppKey: UUID(message.ApiToken),
+
+		// TODO - this is a key that references a future struct that encapsulates all the
+		// rules around default routing (appstore, etc.).  This will simplify the api by not
+		// requiring ios client to send in rules on android, for example.  The service should
+		// check to see if there's valid campaign for the same app key. If yes, then merge the
+		// routing rules.  If not, just let this value be a tag of some kind.
+		CampaignKey: UUID(message.Campaign),
+	}
+	if message.Vanity != "" {
+		shortUrl, err = this.service.VanityUrl(message.Vanity, message.LongUrl, message.Rules, *shortUrl)
+	} else {
+		shortUrl, err = this.service.ShortUrl(message.LongUrl, message.Rules, *shortUrl)
+	}
+
+	if err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if _, err := this.router.Get("redirect").URL("id", shortUrl.Id); err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	buff, err := json.Marshal(shortUrl)
+	if err != nil {
+		renderJsonError(resp, req, "Malformed short url rule", http.StatusInternalServerError)
+		return
+	}
+	resp.Write(buff)
+}
+
+func (this *ShortyEndPoint) ApiAddUrlHandler(resp http.ResponseWriter, req *http.Request) {
 	omni_http.SetCORSHeaders(resp)
 
 	body, err := ioutil.ReadAll(req.Body)
@@ -208,14 +321,14 @@ func (this *ShortyEndPoint) ApiAddHandler(resp http.ResponseWriter, req *http.Re
 		// TODO - add lookup of api token to valid apiKey.
 		// A api token is used by client as a way to authenticate and identify the actual app.
 		// This way, we can revoke the token and shut down a client.
-		AppKey: message.ApiToken,
+		AppKey: UUID(message.ApiToken),
 
 		// TODO - this is a key that references a future struct that encapsulates all the
 		// rules around default routing (appstore, etc.).  This will simplify the api by not
 		// requiring ios client to send in rules on android, for example.  The service should
 		// check to see if there's valid campaign for the same app key. If yes, then merge the
 		// routing rules.  If not, just let this value be a tag of some kind.
-		CampaignKey: message.Campaign,
+		CampaignKey: UUID(message.Campaign),
 	}
 	if message.Vanity != "" {
 		shortUrl, err = this.service.VanityUrl(message.Vanity, message.LongUrl, message.Rules, *shortUrl)
@@ -275,7 +388,7 @@ func processCookies(cookies omni_http.Cookies, shortCode string) (visits int, co
 func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.Request) {
 	req.ParseForm()
 	vars := mux.Vars(req)
-	shortUrl, err := this.service.Find(vars["id"])
+	shortUrl, err := this.service.FindUrl(vars["id"])
 
 	if err != nil {
 		renderError(resp, req, err.Error(), http.StatusInternalServerError)
@@ -470,7 +583,7 @@ func (this *ShortUrl) MatchRule(service Shorty, userAgent *omni_http.UserAgent,
 func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	uuid := vars["uuid"]
-	shortUrl, err := this.service.Find(vars["shortCode"])
+	shortUrl, err := this.service.FindUrl(vars["shortCode"])
 
 	if err != nil {
 		renderError(resp, req, err.Error(), http.StatusInternalServerError)
@@ -587,7 +700,7 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.Respo
 	vars := mux.Vars(req)
 	shortCode := vars["shortCode"]
 
-	shortUrl, err := this.service.Find(shortCode)
+	shortUrl, err := this.service.FindUrl(shortCode)
 	if err != nil || shortUrl == nil {
 		renderError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
