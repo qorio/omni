@@ -40,6 +40,7 @@ type OnOff string
 type Regex string
 
 type RoutingRule struct {
+	Key     string `json:"key,omitempty"`
 	Comment string `json:"comment,omitempty"`
 
 	// For specifying mobile appstore install url and app custom url scheme
@@ -70,6 +71,8 @@ type RoutingRule struct {
 
 	// Send to an interstitial page
 	SendToInterstitial bool `json:"x-send-to-interstitial,omitempty"`
+
+	InterstitalToAppStoreOnTimeout OnOff `json:"x-interstitial-to-appstore-on-timeout,omitempty"`
 
 	// True to indicate that this is a http url destination but mapped in the intent filter to an app.
 	IsAndroidIntentFilter bool `json:"x-android-intent-filter,omitempty"`

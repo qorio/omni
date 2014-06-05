@@ -77,9 +77,18 @@ function onLoad() {
         var shortCode = window.location.pathname.substring(1);
         deeplink += "&__xrlc=" + getCookie("uuid") + "&__xrlp=" + scheme + "&__xrls=" + shortCode;
         setTimeout(function() {
+            {{if .InterstitialToAppStoreOnTimeout}}
+            if (!document.webkitHidden) {
+                setTimeout(function(){
+                    window.location = interstitialUrl + "&__xrl_noapp=";
+                }, 1000)
+                window.location = {{.AppStoreUrl}};
+	    }
+            {{else}}
             if (!document.webkitHidden) {
                 window.location = interstitialUrl + "&__xrl_noapp=";
 	    }
+            {{end}}
         }, 1000);
         window.location = deeplink;
     }
