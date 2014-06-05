@@ -720,13 +720,24 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.Respo
 	userAgent := omni_http.ParseUserAgent(req)
 	origin, _ := this.requestParser.Parse(req)
 
+	var apply *RoutingRule
 	matchedRule, notFound := shortUrl.MatchRule(this.service, userAgent, origin, cookies)
 	if notFound != nil {
 		renderError(resp, req, "not found", http.StatusNotFound)
 		return
+	} else {
+		apply = matchedRule
+		for _, sub := range matchedRule.Special {
+			if matchSub := sub.Match(this.service, userAgent, origin, cookies); matchSub {
+				apply = &sub
+				break
+			}
+		}
 	}
-	glog.Infoln("Using matchedRule to generate from template", matchedRule, matchedRule.InterstitialToAppStoreOnTimeout)
-	deeplinkJsTemplate.Execute(resp, matchedRule)
+
+	glog.Infoln("Using matchedRule to generate from template", apply)
+
+	deeplinkJsTemplate.Execute(resp, apply)
 	return
 }
 
