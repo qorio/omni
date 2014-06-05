@@ -725,7 +725,7 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.Respo
 		renderError(resp, req, "not found", http.StatusNotFound)
 		return
 	}
-	glog.Infoln("Using matchedRule to generate from template", matchedRule)
+	glog.Infoln("Using matchedRule to generate from template", matchedRule, matchedRule.InterstitialToAppStoreOnTimeout)
 	deeplinkJsTemplate.Execute(resp, matchedRule)
 	return
 }
