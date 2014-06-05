@@ -90,7 +90,7 @@ function onLoad() {
                   window.location = interstitialUrl + "&__xrl_noapp=";
   	      }
 	    }
-        }, 1000);
+        }, 500+{{.InterstitialAppLinkTimeoutMillis}});
         window.location = deeplink;
     }
 }
