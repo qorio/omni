@@ -83,7 +83,7 @@ function onLoad() {
                   setTimeout(function(){
                       window.location = interstitialUrl + "&__xrl_noapp=";
                   }, 1000)
-                  window.location = {{.AppStoreUrl}};
+                  window.location = "{{.AppStoreUrl}}";
 	      }
 	    } else {
               if (!document.webkitHidden) {
