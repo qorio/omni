@@ -72,7 +72,7 @@ type RoutingRule struct {
 	// Send to an interstitial page
 	SendToInterstitial bool `json:"x-send-to-interstitial,omitempty"`
 
-	InterstitalToAppStoreOnTimeout OnOff `json:"x-interstitial-to-appstore-on-timeout,omitempty"`
+	InterstitialToAppStoreOnTimeout OnOff `json:"x-interstitial-to-appstore-on-timeout,omitempty"`
 
 	// True to indicate that this is a http url destination but mapped in the intent filter to an app.
 	IsAndroidIntentFilter bool `json:"x-android-intent-filter,omitempty"`

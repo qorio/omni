@@ -66,7 +66,6 @@ function getParameterByName(name) {
     return results == null ? null : decodeURIComponent(results[1].replace(/\+/g, " "));
 }
 function onLoad() {
-    var toAppStoreOnTimeout = "{{.InterstitialToAppStoreOnTimeout}}" === "on";
     var interstitialUrl = window.location;
     var didNotDetectApp = getParameterByName('__xrl_noapp') != null;
     if (didNotDetectApp) {
@@ -78,18 +77,18 @@ function onLoad() {
         var shortCode = window.location.pathname.substring(1);
         deeplink += "&__xrlc=" + getCookie("uuid") + "&__xrlp=" + scheme + "&__xrls=" + shortCode;
         setTimeout(function() {
-            if (toAppStoreOnTimeout) {
+            {{if .InterstitialToAppStoreOnTimeout}}
               if (!document.webkitHidden) {
                   setTimeout(function(){
                       window.location = interstitialUrl + "&__xrl_noapp=";
                   }, 1000)
                   window.location = {{.AppStoreUrl}};
 	      }
-            } else {
+	    {{else}}
               if (!document.webkitHidden) {
                   window.location = interstitialUrl + "&__xrl_noapp=";
   	      }
-            }
+            {{end}}
         }, 1000);
         window.location = deeplink;
     }
@@ -725,6 +724,7 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.Respo
 		renderError(resp, req, "not found", http.StatusNotFound)
 		return
 	}
+	glog.Infoln("Using matchedRule to generate from template", matchedRule)
 	deeplinkJsTemplate.Execute(resp, matchedRule)
 	return
 }
