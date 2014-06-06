@@ -1,0 +1,33 @@
+{
+        "token": "Deeplink Demo",
+        "campaign": "test-campaign-1",
+        "longUrl": "http://sfbay.craigslist.org/sfc/cto/4502225008.html",
+        "origin": "2005 Ferrari F430",
+	"rules": [
+            {
+                "scheme": "qldeeplink",
+                "platform": ".*",
+                "__platform": "iPhone|iPod|iPad",
+                "destination": "qldeeplink://content?url=http%3A%2F%2Fsfbay.craigslist.org%2Fsfc%2Fcto%2F4502225008.html",
+                "appstore": "itms://itunes.apple.com/us/app/secret-speak-freely/id775307543?mt=8",
+		"app-open-ttl-days" : 0,
+		"special" : [
+			     {
+			         "comment": "if opened from fb app, send to the interstitial page",
+				 "__referer": "facebook\\.com",
+				 "__content-src-url":"https://web1.qor.io/static/opentest.html",
+				 "match-no-app-open-in-ttl-days" : "on",
+		                 "x-send-to-interstitial": true,
+		                 "x-interstitial-to-appstore-on-timeout": "on",
+				 "x-interstitial-open-app-timeout-millis": 1000
+			     }
+		]
+            },
+            {
+                "os": "Android",
+                "destination": "http://sfbay.craigslist.org/sfc/cto/4502225008.html",
+                "scheme": "qldeeplink",
+                "appstore": "https://play.google.com/store/apps/details?id=com.yuilop"
+            }
+        ]
+}

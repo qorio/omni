@@ -66,31 +66,32 @@ function getParameterByName(name) {
     return results == null ? null : decodeURIComponent(results[1].replace(/\+/g, " "));
 }
 function onLoad() {
-    var toAppStoreOnTimeout = "{{.InterstitialToAppStoreOnTimeout}}" == "on";
     var interstitialUrl = window.location;
     var didNotDetectApp = getParameterByName('__xrl_noapp') != null;
     if (didNotDetectApp) {
         var el = document.getElementById("has-app")
-        el.innerHTML = "<h1>Still here?  Try open this in Safari to install the app.</h1>";
+        el.innerHTML = "<h1>Still here?  Try open this in Safari.</h1>";
     } else {
         var deeplink = "{{.Destination}}";
+        var appstore = "{{.AppStoreUrl}}";
         var scheme = deeplink.split("://").shift();
         var shortCode = window.location.pathname.substring(1);
         deeplink += "&__xrlc=" + getCookie("uuid") + "&__xrlp=" + scheme + "&__xrls=" + shortCode;
         setTimeout(function() {
-            if (toAppStoreOnTimeout) {
+{{if .InterstitialToAppStoreOnTimeout}}
               if (!document.webkitHidden) {
                   setTimeout(function(){
                       window.location = interstitialUrl + "&__xrl_noapp=";
-                  }, 1000)
-                  window.location = "{{.AppStoreUrl}}";
-	      }
-	    } else {
+                  }, 2000)
+                  window.location = appstore;
+              }
+{{else}}
               if (!document.webkitHidden) {
                   window.location = interstitialUrl + "&__xrl_noapp=";
-  	      }
-	    }
-        }, 500+{{.InterstitialAppLinkTimeoutMillis}});
+                  console.log(['to', window.location])
+              }
+{{end}}
+        }, {{.InterstitialAppLinkTimeoutMillis}});
         window.location = deeplink;
     }
 }
@@ -108,9 +109,8 @@ function onLoad() {
  </head>
  <body onload="onLoad()">
   <div id="has-app"></div>
-  <!-- Markdown text -->
   <xmp theme="journal" style="display:none;">
-  Opening the link in app...  If the app does not open, open this link via Safari to install the app.
+  Opening the link in app...  If the app does not open, open this link via Safari.
   </xmp>
  </body>
  <script src="http://strapdownjs.com/v/0.2/strapdown.js"></script>
@@ -193,6 +193,7 @@ func (this *ShortyEndPoint) ServeHTTP(resp http.ResponseWriter, request *http.Re
 }
 
 func (this *ShortyEndPoint) ApiAddCampaignHandler(resp http.ResponseWriter, req *http.Request) {
+
 	omni_http.SetCORSHeaders(resp)
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
@@ -236,6 +237,8 @@ func (this *ShortyEndPoint) ApiAddCampaignHandler(resp http.ResponseWriter, req 
 }
 
 func (this *ShortyEndPoint) ApiAddCampaignUrlHandler(resp http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+
 	omni_http.SetCORSHeaders(resp)
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
@@ -259,6 +262,47 @@ func (this *ShortyEndPoint) ApiAddCampaignUrlHandler(resp http.ResponseWriter, r
 		return
 	}
 
+	// Load the campaign
+	campaignId := vars["campaignId"]
+	campaign, err := this.service.FindCampaign(UUID(campaignId))
+
+	if err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	} else if campaign == nil {
+		renderJsonError(resp, req, "campaign-not-found", http.StatusBadRequest)
+		return
+	}
+
+	mergedRules := make([]RoutingRule, len(campaign.Rules))
+	if len(campaign.Rules) > 0 && len(message.Rules) > 0 {
+		// apply the message's rules ON TOP of the campaign defaults
+		// first index the override rules
+		overrides := make(map[string][]byte)
+		for _, r := range message.Rules {
+			if r.Id != "" {
+				if buf, err := json.Marshal(r); err == nil {
+					overrides[r.Id] = buf
+				}
+			}
+		}
+
+		// Now iterate through the base and then apply the override on top of it
+		for i, b := range campaign.Rules {
+			mergedRules[i] = b
+			if b.Id != "" {
+				if v, exists := overrides[b.Id]; exists {
+					merged := &RoutingRule{}
+					*merged = b
+					json.Unmarshal(v, merged)
+					mergedRules[i] = *merged
+				}
+			}
+		}
+	} else {
+		mergedRules = campaign.Rules
+	}
+
 	// Set the starting values, and the api will validate the rules and return a saved reference.
 	shortUrl := &ShortUrl{
 		Origin: message.Origin,
@@ -273,12 +317,12 @@ func (this *ShortyEndPoint) ApiAddCampaignUrlHandler(resp http.ResponseWriter, r
 		// requiring ios client to send in rules on android, for example.  The service should
 		// check to see if there's valid campaign for the same app key. If yes, then merge the
 		// routing rules.  If not, just let this value be a tag of some kind.
-		CampaignKey: UUID(message.Campaign),
+		CampaignKey: campaign.Id,
 	}
 	if message.Vanity != "" {
-		shortUrl, err = this.service.VanityUrl(message.Vanity, message.LongUrl, message.Rules, *shortUrl)
+		shortUrl, err = this.service.VanityUrl(message.Vanity, message.LongUrl, mergedRules, *shortUrl)
 	} else {
-		shortUrl, err = this.service.ShortUrl(message.LongUrl, message.Rules, *shortUrl)
+		shortUrl, err = this.service.ShortUrl(message.LongUrl, mergedRules, *shortUrl)
 	}
 
 	if err != nil {
@@ -690,7 +734,7 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 		// In this case we just show the static content.
 
 		// we expect the fetch url to be included in the 'f' parameter
-		if fetchFromUrl, exists := req.Form["f"]; exists {
+		if fetchFromUrl, exists := req.Form["f"]; exists && fetchFromUrl[0] != "" {
 
 			content = omni_http.FetchFromUrl(userAgent.Header, fetchFromUrl[0])
 			resp.Write([]byte(content))

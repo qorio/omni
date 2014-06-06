@@ -40,7 +40,7 @@ type OnOff string
 type Regex string
 
 type RoutingRule struct {
-	Key     string `json:"key,omitempty"`
+	Id      string `json:"id,omitempty"`
 	Comment string `json:"comment,omitempty"`
 
 	// For specifying mobile appstore install url and app custom url scheme
