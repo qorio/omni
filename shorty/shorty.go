@@ -454,6 +454,7 @@ func (this *Campaign) Save() error {
 		return err
 	}
 
+	glog.Infoln("SETTING", string(data))
 	reply, err := c.Do("SET", this.service.settings.RedisPrefix+"campaign:"+string(this.Id), data)
 	if err == nil && reply != "OK" {
 		err = errors.New("Invalid Redis response")

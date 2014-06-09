@@ -7,15 +7,15 @@
                 "platform": "iPhone|iPod|iPad",
                 "scheme": "qldeeplink",
                 "appstore": "https://testflightapp.com/install/b98c4c5189905cb9569fbf32959abc5d-MTEzMzMyNDI/",
-		"app-open-ttl-days" : 0,
+		"app-open-ttl-days" : 0.2,
+		"x-send-to-interstitial": "on",
+		"x-interstitial-to-appstore-on-timeout": "on",
+		"x-interstitial-open-app-timeout-millis": 1000,
 		"special" : [
 			     {
-			         "comment": "if opened from fb app, send to the interstitial page",
-				 "referer": "facebook\\.com",
-				 "match-no-app-open-in-ttl-days" : "on",
-				 "x-send-to-interstitial": true,
-		                 "x-interstitial-to-appstore-on-timeout": "on",
-				 "x-interstitial-open-app-timeout-millis": 1000
+			         "comment": "If opened directly from iMessage or Safari",
+				 "referer": "DIRECT",
+                        	 "x-send-to-interstitial": "off"
 			     }
 		]
             },

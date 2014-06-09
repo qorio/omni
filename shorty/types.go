@@ -2,6 +2,7 @@ package shorty
 
 import (
 	"github.com/qorio/omni/http"
+	"strings"
 	"time"
 )
 
@@ -28,7 +29,7 @@ type Campaign struct {
 	Id          UUID          `json:"id,omitempty"`
 	Name        string        `json:"name,omitempty"`
 	Description string        `json:"description,omitempty"`
-	AppKey      UUID          `json:"appKey,omitempty"`
+	AppKey      UUID          `json:"appKey"`
 	Rules       []RoutingRule `json:"rules,omitempty"`
 	Created     int64         `json:"created,omitempty"`
 	IOS_SDK     bool          `json:"iosSDK,omitempty"`
@@ -38,6 +39,10 @@ type Campaign struct {
 
 type OnOff string
 type Regex string
+
+func (this OnOff) isTrue() bool {
+	return strings.ToLower(string(this)) == "on"
+}
 
 type RoutingRule struct {
 	Id      string `json:"id,omitempty"`
@@ -49,7 +54,7 @@ type RoutingRule struct {
 	AppStoreUrl  string `json:"appstore,omitempty"`
 
 	// TTL max days for the app open to be considered expired (eg. app possibly deleted from device)
-	AppOpenTTLDays int64 `json:"app-open-ttl-days,omitempty"`
+	AppOpenTTLDays float64 `json:"app-open-ttl-days,omitempty"`
 
 	// Specify one of the following matching criteria: platform, os, make, or browser
 	MatchPlatform Regex `json:"platform,omitempty"`
@@ -70,26 +75,26 @@ type RoutingRule struct {
 	ContentSourceUrl string `json:"content-src-url,omitempty"`
 
 	// Send to an interstitial page
-	SendToInterstitial bool `json:"x-send-to-interstitial,omitempty"`
+	SendToInterstitial OnOff `json:"x-send-to-interstitial,omitempty"`
 
 	InterstitialToAppStoreOnTimeout  OnOff `json:"x-interstitial-to-appstore-on-timeout,omitempty"`
 	InterstitialAppLinkTimeoutMillis int64 `json:"x-interstitial-open-app-timeout-millis,omitempty"`
 
 	// True to indicate that this is a http url destination but mapped in the intent filter to an app.
-	IsAndroidIntentFilter bool `json:"x-android-intent-filter,omitempty"`
+	IsAndroidIntentFilter OnOff `json:"x-android-intent-filter,omitempty"`
 
 	// Nested rules that can further provide overrides -- e.g. on 'ios', now with FB app
 	Special []RoutingRule `json:"special,omitempty"`
 }
 
 type ShortUrl struct {
-	Id          string        `json:"id,omitempty"`
+	Id          string        `json:"id"`
 	Rules       []RoutingRule `json:"rules,omitempty"`
-	Destination string        `json:"destination,omitempty"`
+	Destination string        `json:"destination"`
 	Created     time.Time     `json:"created,omitempty"`
 	Origin      string        `json:"origin,omitempty"`
-	AppKey      UUID          `json:"appKey,omitempty"`
-	CampaignKey UUID          `json:"campaignKey,omitempty"`
+	AppKey      UUID          `json:"appKey"`
+	CampaignKey UUID          `json:"campaignKey"`
 	service     *shortyImpl
 }
 

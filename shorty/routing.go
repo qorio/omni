@@ -95,7 +95,7 @@ func (this *RoutingRule) Match(service Shorty, ua *http.UserAgent, origin *http.
 		uuid, _ := cookies.GetPlainString(uuidCookieKey)
 		appOpen, found, err := service.FindAppOpen(UrlScheme(this.AppUrlScheme), UUID(uuid))
 		glog.Infoln("checking app-open", uuid, this.AppUrlScheme, found, appOpen, err)
-		if !found || time.Now().Unix()-appOpen.Timestamp >= this.AppOpenTTLDays*24*60*60 {
+		if !found || float64(time.Now().Unix()-appOpen.Timestamp) >= this.AppOpenTTLDays*24.*60.*60. {
 			actual |= 1 << 6
 		}
 	}

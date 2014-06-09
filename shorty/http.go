@@ -134,10 +134,17 @@ func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty) (api *Short
 		regex := fmt.Sprintf(regexFmt, service.UrlLength())
 		api.router.HandleFunc("/{id:"+regex+"}", api.RedirectHandler).Methods("GET").Name("redirect")
 
+		// Campaign based
 		api.router.HandleFunc("/api/v1/campaign", api.ApiAddCampaignHandler).
 			Methods("POST").Name("add_campaign")
+		api.router.HandleFunc("/api/v1/campaign/{campaignId}", api.ApiGetCampaignHandler).
+			Methods("GET").Name("get_campaign")
+		api.router.HandleFunc("/api/v1/campaign/{campaignId}", api.ApiUpdateCampaignHandler).
+			Methods("POST").Name("update_campaign")
 		api.router.HandleFunc("/api/v1/campaign/{campaignId}/url", api.ApiAddCampaignUrlHandler).
 			Methods("POST").Name("add_campaign_url")
+
+		// Stand-alone
 		api.router.HandleFunc("/api/v1/url", api.ApiAddUrlHandler).
 			Methods("POST").Name("add")
 
@@ -230,7 +237,81 @@ func (this *ShortyEndPoint) ApiAddCampaignHandler(resp http.ResponseWriter, req 
 
 	buff, err := json.Marshal(campaign)
 	if err != nil {
-		renderJsonError(resp, req, "Malformed campaign", http.StatusInternalServerError)
+		renderJsonError(resp, req, "malformed-campaign", http.StatusInternalServerError)
+		return
+	}
+	resp.Write(buff)
+}
+
+func (this *ShortyEndPoint) ApiGetCampaignHandler(resp http.ResponseWriter, req *http.Request) {
+	omni_http.SetCORSHeaders(resp)
+	vars := mux.Vars(req)
+	campaignId := vars["campaignId"]
+
+	campaign, err := this.service.FindCampaign(UUID(campaignId))
+	if err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if campaign == nil {
+		renderJsonError(resp, req, "campaign-not-found", http.StatusBadRequest)
+		return
+	}
+
+	buff, err := json.Marshal(campaign)
+	if err != nil {
+		renderJsonError(resp, req, "malformed-campaign", http.StatusInternalServerError)
+		return
+	}
+	resp.Write(buff)
+}
+
+func (this *ShortyEndPoint) ApiUpdateCampaignHandler(resp http.ResponseWriter, req *http.Request) {
+
+	omni_http.SetCORSHeaders(resp)
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	vars := mux.Vars(req)
+	campaignId := vars["campaignId"]
+	campaign, err := this.service.FindCampaign(UUID(campaignId))
+	if err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if campaign == nil {
+		renderJsonError(resp, req, "campaign-not-found", http.StatusBadRequest)
+		return
+	}
+
+	campaign = this.service.Campaign() // new value from the post body
+	dec := json.NewDecoder(strings.NewReader(string(body)))
+	if err := dec.Decode(campaign); err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if string(campaign.Id) != "" && string(campaign.Id) != campaignId {
+		renderJsonError(resp, req, "id-mismatch", http.StatusBadRequest)
+		return
+	}
+
+	campaign.Id = UUID(campaignId)
+	err = campaign.Save()
+	glog.Infoln("Saved ", campaign)
+	if err != nil {
+		renderJsonError(resp, req, "failed-to-save-campaign", http.StatusInternalServerError)
+		return
+	}
+
+	buff, err := json.Marshal(campaign)
+	if err != nil {
+		renderJsonError(resp, req, "malformed-campaign", http.StatusInternalServerError)
 		return
 	}
 	resp.Write(buff)
@@ -310,7 +391,7 @@ func (this *ShortyEndPoint) ApiAddCampaignUrlHandler(resp http.ResponseWriter, r
 		// TODO - add lookup of api token to valid apiKey.
 		// A api token is used by client as a way to authenticate and identify the actual app.
 		// This way, we can revoke the token and shut down a client.
-		AppKey: UUID(message.ApiToken),
+		AppKey: UUID(campaign.AppKey),
 
 		// TODO - this is a key that references a future struct that encapsulates all the
 		// rules around default routing (appstore, etc.).  This will simplify the api by not
@@ -505,7 +586,7 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	if matchedRule != nil {
 		switch {
 
-		case matchedRule.SendToInterstitial:
+		case matchedRule.SendToInterstitial.isTrue():
 
 			// Special handling of platforms where apps using webviews don't shared
 			// cookies -- aka sandboxed uuids -- (e.g. iOS):
@@ -548,7 +629,7 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 			glog.Infoln("REDIRECT- checking for appOpen", matchedRule.AppUrlScheme, userId, found, appOpen)
 			if !found ||
 				(matchedRule.AppOpenTTLDays > -1 &&
-					time.Now().Unix()-appOpen.Timestamp >= matchedRule.AppOpenTTLDays*24*60*60) {
+					float64(time.Now().Unix()-appOpen.Timestamp) >= matchedRule.AppOpenTTLDays*24.*60.*60.) {
 
 				destination = matchedRule.AppStoreUrl
 			} else {
@@ -792,7 +873,7 @@ func injectContext(dest string, matchedRule *RoutingRule, shortUrl *ShortUrl, us
 		// If the schemes match, then it's a deeplink.  Add additional params if the destination is
 		// a deeplink or a http url that is mapped in Android's intent filter (where an app can also handle
 		// url with http as scheme.
-		if pErr == nil && (parsedUrl.Scheme == matchedRule.AppUrlScheme || matchedRule.IsAndroidIntentFilter) {
+		if pErr == nil && (parsedUrl.Scheme == matchedRule.AppUrlScheme || matchedRule.IsAndroidIntentFilter.isTrue()) {
 			destination = addQueryParam(destination, contextQueryParam, userId)
 			destination = addQueryParam(destination, appUrlSchemeParam, matchedRule.AppUrlScheme)
 			destination = addQueryParam(destination, shortCodeParam, shortUrl.Id)
