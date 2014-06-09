@@ -1,0 +1,14 @@
+{
+        "longUrl": "http://sfbay.craigslist.org/sfc/cto/4502779314.html",
+        "origin": "2004 lambo gallardo",
+	"rules": [
+            {
+	        "id":"ios-rules",
+                "destination": "qldeeplink://content?url=http%3A%2F%2Fsfbay.craigslist.org%2Fsfc%2Fcto%2F4502779314.html"
+            },
+            {
+	        "id": "android-rules",
+                "destination": "http://sfbay.craigslist.org/sfc/cto/4502779314.html"
+            }
+        ]
+}

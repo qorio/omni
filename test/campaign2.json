@@ -1,5 +1,5 @@
 {
-	"name": "Dev campaign 1",
+	"name": "Dev campaign 2",
 	"description": "My first campaign",
 	"rules": [
             {
@@ -9,13 +9,13 @@
                 "appstore": "https://testflightapp.com/install/b98c4c5189905cb9569fbf32959abc5d-MTEzMzMyNDI/",
 		"app-open-ttl-days" : 0,
 		"x-send-to-interstitial": "on",
-		"x-interstitial-to-appstore-on-timeout": "on",
+		"x-interstitial-to-appstore-on-timeout": "off",
 		"x-interstitial-open-app-timeout-millis": 1000,
 		"special" : [
 			     {
-			         "comment": "If opened directly from iMessage or Safari",
+			         "comment": "If opened directly from iMessage or Safari -- send to appstore and use interstitial",
 				 "referer": "DIRECT",
-                        	 "x-send-to-interstitial": "off"
+				 "x-interstitial-to-appstore-on-timeout": "on"
 			     }
 		]
             },
