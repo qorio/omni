@@ -180,7 +180,6 @@ func main() {
 	fromShortyDecode := shortyService.DecodeEventChannel()
 	fromShortyInstall := shortyService.InstallEventChannel()
 	fromShortyAppOpen := shortyService.AppOpenEventChannel()
-	fromShortyLink := shortyService.LinkEventChannel()
 
 	toTally := tallyService.Channel()
 	go func() {
@@ -192,10 +191,7 @@ func main() {
 				toTally <- translateAppOpen(appOpen)
 			case install := <-fromShortyInstall:
 				toTally <- translateInstall(install)
-			case link := <-fromShortyLink:
-				toTally <- translateLink(link)
 			}
-
 		}
 	}()
 

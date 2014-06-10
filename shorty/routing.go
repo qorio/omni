@@ -90,7 +90,7 @@ func (this *RoutingRule) Match(service Shorty, ua *http.UserAgent, origin *http.
 			actual |= 1 << 5
 		}
 	}
-	if this.MatchNoAppOpenInXDays.IsOn() && this.AppUrlScheme != "" && this.AppOpenTTLDays > -1 {
+	if this.MatchNoAppOpenInXDays.IsOn() && this.AppUrlScheme != "" {
 		expect |= 1 << 6
 		uuid, _ := cookies.GetPlainString(uuidCookieKey)
 		appOpen, found, err := service.FindAppOpen(UrlScheme(this.AppUrlScheme), UUID(uuid))

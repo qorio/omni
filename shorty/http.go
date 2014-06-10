@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	omni_auth "github.com/qorio/omni/auth"
 	omni_http "github.com/qorio/omni/http"
 	"io"
 	"io/ioutil"
@@ -200,6 +201,18 @@ func (this *ShortyEndPoint) ServeHTTP(resp http.ResponseWriter, request *http.Re
 }
 
 func (this *ShortyEndPoint) ApiAddCampaignHandler(resp http.ResponseWriter, req *http.Request) {
+	req.ParseForm()
+	token := ""
+	if tokenParam, exists := req.Form["token"]; exists {
+		token = tokenParam[0]
+	}
+
+	appKey, authErr := omni_auth.GetAppKey(token)
+	if authErr != nil {
+		// TODO - better http status code
+		renderJsonError(resp, req, authErr.Error(), http.StatusUnauthorized)
+		return
+	}
 
 	omni_http.SetCORSHeaders(resp)
 	body, err := ioutil.ReadAll(req.Body)
@@ -228,6 +241,8 @@ func (this *ShortyEndPoint) ApiAddCampaignHandler(resp http.ResponseWriter, req 
 		}
 		campaign.Id = UUID(uuidStr)
 	}
+
+	campaign.AppKey = UUID(appKey)
 
 	err = campaign.Save()
 	if err != nil {
@@ -627,9 +642,7 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 			// check if there's been an appOpen
 			appOpen, found, _ := this.service.FindAppOpen(UrlScheme(matchedRule.AppUrlScheme), UUID(userId))
 			glog.Infoln("REDIRECT- checking for appOpen", matchedRule.AppUrlScheme, userId, found, appOpen)
-			if !found ||
-				(matchedRule.AppOpenTTLDays > -1 &&
-					float64(time.Now().Unix()-appOpen.Timestamp) >= matchedRule.AppOpenTTLDays*24.*60.*60.) {
+			if !found || float64(time.Now().Unix()-appOpen.Timestamp) >= matchedRule.AppOpenTTLDays*24.*60.*60. {
 
 				destination = matchedRule.AppStoreUrl
 			} else {
@@ -646,11 +659,6 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	} else {
 		destination = injectContext(destination, matchedRule, shortUrl, userId)
 		http.Redirect(resp, req, destination, http.StatusMovedPermanently)
-	}
-
-	deeplink := ""
-	if matchedRule != nil {
-		deeplink = matchedRule.Destination
 	}
 
 	// Record stats asynchronously
@@ -676,6 +684,11 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 			"cookied", cookied)
 
 		// Save a fingerprint
+		deeplink := ""
+		if matchedRule != nil {
+			deeplink = matchedRule.Destination
+		}
+
 		fingerprint := omni_http.FingerPrint(origin)
 		this.service.SaveFingerprintedVisit(&FingerprintedVisit{
 			Fingerprint: fingerprint,
