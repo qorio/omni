@@ -17,10 +17,12 @@ import (
 
 type UUID string
 
+// Resolve from token to app key
 func GetAppKey(token string) (appKey UUID, err error) {
 	return
 }
 
+// Given the app key, returns the token -- used during signup
 func GetAppToken(appKey UUID) (token string, err error) {
 	return
 }

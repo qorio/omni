@@ -24,6 +24,7 @@ var (
 	contextQueryParam = "__xrlc"
 	appUrlSchemeParam = "__xrlp"
 	shortCodeParam    = "__xrls"
+	noAppInstallParam = "__xrl_noapp"
 
 	uuidCookieKey       = "uuid"
 	lastViewedCookieKey = "last"
@@ -67,14 +68,14 @@ function getParameterByName(name) {
     return results == null ? null : decodeURIComponent(results[1].replace(/\+/g, " "));
 }
 function onLoad() {
+    var deeplink = "{{.Destination}}";
+    var appstore = "{{.AppStoreUrl}}";
     var interstitialUrl = window.location;
     var didNotDetectApp = getParameterByName('__xrl_noapp') != null;
     if (didNotDetectApp) {
         var el = document.getElementById("has-app")
         el.innerHTML = "<h1>Still here?  Try open this in Safari.</h1>";
     } else {
-        var deeplink = "{{.Destination}}";
-        var appstore = "{{.AppStoreUrl}}";
         var scheme = deeplink.split("://").shift();
         var shortCode = window.location.pathname.substring(1);
         deeplink += "&__xrlc=" + getCookie("uuid") + "&__xrlp=" + scheme + "&__xrls=" + shortCode;
@@ -719,11 +720,21 @@ func (this *ShortUrl) MatchRule(service Shorty, userAgent *omni_http.UserAgent,
 	}
 	if matchedRule == nil || matchedRule.Destination == "" {
 		err = errors.New("not found")
+	} else if len(matchedRule.Special) > 0 {
+		for _, sub := range matchedRule.Special {
+			if matchSub := sub.Match(this.service, userAgent, origin, cookies); matchSub {
+				matchedRule = &sub
+				return
+			}
+		}
 	}
 	return
 }
 
 func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.ResponseWriter, req *http.Request) {
+	req.ParseForm()
+	_, noapp := req.Form[noAppInstallParam]
+
 	vars := mux.Vars(req)
 	uuid := vars["uuid"]
 	shortUrl, err := this.service.FindUrl(vars["shortCode"])
@@ -749,8 +760,6 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 
 	var content string = ""
 
-	req.ParseForm()
-
 	omni_http.SetNoCachingHeaders(resp)
 	cookies := omni_http.NewCookieHandler(secureCookie, resp, req)
 
@@ -775,7 +784,7 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 
 	if uuid != userId {
 
-		glog.Infoln(">>>> harvest phase")
+		glog.Infoln(">>>> harvest phase, noapp=", noapp)
 		cookies.SetPlainString("shortcode", shortUrl.Id)
 
 		// We got the user to come here via a different context (browser) than the one that created
@@ -797,11 +806,11 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 			if !found {
 
 				// no app-open even in another context.... so just send it to the appstore
-				// matchedRule, _ := shortUrl.MatchRule(this.service, userAgent, origin, cookies)
-				// if matchedRule != nil {
-				// 	http.Redirect(resp, req, matchedRule.AppStoreUrl, http.StatusMovedPermanently)
-				// 	return
-				// }
+				matchedRule, _ := shortUrl.MatchRule(this.service, userAgent, origin, cookies)
+				if matchedRule != nil {
+					http.Redirect(resp, req, matchedRule.AppStoreUrl, http.StatusMovedPermanently)
+					return
+				}
 
 			} else {
 
@@ -812,7 +821,6 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 			}
 		}
 		if next, err := this.router.Get("redirect").URL("id", shortUrl.Id); err == nil {
-
 			http.Redirect(resp, req, next.String(), http.StatusMovedPermanently)
 			return
 
@@ -853,24 +861,15 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.Respo
 	userAgent := omni_http.ParseUserAgent(req)
 	origin, _ := this.requestParser.Parse(req)
 
-	var apply *RoutingRule
 	matchedRule, notFound := shortUrl.MatchRule(this.service, userAgent, origin, cookies)
 	if notFound != nil {
 		renderError(resp, req, "not found", http.StatusNotFound)
 		return
-	} else {
-		apply = matchedRule
-		for _, sub := range matchedRule.Special {
-			if matchSub := sub.Match(this.service, userAgent, origin, cookies); matchSub {
-				apply = &sub
-				break
-			}
-		}
 	}
 
-	glog.Infoln("Using matchedRule to generate from template", apply)
+	glog.Infoln("Using matchedRule to generate from template", matchedRule)
 
-	deeplinkJsTemplate.Execute(resp, apply)
+	deeplinkJsTemplate.Execute(resp, matchedRule)
 	return
 }
 
