@@ -79,7 +79,7 @@ function onLoad() {
         var shortCode = window.location.pathname.substring(1);
         deeplink += "&__xrlc=" + getCookie("uuid") + "&__xrlp=" + scheme + "&__xrls=" + shortCode;
         setTimeout(function() {
-{{if .InterstitialToAppStoreOnTimeout}}
+{{if eq .InterstitialToAppStoreOnTimeout "on"}}
               if (!document.webkitHidden) {
                   setTimeout(function(){
                       window.location = interstitialUrl + "&__xrl_noapp=";
@@ -201,6 +201,13 @@ func (this *ShortyEndPoint) ServeHTTP(resp http.ResponseWriter, request *http.Re
 }
 
 func (this *ShortyEndPoint) ApiAddCampaignHandler(resp http.ResponseWriter, req *http.Request) {
+	omni_http.SetCORSHeaders(resp)
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	req.ParseForm()
 	token := ""
 	if tokenParam, exists := req.Form["token"]; exists {
@@ -214,23 +221,11 @@ func (this *ShortyEndPoint) ApiAddCampaignHandler(resp http.ResponseWriter, req 
 		return
 	}
 
-	omni_http.SetCORSHeaders(resp)
-	body, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	campaign := this.service.Campaign()
-
 	dec := json.NewDecoder(strings.NewReader(string(body)))
-	for {
-		if err := dec.Decode(campaign); err == io.EOF {
-			break
-		} else if err != nil {
-			renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
-			return
-		}
+	if err := dec.Decode(campaign); err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	if campaign.Id == "" {

@@ -1,0 +1,29 @@
+{
+	"name": "Dev campaign 3",
+	"description": "My first campaign",
+	"rules": [
+            {
+	        "id":"ios-rules",
+                "platform": "iPhone|iPod|iPad",
+                "scheme": "qldeeplink",
+                "appstore": "https://testflightapp.com/install/b98c4c5189905cb9569fbf32959abc5d-MTEzMzMyNDI/",
+		"app-open-ttl-days" : 0,
+		"x-send-to-interstitial": "on",
+		"x-interstitial-to-appstore-on-timeout": "off",
+		"x-interstitial-open-app-timeout-millis": 1000,
+		"special" : [
+			     {
+			         "comment": "If opened directly from iMessage or Safari -- send to appstore and use interstitial",
+				 "referer": "DIRECT",
+				 "x-interstitial-to-appstore-on-timeout": "off"
+			     }
+		]
+            },
+            {
+	        "id": "android-rules",
+                "os": "Android",
+                "scheme": "qldeeplink",
+                "appstore": "https://play.google.com/store/apps/details?id=com.yuilop"
+            }
+        ]
+}

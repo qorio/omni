@@ -439,6 +439,7 @@ func (this *shortyImpl) FindCampaign(id UUID) (*Campaign, error) {
 
 	campaign := &Campaign{service: this}
 	if err := json.Unmarshal(data, campaign); err != nil {
+		glog.Infoln("Error", err)
 		return nil, err
 	}
 
