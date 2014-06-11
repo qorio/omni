@@ -38,7 +38,7 @@ database:
 ## Customize test commands
 test:
   override:
-    - go test github.com/qorio/auth
+    - go test github.com/qorio/omni/auth
 
 ## Customize deployment commands
 deployment:
