@@ -94,6 +94,14 @@ func HandleSignals(shutdownc <-chan io.Closer) {
 	}
 }
 
+func updateDomainSocketPermissions(filename string) (err error) {
+	_, err = os.Lstat(filename)
+	if err != nil {
+		return
+	}
+	return os.Chmod(filename, 0777)
+}
+
 // Runs the http server.  This server offers more control than the standard go's default http server
 // in that when a 'true' is sent to the stop channel, the listener is closed to force a clean shutdown.
 func RunServer(server *http.Server, stop chan bool) (stopped chan bool) {
@@ -109,6 +117,10 @@ func RunServer(server *http.Server, stop chan bool) (stopped chan bool) {
 	stopped = make(chan bool)
 
 	glog.Infoln("Starting", protocol, "listener at", server.Addr)
+
+	if protocol == "unix" {
+		updateDomainSocketPermissions(server.Addr)
+	}
 
 	// This will be set to true if a shutdown signal is received. This allows us to detect
 	// if the server stop is intentional or due to some error.
