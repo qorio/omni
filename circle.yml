@@ -12,7 +12,7 @@ machine:
   # Add some environment variables
   environment:
     CIRCLE_ENV: test
-    GOPATH: /tmp/build/src:/tmp/build/src/github.com/qorio/omni/third_party
+    GOPATH: /tmp/build:/tmp/build/src/github.com/qorio/omni/third_party
 
 ## Customize checkout
 checkout:
