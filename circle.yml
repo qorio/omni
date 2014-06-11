@@ -1,0 +1,54 @@
+## Circle CI configuration
+machine:
+
+  timezone:
+    America/Los_Angeles
+
+  # Override /etc/hosts
+  hosts:
+    circlehost: 127.0.0.1
+    #dev.mycompany.com: 127.0.0.1
+
+  # Add some environment variables
+  environment:
+    CIRCLE_ENV: test
+    GOPATH: /tmp/build/src:/tmp/build/src/github.com/qorio/omni/third_party
+
+## Customize checkout
+checkout:
+  post:
+    - git submodule sync
+    - git submodule update --init # use submodules
+
+## Customize dependencies
+dependencies:
+  pre:
+    - go version
+  override:
+    - ./build-x-compile.sh main/shorty.go main/dasher.go
+  post:
+    - cp -r /tmp/build/target/* $CIRCLE_ARTIFACTS
+    - cp -r /tmp/build/src/github.com/qorio/omni/GeoLiteCity.dat $CIRCLE_ARTIFACTS
+
+## Customize database setup
+database:
+  override:
+    # replace CircleCI's generated database.yml
+
+## Customize test commands
+test:
+  override:
+    - go test github.com/qorio/auth
+
+## Customize deployment commands
+deployment:
+#  staging:
+#    branch: master
+#    heroku:
+#      appname: foo-bar-123
+
+## Custom notifications
+notify:
+#  webhooks:
+    # A list of hashes representing hooks. Only the url field is supported.
+#    - url: https://someurl.com/hooks/circle
