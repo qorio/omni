@@ -863,6 +863,9 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.Respo
 	userAgent := omni_http.ParseUserAgent(req)
 	origin, _ := this.requestParser.Parse(req)
 
+	// Hack -- set the referrer to be DIRECT, otherwise it's the interstitial page url
+	origin.Referrer = "DIRECT"
+
 	matchedRule, notFound := shortUrl.MatchRule(this.service, userAgent, origin, cookies)
 	if notFound != nil {
 		renderError(resp, req, "not found", http.StatusNotFound)
