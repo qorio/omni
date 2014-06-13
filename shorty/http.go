@@ -766,9 +766,11 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 	userAgent := omni_http.ParseUserAgent(req)
 	origin, _ := this.requestParser.Parse(req)
 
+	matchedRule, _ := shortUrl.MatchRule(this.service, userAgent, origin, cookies)
+
 	// visits, cookied, last, userId := processCookies(cookies, shortUrl)
 	_, _, lastViewed, userId := processCookies(cookies, shortUrl.Id)
-	glog.Infoln(">>> harvest - processed cookies", lastViewed, userId, shortUrl.Id)
+	glog.Infoln(">>> harvest - processed cookies", lastViewed, userId, shortUrl.Id, "matchedRule=", matchedRule)
 
 	// Here we check if the two uuids are different.  One uuid is in the url of this request.  This is the uuid
 	// from some context (e.g. from FB webview on iOS).  Another uuid is one in the cookie -- either we assigned
@@ -785,7 +787,6 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 	if uuid != userId {
 
 		glog.Infoln(">>>> harvest phase, noapp=", noapp)
-		cookies.SetPlainString("shortcode", shortUrl.Id)
 
 		// We got the user to come here via a different context (browser) than the one that created
 		// this url in the first place.  So link the two ids together and redirect back to the short url.
@@ -805,12 +806,11 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 
 			if !found {
 
-				// no app-open even in another context.... so just send it to the appstore
-				matchedRule, _ := shortUrl.MatchRule(this.service, userAgent, origin, cookies)
-				if matchedRule != nil {
-					http.Redirect(resp, req, matchedRule.AppStoreUrl, http.StatusMovedPermanently)
-					return
-				}
+				// // no app-open even in another context.... so just send it to the appstore
+				// if matchedRule != nil {
+				// 	http.Redirect(resp, req, matchedRule.AppStoreUrl, http.StatusMovedPermanently)
+				// 	return
+				// }
 
 			} else {
 
@@ -835,7 +835,10 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 
 	} else {
 		// Some dummy content
-		openTestHtmlTemplate.Execute(resp, "")
+		if matchedRule != nil {
+			openTestHtmlTemplate.Execute(resp, matchedRule)
+		}
+
 	}
 
 	return
