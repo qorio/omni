@@ -502,7 +502,7 @@ func (this *ShortyEndPoint) ApiAddUrlHandler(resp http.ResponseWriter, req *http
 
 // cookied = if the user uuid is cookied
 func processCookies(cookies omni_http.Cookies, shortCode string) (visits int, cookied bool, last, uuid string) {
-	cookies.Get(lastViewedCookieKey, &last)
+	last, _ = cookies.GetPlainString(lastViewedCookieKey)
 
 	sc := shortCode
 	if sc == "" {
@@ -522,7 +522,7 @@ func processCookies(cookies omni_http.Cookies, shortCode string) (visits int, co
 	}
 
 	visits++
-	cookieError = cookies.Set(lastViewedCookieKey, sc)
+	cookieError = cookies.SetPlainString(lastViewedCookieKey, sc)
 
 	glog.Infoln("SET COOKIE", lastViewedCookieKey, sc, cookieError)
 
