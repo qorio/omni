@@ -90,7 +90,7 @@ func (this *RoutingRule) Match(service Shorty, ua *http.UserAgent, origin *http.
 	}
 	if len(string(this.MatchReferrer)) > 0 {
 		expect |= 1 << 5
-		if matches, _ := regexp.MatchString(string(this.MatchReferrer), referrer); matches {
+		if matches, _ := regexp.MatchString(string(this.MatchReferrer), origin.Referrer); matches {
 			actual |= 1 << 5
 		}
 		glog.Infoln("matching expect=", expect, "actual=", actual)
