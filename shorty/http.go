@@ -820,26 +820,22 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 				this.service.TrackAppOpen(UrlScheme(appUrlScheme), appOpen.AppContext, appOpen)
 			}
 		}
-		if next, err := this.router.Get("redirect").URL("id", shortUrl.Id); err == nil {
-			http.Redirect(resp, req, next.String(), http.StatusMovedPermanently)
-			return
+		// if next, err := this.router.Get("redirect").URL("id", shortUrl.Id); err == nil {
+		// 	http.Redirect(resp, req, next.String(), http.StatusMovedPermanently)
+		// 	return
 
-		}
+		// }
+
+	}
+	// we expect the fetch url to be included in the 'f' parameter
+	if fetchFromUrl, exists := req.Form["f"]; exists && fetchFromUrl[0] != "" {
+
+		content = omni_http.FetchFromUrl(userAgent.Header, fetchFromUrl[0])
+		resp.Write([]byte(content))
+
 	} else {
-
-		// The user is still coming from the same browser context because the two ids are the same.
-		// In this case we just show the static content.
-
-		// we expect the fetch url to be included in the 'f' parameter
-		if fetchFromUrl, exists := req.Form["f"]; exists && fetchFromUrl[0] != "" {
-
-			content = omni_http.FetchFromUrl(userAgent.Header, fetchFromUrl[0])
-			resp.Write([]byte(content))
-
-		} else {
-			// Some dummy content
-			openTestHtmlTemplate.Execute(resp, "")
-		}
+		// Some dummy content
+		openTestHtmlTemplate.Execute(resp, "")
 	}
 
 	return
