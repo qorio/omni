@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"text/template"
 	"time"
@@ -868,6 +869,7 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.Respo
 
 	glog.Infoln("Using matchedRule to generate from template", matchedRule)
 
+	deeplinkJsTemplate.Execute(os.Stdout, matchedRule)
 	deeplinkJsTemplate.Execute(resp, matchedRule)
 	return
 }
