@@ -121,6 +121,9 @@ func (this *ShortyEndPoint) ReportInstallOnOrganicAppLaunch(resp http.ResponseWr
 	if len(parts) >= 2 && parts[0] == "m" {
 		sc = parts[1]
 	}
+
+	glog.Infoln("Browser-switch", "lastViewed=", lastViewed, "sc=", sc, "userId=", userId)
+
 	// Construct a AppOpen object using what is read from the http headers / cookies
 	appOpen := &AppOpen{
 		SourceContext:     UUID(userId),

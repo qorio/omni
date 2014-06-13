@@ -321,13 +321,15 @@ func (this *shortyImpl) MatchFingerPrint(fingerprint string) (score float64, vis
 	match, matchScore := http.MatchFingerPrint(fingerprint, candidates)
 	glog.Infoln("matching fingerprint: match=", match, "score=", score)
 
-	value, err2 := redis.Bytes(c.Do("GET", this.settings.RedisPrefix+"fingerprint:"+match))
-	if err2 != nil {
-		glog.Warningln("Error", err2)
-	}
-	if err3 := json.Unmarshal(value, &visit); err3 == nil {
-		score = matchScore
-		return
+	if match != "" {
+		value, err2 := redis.Bytes(c.Do("GET", this.settings.RedisPrefix+"fingerprint:"+match))
+		if err2 != nil {
+			glog.Warningln("Error", err2)
+		}
+		if err3 := json.Unmarshal(value, &visit); err3 == nil {
+			score = matchScore
+			return
+		}
 	}
 
 	return
