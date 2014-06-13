@@ -74,8 +74,13 @@ function onLoad() {
     var interstitialUrl = window.location;
     var didNotDetectApp = getParameterByName('__xrl_noapp') != null;
     if (didNotDetectApp) {
+{{if eq .InterstitialToAppStoreOnTimeout "on"}}
+        window.location = appstore;
+{{else}}
         var el = document.getElementById("has-app")
         el.innerHTML = "<h1>Still here?  Try open this in Safari.</h1>";
+{{end}}
+
     } else {
         var scheme = deeplink.split("://").shift();
         var shortCode = window.location.pathname.substring(1);
@@ -852,6 +857,7 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.Respo
 
 	vars := mux.Vars(req)
 	shortCode := vars["shortCode"]
+	uuid := vars["uuid"]
 
 	shortUrl, err := this.service.FindUrl(shortCode)
 	if err != nil || shortUrl == nil {
@@ -862,6 +868,8 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.Respo
 	cookies := omni_http.NewCookieHandler(secureCookie, resp, req)
 	userAgent := omni_http.ParseUserAgent(req)
 	origin, _ := this.requestParser.Parse(req)
+
+	_, _, _, userId := processCookies(cookies, shortUrl.Id)
 
 	// Hack -- set the referrer to be DIRECT, otherwise it's the interstitial page url
 	origin.Referrer = "DIRECT"
@@ -874,6 +882,11 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.Respo
 
 	glog.Infoln("Using matchedRule to generate from template", matchedRule)
 
+	if userId != uuid {
+		// This is the case where we harvest the uuid and we can safely redirect to
+		// the appstore.
+		matchedRule.InterstitialToAppStoreOnTimeout = "on"
+	}
 	deeplinkJsTemplate.Execute(os.Stdout, matchedRule)
 	deeplinkJsTemplate.Execute(resp, matchedRule)
 	return
