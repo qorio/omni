@@ -721,9 +721,11 @@ func (this *ShortUrl) MatchRule(service Shorty, userAgent *omni_http.UserAgent,
 	}
 	if matchedRule == nil || matchedRule.Destination == "" {
 		err = errors.New("not found")
-	} else if len(matchedRule.Special) > 0 {
+	} else {
 		for _, sub := range matchedRule.Special {
-			if matchSub := sub.Match(this.service, userAgent, origin, cookies); matchSub {
+			matchSub := sub.Match(this.service, userAgent, origin, cookies)
+			glog.Infoln("Checking subrule:", sub, "matched=", matchSub)
+			if matchSub {
 				matchedRule = &sub
 				return
 			}
