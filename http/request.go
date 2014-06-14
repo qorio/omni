@@ -19,8 +19,8 @@ type Location struct {
 	Region      string
 	City        string
 	PostalCode  string
-	Latitude    float32
-	Longitude   float32
+	Latitude    float64
+	Longitude   float64
 }
 
 type UserAgent struct {
@@ -121,8 +121,8 @@ func (this *RequestParser) Parse(req *http.Request) (r *RequestOrigin, err error
 			Region:      location.Region,
 			City:        location.City,
 			PostalCode:  location.PostalCode,
-			Latitude:    location.Latitude,
-			Longitude:   location.Longitude,
+			Latitude:    float64(location.Latitude),
+			Longitude:   float64(location.Longitude),
 		}
 	} else {
 		r.Location = &Location{}

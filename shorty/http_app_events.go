@@ -119,6 +119,7 @@ func (this *ShortyEndPoint) ReportInstallOnOrganicAppLaunch(resp http.ResponseWr
 	sc := lastViewed
 	sourceApplication := "ORGANIC"
 	deeplink := "."
+	method := "browser-switch"
 	parts := strings.Split(lastViewed, "/")
 	if len(parts) >= 2 && parts[0] == "m" {
 		sc = parts[1]
@@ -138,6 +139,7 @@ func (this *ShortyEndPoint) ReportInstallOnOrganicAppLaunch(resp http.ResponseWr
 			sc = visit.ShortCode
 			deeplink = visit.Deeplink
 			sourceApplication = visit.Referrer
+			method = "fingerprint"
 		}
 	}
 
@@ -149,7 +151,7 @@ func (this *ShortyEndPoint) ReportInstallOnOrganicAppLaunch(resp http.ResponseWr
 		SourceApplication: sourceApplication,
 	}
 
-	this.handleInstall(UrlScheme(app), UUID(appContext), appOpen, req, "browser-switch")
+	this.handleInstall(UrlScheme(app), UUID(appContext), appOpen, req, method)
 	this.handleAppOpen(UrlScheme(app), UUID(appContext), appOpen, req)
 
 	switch {

@@ -8,6 +8,7 @@ import (
 	omni_http "github.com/qorio/omni/http"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -195,6 +196,32 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 		}
 	}
 
+	// save a fingerprint
+	go func() {
+		// check and see if we have params for location
+		if lat, exists := req.Form["lat"]; exists {
+			if lng, exists := req.Form["lng"]; exists {
+				if latitude, err := strconv.ParseFloat(lat[0], 64); err == nil {
+					if longitude, err := strconv.ParseFloat(lng[0], 64); err == nil {
+						origin.Location.Latitude = latitude
+						origin.Location.Longitude = longitude
+					}
+				}
+			}
+		}
+
+		fingerprint := omni_http.FingerPrint(origin)
+		glog.Infoln(">> New fingerprint: ", fingerprint)
+
+		this.service.SaveFingerprintedVisit(&FingerprintedVisit{
+			Fingerprint: fingerprint,
+			Context:     UUID(userId),
+			ShortCode:   shortUrl.Id,
+			Timestamp:   timestamp(),
+			Referrer:    origin.Referrer,
+		})
+	}()
+
 	if fetchFromUrl, exists := req.Form["f"]; exists && fetchFromUrl[0] != "" {
 		content = omni_http.FetchFromUrl(userAgent.Header, fetchFromUrl[0])
 		resp.Write([]byte(content))
@@ -239,14 +266,6 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.Respo
 	if notFound != nil {
 		renderError(resp, req, "not found", http.StatusNotFound)
 		return
-	}
-
-	glog.Infoln("Using matchedRule to generate from template", matchedRule)
-
-	if userId != uuid {
-		// This is the case where we harvest the uuid and we can safely redirect to
-		// the appstore.
-		matchedRule.InterstitialToAppStoreOnTimeout = "on"
 	}
 
 	context := &appInstallInterstitialContext{
