@@ -201,11 +201,16 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 		// check and see if we have params for location
 		if lat, exists := req.Form["lat"]; exists {
 			if lng, exists := req.Form["lng"]; exists {
+
+				glog.Infoln("===> NEW COORD lat=", lat[0], "lng=", lng[0])
+
 				if latitude, err := strconv.ParseFloat(lat[0], 64); err == nil {
 					if longitude, err := strconv.ParseFloat(lng[0], 64); err == nil {
 						origin.Location.Latitude = latitude
 						origin.Location.Longitude = longitude
 					}
+				} else {
+					glog.Infoln("++> ", err)
 				}
 			}
 		}
