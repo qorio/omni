@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 	"text/template"
+	"time"
 )
 
 var (
@@ -20,6 +21,7 @@ var (
 type appInstallInterstitialContext struct {
 	Rule                  *RoutingRule
 	IsCrossBrowserContext bool
+	Timestamp             int64
 }
 
 func init() {
@@ -36,6 +38,17 @@ function getParameterByName(name) {
     var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
         results = regex.exec(location.search);
     return results == null ? null : decodeURIComponent(results[1].replace(/\+/g, " "));
+}
+function redirectWithLocation(target) {
+    if (/Safari/.test(navigator.userAgent)) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+           lat = position.coords.latitude
+           lng = position.coords.longitude
+           window.location = target + "&lat=" + lat + "&lng=" + lng
+        })
+    } else {
+        window.location = target
+    }
 }
 function onLoad() {
     var deeplink = "{{.Rule.Destination}}";
@@ -58,14 +71,13 @@ function onLoad() {
 {{if eq .Rule.InterstitialToAppStoreOnTimeout "on"}}
               if (!document.webkitHidden) {
                   setTimeout(function(){
-                      window.location = interstitialUrl + "&__xrl_noapp=";
+                      redirectWithLocation(interstitialUrl + "&__xrl_noapp=");
                   }, 2000)
                   window.location = appstore;
               }
 {{else}}
               if (!document.webkitHidden) {
-                  window.location = interstitialUrl + "&__xrl_noapp=";
-                  console.log(['to', window.location])
+                  redirectWithLocation(interstitialUrl + "&__xrl_noapp=");
               }
 {{end}}
         }, {{.Rule.InterstitialAppLinkTimeoutMillis}});
@@ -82,7 +94,7 @@ function onLoad() {
 <html>
  <head>
   <title>Getting content...</title>
-  <script type="text/javascript" src="./deeplink.js"></script>
+  <script type="text/javascript" src="./deeplink.js?{{.Timestamp}}"></script>
  </head>
  <body onload="onLoad()">
   <div id="has-app"></div>
@@ -197,6 +209,7 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 		openTestHtmlTemplate.Execute(resp, appInstallInterstitialContext{
 			Rule: matchedRule,
 			IsCrossBrowserContext: userId != uuid,
+			Timestamp:             time.Now().Unix(),
 		})
 		return
 	}
@@ -243,6 +256,7 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.Respo
 	context := &appInstallInterstitialContext{
 		Rule: matchedRule,
 		IsCrossBrowserContext: userId != uuid,
+		Timestamp:             time.Now().Unix(),
 	}
 
 	var buff bytes.Buffer

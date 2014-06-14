@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"testing"
+	"time"
 )
 
 func TestGenerateInterstitial(t *testing.T) {
@@ -20,6 +21,7 @@ func TestGenerateInterstitial(t *testing.T) {
 	context := appInstallInterstitialContext{
 		Rule: rule,
 		IsCrossBrowserContext: false,
+		Timestamp:             time.Now().Unix(),
 	}
 
 	var buf1, buf2 bytes.Buffer
