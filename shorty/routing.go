@@ -2,7 +2,6 @@ package shorty
 
 import (
 	"errors"
-	"github.com/golang/glog"
 	"github.com/qorio/omni/http"
 	"net/url"
 	"regexp"
@@ -65,45 +64,38 @@ func (this *RoutingRule) Match(service Shorty, ua *http.UserAgent, origin *http.
 		if matches, _ := regexp.MatchString(string(this.MatchOS), ua.OS); matches {
 			actual |= 1 << 1
 		}
-		glog.Infoln("matching expect=", expect, "actual=", actual)
 	}
 	if len(string(this.MatchMake)) > 0 {
 		expect |= 1 << 2
 		if matches, _ := regexp.MatchString(string(this.MatchMake), ua.Make); matches {
 			actual |= 1 << 2
 		}
-		glog.Infoln("matching expect=", expect, "actual=", actual)
 	}
 	if len(string(this.MatchBrowser)) > 0 {
 		expect |= 1 << 3
 		if matches, _ := regexp.MatchString(string(this.MatchBrowser), ua.Browser); matches {
 			actual |= 1 << 3
 		}
-		glog.Infoln("matching expect=", expect, "actual=", actual)
 	}
 	if this.MatchMobile.IsOn() {
 		expect |= 1 << 4
 		if ua.Mobile {
 			actual |= 1 << 4
 		}
-		glog.Infoln("matching expect=", expect, "actual=", actual)
 	}
 	if len(string(this.MatchReferrer)) > 0 {
 		expect |= 1 << 5
 		if matches, _ := regexp.MatchString(string(this.MatchReferrer), origin.Referrer); matches {
 			actual |= 1 << 5
 		}
-		glog.Infoln("matching expect=", expect, "actual=", actual)
 	}
 	if this.MatchNoAppOpenInXDays.IsOn() && this.AppUrlScheme != "" {
 		expect |= 1 << 6
 		uuid, _ := cookies.GetPlainString(uuidCookieKey)
-		appOpen, found, err := service.FindAppOpen(UrlScheme(this.AppUrlScheme), UUID(uuid))
-		glog.Infoln("checking app-open", uuid, this.AppUrlScheme, found, appOpen, err)
+		appOpen, found, _ := service.FindAppOpen(UrlScheme(this.AppUrlScheme), UUID(uuid))
 		if !found || float64(time.Now().Unix()-appOpen.Timestamp) >= this.AppOpenTTLDays*24.*60.*60. {
 			actual |= 1 << 6
 		}
-		glog.Infoln("matching expect=", expect, "actual=", actual)
 	}
 	// By the time we get here, we have done a match all
 	return actual == expect && expect > 0
