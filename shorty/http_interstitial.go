@@ -45,11 +45,6 @@ function redirectWithLocation(target) {
         lng = position.coords.longitude
         window.location = target + "&lat=" + lat + "&lng=" + lng
     })
-    /*
-    if (/Safari/.test(navigator.userAgent)) {
-    } else {
-        window.location = target
-    }*/
 }
 function onLoad() {
     var deeplink = "{{.Rule.Destination}}";

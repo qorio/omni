@@ -117,19 +117,36 @@ func (this *ShortyEndPoint) ReportInstallOnOrganicAppLaunch(resp http.ResponseWr
 
 	// The lastViewed may not be the shortcode, but the interstitial
 	sc := lastViewed
+	sourceApplication := "ORGANIC"
+	deeplink := "."
 	parts := strings.Split(lastViewed, "/")
 	if len(parts) >= 2 && parts[0] == "m" {
 		sc = parts[1]
 	}
 
-	glog.Infoln("Browser-switch", "lastViewed=", lastViewed, "sc=", sc, "userId=", userId)
+	if len(sc) > 0 {
+		// we got the short code by cookie
+		glog.Infoln("Browser-switch", "lastViewed=", lastViewed, "sc=", sc, "userId=", userId)
+	} else {
+		// try fingerprint
+		// That's all now we need to get the ip address etc.
+		origin, _ := this.requestParser.Parse(req)
+		fingerprint := omni_http.FingerPrint(origin)
+		score, visit, _ := this.service.MatchFingerPrint(fingerprint)
+		glog.Infoln("Matching fingerprint: score=", score, "visit=", visit)
+		if score > *fingerPrintMinMatchingScore && (time.Now().Unix()-visit.Timestamp) < *fingerPrintExpirationMinutes*60 {
+			sc = visit.ShortCode
+			deeplink = visit.Deeplink
+			sourceApplication = visit.Referrer
+		}
+	}
 
 	// Construct a AppOpen object using what is read from the http headers / cookies
 	appOpen := &AppOpen{
 		SourceContext:     UUID(userId),
 		ShortCode:         sc,
-		Deeplink:          ".", // The app opened itself without referrer
-		SourceApplication: "ORGANIC",
+		Deeplink:          deeplink,
+		SourceApplication: sourceApplication,
 	}
 
 	this.handleInstall(UrlScheme(app), UUID(appContext), appOpen, req, "browser-switch")
