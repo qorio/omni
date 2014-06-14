@@ -40,15 +40,16 @@ function getParameterByName(name) {
     return results == null ? null : decodeURIComponent(results[1].replace(/\+/g, " "));
 }
 function redirectWithLocation(target) {
+    navigator.geolocation.getCurrentPosition(function(position) {
+        lat = position.coords.latitude
+        lng = position.coords.longitude
+        window.location = target + "&lat=" + lat + "&lng=" + lng
+    })
+    /*
     if (/Safari/.test(navigator.userAgent)) {
-        navigator.geolocation.getCurrentPosition(function(position) {
-           lat = position.coords.latitude
-           lng = position.coords.longitude
-           window.location = target + "&lat=" + lat + "&lng=" + lng
-        })
     } else {
         window.location = target
-    }
+    }*/
 }
 function onLoad() {
     var deeplink = "{{.Rule.Destination}}";
