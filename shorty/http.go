@@ -551,7 +551,7 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 			renderInline = false
 			fetchUrl := url.QueryEscape(matchedRule.ContentSourceUrl)
 			appUrlScheme := url.QueryEscape(matchedRule.AppUrlScheme)
-			destination = fmt.Sprintf("/m/%s/%s/%s/?f=%s", shortUrl.Id, appUrlScheme, userId, fetchUrl)
+			destination = fmt.Sprintf("/m/%s/%s/%s/?f=%s", appUrlScheme, userId, shortUrl.Id, fetchUrl)
 
 		case matchedRule.ContentSourceUrl != "":
 			renderInline = true

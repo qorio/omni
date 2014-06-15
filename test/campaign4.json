@@ -1,5 +1,5 @@
 {
-	"name": "Dev campaign 3",
+	"name": "Dev campaign 4",
 	"description": "My first campaign",
 	"rules": [
             {
@@ -13,6 +13,7 @@
 		"x-interstitial-open-app-timeout-millis": 1000,
 		"special" : [
 			     {
+			         "id": "ios-DIRECT-case",
 			         "comment": "If opened directly from iMessage or Safari -- send to appstore and use interstitial",
 				 "referer": "DIRECT",
 				 "x-interstitial-to-appstore-on-timeout": "on"
