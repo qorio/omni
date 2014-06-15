@@ -273,5 +273,7 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.Respo
 	var buff bytes.Buffer
 	deeplinkJsTemplate.Execute(&buff, context)
 	resp.Write(buff.Bytes())
+
+	fmt.Println(buff.Bytes())
 	return
 }
