@@ -257,9 +257,6 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.Respo
 
 	_, _, _, userId := processCookies(cookies, shortUrl.Id)
 
-	// Hack -- set the referrer to be DIRECT, otherwise it's the interstitial page url
-	origin.Referrer = "DIRECT"
-
 	matchedRule, notFound := shortUrl.MatchRule(this.service, userAgent, origin, cookies)
 	if notFound != nil {
 		renderError(resp, req, "not found", http.StatusNotFound)
@@ -276,6 +273,6 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.Respo
 	deeplinkJsTemplate.Execute(&buff, context)
 	resp.Write(buff.Bytes())
 
-	fmt.Println(buff.Bytes())
+	fmt.Println(buff.String())
 	return
 }
