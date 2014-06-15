@@ -239,6 +239,8 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.ResponseWriter, req *http.Request) {
 	omni_http.SetNoCachingHeaders(resp)
 
+	glog.Infoln(">>>> JS")
+
 	vars := mux.Vars(req)
 	shortCode := vars["shortCode"]
 	uuid := vars["uuid"]
