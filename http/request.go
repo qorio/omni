@@ -53,12 +53,8 @@ func FingerPrint(origin *RequestOrigin) string {
 	}
 	return strings.Join([]string{
 		origin.Ip,
-		fmt.Sprintf("%.4f", origin.Location.Longitude),
-		fmt.Sprintf("%.4f", origin.Location.Latitude),
-		origin.Location.CountryCode,
-		origin.Location.PostalCode,
-		origin.Location.Region,
-		origin.Location.City,
+		fmt.Sprintf("%.5f", origin.Location.Longitude),
+		fmt.Sprintf("%.5f", origin.Location.Latitude),
 	}, ":")
 }
 

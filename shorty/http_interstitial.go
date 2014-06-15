@@ -120,6 +120,8 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 
 	vars := mux.Vars(req)
 	uuid := vars["uuid"]
+	appUrlScheme := vars["scheme"]
+
 	shortUrl, err := this.service.FindUrl(vars["shortCode"])
 
 	if err != nil {
@@ -153,7 +155,7 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 
 	// visits, cookied, last, userId := processCookies(cookies, shortUrl)
 	_, _, lastViewed, userId := processCookies(cookies, shortUrl.Id)
-	glog.Infoln(">>> harvest - processed cookies", lastViewed, userId, shortUrl.Id, "matchedRule=", matchedRule)
+	glog.Infoln(">>> harvest - processed cookies", lastViewed, userId, shortUrl.Id, "matchedRule=", matchedRule.Id, matchedRule.Comment)
 
 	// Here we check if the two uuids are different.  One uuid is in the url of this request.  This is the uuid
 	// from some context (e.g. from FB webview on iOS).  Another uuid is one in the cookie -- either we assigned
@@ -165,8 +167,6 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 	// the short link that the user was looking at that got them to see the harvest url in the first place.
 	// Otherwise, show the static content which may tell them to try again in a different browser/context.
 
-	appUrlScheme := ""
-
 	if uuid != userId {
 
 		glog.Infoln(">>>> harvest phase, noapp=", noapp)
@@ -174,25 +174,21 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 		// We got the user to come here via a different context (browser) than the one that created
 		// this url in the first place.  So link the two ids together and redirect back to the short url.
 
-		if appUrlSchemeParam, exists := req.Form["s"]; exists {
+		this.service.Link(UrlScheme(appUrlScheme), UUID(uuid), UUID(userId), shortUrl.Id)
 
-			appUrlScheme = appUrlSchemeParam[0]
-			this.service.Link(UrlScheme(appUrlScheme), UUID(uuid), UUID(userId), shortUrl.Id)
+		// Now, look for an app-open in context of userId.  If we have somehow opened the app
+		// before, then we can just create an app-open entry for *this* context (uuid) because
+		// we know that the app already exists on the device and was opened in a different context.
 
-			// Now, look for an app-open in context of userId.  If we have somehow opened the app
-			// before, then we can just create an app-open entry for *this* context (uuid) because
-			// we know that the app already exists on the device and was opened in a different context.
+		appOpen, found, _ := this.service.FindAppOpen(UrlScheme(appUrlScheme), UUID(userId))
 
-			appOpen, found, _ := this.service.FindAppOpen(UrlScheme(appUrlScheme), UUID(userId))
+		glog.Infoln("find app-open", appUrlScheme, userId, appOpen, found)
 
-			glog.Infoln("find app-open", appUrlScheme, userId, appOpen, found)
-
-			if found {
-				// create a record *as if* the app was also opened in the other context
-				appOpen.SourceContext = UUID(uuid)
-				appOpen.SourceApplication = origin.Referrer
-				this.service.TrackAppOpen(UrlScheme(appUrlScheme), appOpen.AppContext, appOpen)
-			}
+		if found {
+			// create a record *as if* the app was also opened in the other context
+			appOpen.SourceContext = UUID(uuid)
+			appOpen.SourceApplication = origin.Referrer
+			this.service.TrackAppOpen(UrlScheme(appUrlScheme), appOpen.AppContext, appOpen)
 		}
 	}
 
@@ -201,16 +197,11 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 		// check and see if we have params for location
 		if lat, exists := req.Form["lat"]; exists {
 			if lng, exists := req.Form["lng"]; exists {
-
-				glog.Infoln("===> NEW COORD lat=", lat[0], "lng=", lng[0])
-
 				if latitude, err := strconv.ParseFloat(lat[0], 64); err == nil {
 					if longitude, err := strconv.ParseFloat(lng[0], 64); err == nil {
 						origin.Location.Latitude = latitude
 						origin.Location.Longitude = longitude
 					}
-				} else {
-					glog.Infoln("++> ", err)
 				}
 			}
 		}

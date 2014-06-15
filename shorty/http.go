@@ -114,11 +114,11 @@ func NewRedirector(settings ShortyEndPointSettings, service Shorty) (api *Shorty
 		api.router.HandleFunc("/i/{scheme}/{app_uuid}",
 			api.ReportInstallOnOrganicAppLaunch).Methods("GET").Name("app_install_on_direct_launch")
 
-		api.router.HandleFunc("/m/{shortCode:"+regex+"}/{uuid}/",
+		api.router.HandleFunc("/m/{scheme}/{uuid}/{shortCode:"+regex+"}/",
 			api.CheckAppInstallInterstitialHandler).Methods("GET").Name("app_install_interstitial")
 
 		// Dynamically generated so that any html @fetchUrl loaded by above can reference it as src="../deeplink.js"
-		api.router.HandleFunc("/m/{shortCode:"+regex+"}/{uuid}/deeplink.js",
+		api.router.HandleFunc("/m/{scheme}/{uuid}/{shortCode:"+regex+"}/deeplink.js",
 			api.CheckAppInstallInterstitialJSHandler).Methods("GET").Name("app_install_interstitial_js")
 
 		return api, nil
@@ -551,16 +551,14 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 			renderInline = false
 			fetchUrl := url.QueryEscape(matchedRule.ContentSourceUrl)
 			appUrlScheme := url.QueryEscape(matchedRule.AppUrlScheme)
-			destination = fmt.Sprintf("/m/%s/%s/?f=%s&s=%s", shortUrl.Id, userId, fetchUrl, appUrlScheme)
+			destination = fmt.Sprintf("/m/%s/%s/%s/?f=%s", shortUrl.Id, appUrlScheme, userId, fetchUrl)
 
 		case matchedRule.ContentSourceUrl != "":
 			renderInline = true
 			destination = omni_http.FetchFromUrl(userAgent.Header, matchedRule.ContentSourceUrl)
 
 		default:
-
 			renderInline = false
-
 			// check if there's been an appOpen
 			appOpen, found, _ := this.service.FindAppOpen(UrlScheme(matchedRule.AppUrlScheme), UUID(userId))
 			glog.Infoln("REDIRECT- checking for appOpen", matchedRule.AppUrlScheme, userId, found, appOpen)
