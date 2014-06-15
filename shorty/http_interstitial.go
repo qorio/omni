@@ -65,7 +65,6 @@ function onLoad() {
         var shortCode = window.location.pathname.substring(1);
         deeplink += "&__xrlc=" + getCookie("uuid") + "&__xrlp=" + scheme + "&__xrls=" + shortCode;
         setTimeout(function() {
-{{if not .IsCrossBrowserContext}}
 {{if eq .Rule.InterstitialToAppStoreOnTimeout "on"}}
               if (!document.webkitHidden) {
                   setTimeout(function(){
@@ -73,7 +72,6 @@ function onLoad() {
                   }, 2000)
                   window.location = appstore;
               }
-{{end}}
 {{else}}
               if (!document.webkitHidden) {
                   redirectWithLocation(interstitialUrl + "&__xrl_noapp=");
@@ -256,12 +254,9 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.Respo
 	cookies := omni_http.NewCookieHandler(secureCookie, resp, req)
 	userAgent := omni_http.ParseUserAgent(req)
 	origin, _ := this.requestParser.Parse(req)
+	origin.Referrer = "DIRECT" // otherwise it's whatever the url of the page that includes the script
 
 	_, _, _, userId := processCookies(cookies, shortUrl.Id)
-
-	if userId == uuid {
-		origin.Referrer = "DIRECT"
-	}
 
 	matchedRule, notFound := shortUrl.MatchRule(this.service, userAgent, origin, cookies)
 	if notFound != nil {
