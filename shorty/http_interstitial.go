@@ -65,6 +65,7 @@ function onLoad() {
         var shortCode = window.location.pathname.substring(1);
         deeplink += "&__xrlc=" + getCookie("uuid") + "&__xrlp=" + scheme + "&__xrls=" + shortCode;
         setTimeout(function() {
+{{if not .IsCrossBrowserContext}}
 {{if eq .Rule.InterstitialToAppStoreOnTimeout "on"}}
               if (!document.webkitHidden) {
                   setTimeout(function(){
@@ -72,6 +73,7 @@ function onLoad() {
                   }, 2000)
                   window.location = appstore;
               }
+{{end}}
 {{else}}
               if (!document.webkitHidden) {
                   redirectWithLocation(interstitialUrl + "&__xrl_noapp=");
