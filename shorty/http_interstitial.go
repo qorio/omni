@@ -263,6 +263,11 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.Respo
 		return
 	}
 
+	if userId == uuid {
+		origin.Referrer = "DIRECT"
+	}
+	glog.Infoln(">>>>>> Using rule id=", matchedRule.Id, "comment=", matchedRule.Comment)
+
 	context := &appInstallInterstitialContext{
 		Rule: matchedRule,
 		IsCrossBrowserContext: userId != uuid,

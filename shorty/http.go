@@ -635,7 +635,7 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 func (this *ShortUrl) MatchRule(service Shorty, userAgent *omni_http.UserAgent,
 	origin *omni_http.RequestOrigin, cookies omni_http.Cookies) (matchedRule *RoutingRule, err error) {
 
-	glog.Infoln("matching userAgent=", userAgent, "origin=", origin)
+	glog.Infoln("matching userAgent=", userAgent, "origin=", origin, "referrer=", origin.Referrer)
 
 	for _, rule := range this.Rules {
 		if match := rule.Match(this.service, userAgent, origin, cookies); match {
