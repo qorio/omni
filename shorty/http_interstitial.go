@@ -257,15 +257,16 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.Respo
 
 	_, _, _, userId := processCookies(cookies, shortUrl.Id)
 
+	if userId == uuid {
+		origin.Referrer = "DIRECT"
+	}
+
 	matchedRule, notFound := shortUrl.MatchRule(this.service, userAgent, origin, cookies)
 	if notFound != nil {
 		renderError(resp, req, "not found", http.StatusNotFound)
 		return
 	}
 
-	if userId == uuid {
-		origin.Referrer = "DIRECT"
-	}
 	glog.Infoln(">>>>>> Using rule id=", matchedRule.Id, "comment=", matchedRule.Comment)
 
 	context := &appInstallInterstitialContext{
