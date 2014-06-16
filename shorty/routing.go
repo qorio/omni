@@ -2,12 +2,39 @@ package shorty
 
 import (
 	"errors"
+	"github.com/golang/glog"
 	"github.com/qorio/omni/http"
 	"net/url"
 	"regexp"
 	"strings"
 	"time"
 )
+
+func (this *ShortUrl) MatchRule(service Shorty, userAgent *http.UserAgent,
+	origin *http.RequestOrigin, cookies http.Cookies) (matchedRule *RoutingRule, err error) {
+
+	glog.Infoln("matching userAgent=", userAgent, "origin=", origin, "referrer=", origin.Referrer)
+
+	for _, rule := range this.Rules {
+		if match := rule.Match(this.service, userAgent, origin, cookies); match {
+			matchedRule = &rule
+			break
+		}
+	}
+	if matchedRule == nil || matchedRule.Destination == "" {
+		err = errors.New("not found")
+	} else {
+		for _, sub := range matchedRule.Special {
+			matchSub := sub.Match(this.service, userAgent, origin, cookies)
+			glog.Infoln("Checking subrule:", sub, "matched=", matchSub)
+			if matchSub {
+				matchedRule = &sub
+				return
+			}
+		}
+	}
+	return
+}
 
 func (this OnOff) IsOn() bool {
 	return strings.ToLower(string(this)) == "on"

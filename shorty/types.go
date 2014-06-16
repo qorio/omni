@@ -141,7 +141,7 @@ type DecodeEvent struct {
 	AppKey      UUID
 	CampaignKey UUID
 
-	MatchedRuleIndex int
+	MatchedRuleId string
 }
 
 type InstallEvent struct {
