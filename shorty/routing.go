@@ -13,7 +13,8 @@ import (
 func (this *ShortUrl) MatchRule(service Shorty, userAgent *http.UserAgent,
 	origin *http.RequestOrigin, cookies http.Cookies) (matchedRule *RoutingRule, err error) {
 
-	glog.Infoln("matching userAgent=", userAgent, "origin=", origin, "referrer=", origin.Referrer)
+	defer glog.V(10).Infoln("matched-rule", "id=", matchedRule.Id, "comment=", matchedRule.Comment,
+		"origin=", origin, "referrer=", origin.Referrer, "userAgent=", userAgent)
 
 	for _, rule := range this.Rules {
 		if match := rule.Match(this.service, userAgent, origin, cookies); match {
@@ -26,7 +27,6 @@ func (this *ShortUrl) MatchRule(service Shorty, userAgent *http.UserAgent,
 	} else {
 		for _, sub := range matchedRule.Special {
 			matchSub := sub.Match(this.service, userAgent, origin, cookies)
-			glog.Infoln("Checking subrule:", sub, "matched=", matchSub)
 			if matchSub {
 				matchedRule = &sub
 				return
