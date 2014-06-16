@@ -13,8 +13,12 @@ import (
 func (this *ShortUrl) MatchRule(service Shorty, userAgent *http.UserAgent,
 	origin *http.RequestOrigin, cookies http.Cookies) (matchedRule *RoutingRule, err error) {
 
-	defer glog.V(10).Infoln("matched-rule", "id=", matchedRule.Id, "comment=", matchedRule.Comment,
-		"origin=", origin, "referrer=", origin.Referrer, "userAgent=", userAgent)
+	defer func() {
+		if matchedRule != nil {
+			glog.V(10).Infoln("matched-rule", "id=", matchedRule.Id, "comment=", matchedRule.Comment,
+				"origin=", origin, "referrer=", origin.Referrer, "userAgent=", userAgent)
+		}
+	}()
 
 	for _, rule := range this.Rules {
 		if match := rule.Match(this.service, userAgent, origin, cookies); match {
