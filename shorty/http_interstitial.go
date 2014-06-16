@@ -23,6 +23,7 @@ type appInstallInterstitialContext struct {
 	Rule                  *RoutingRule
 	IsCrossBrowserContext bool
 	Timestamp             int64
+	NoAppFlagSet          bool
 }
 
 func init() {
@@ -115,6 +116,8 @@ function onLoad() {
 }
 
 func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.ResponseWriter, req *http.Request) {
+	glog.V(10).Infoln("interstitial-generation")
+
 	req.ParseForm()
 	_, noapp := req.Form[noAppInstallParam]
 
@@ -153,9 +156,7 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 
 	matchedRule, _ := shortUrl.MatchRule(this.service, userAgent, origin, cookies)
 
-	// visits, cookied, last, userId := processCookies(cookies, shortUrl)
-	_, _, lastViewed, userId := processCookies(cookies, shortUrl.Id)
-	glog.Infoln(">>> harvest - processed cookies", lastViewed, userId, shortUrl.Id, "matchedRule=", matchedRule.Id, matchedRule.Comment)
+	_, _, _, userId := processCookies(cookies, shortUrl.Id)
 
 	// Here we check if the two uuids are different.  One uuid is in the url of this request.  This is the uuid
 	// from some context (e.g. from FB webview on iOS).  Another uuid is one in the cookie -- either we assigned
@@ -169,8 +170,6 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 
 	if uuid != userId {
 
-		glog.Infoln(">>>> harvest phase, noapp=", noapp)
-
 		// We got the user to come here via a different context (browser) than the one that created
 		// this url in the first place.  So link the two ids together and redirect back to the short url.
 
@@ -182,7 +181,7 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 
 		appOpen, found, _ := this.service.FindAppOpen(UrlScheme(appUrlScheme), UUID(userId))
 
-		glog.Infoln("find app-open", appUrlScheme, userId, appOpen, found)
+		glog.V(10).Infoln("find-app-open-in-different-context", appUrlScheme, userId, appOpen, found)
 
 		if found {
 			// create a record *as if* the app was also opened in the other context
@@ -207,7 +206,7 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 		}
 
 		fingerprint := omni_http.FingerPrint(origin)
-		glog.Infoln(">> New fingerprint: ", fingerprint)
+		glog.V(10).Infoln("fingerprint", fingerprint)
 
 		this.service.SaveFingerprintedVisit(&FingerprintedVisit{
 			Fingerprint: fingerprint,
@@ -228,7 +227,8 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 		openTestHtmlTemplate.Execute(resp, appInstallInterstitialContext{
 			Rule: matchedRule,
 			IsCrossBrowserContext: userId != uuid,
-			Timestamp:             time.Now().Unix(),
+			Timestamp:             timestamp(),
+			NoAppFlagSet:          noapp,
 		})
 		return
 	}
@@ -237,9 +237,9 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialHandler(resp http.Respons
 }
 
 func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.ResponseWriter, req *http.Request) {
-	omni_http.SetNoCachingHeaders(resp)
+	glog.V(10).Infoln("js-generation")
 
-	glog.Infoln(">>>> JS")
+	omni_http.SetNoCachingHeaders(resp)
 
 	vars := mux.Vars(req)
 	shortCode := vars["shortCode"]
@@ -264,8 +264,6 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.Respo
 		return
 	}
 
-	glog.Infoln(">>>>>> Using rule id=", matchedRule.Id, "comment=", matchedRule.Comment)
-
 	context := &appInstallInterstitialContext{
 		Rule: matchedRule,
 		IsCrossBrowserContext: userId != uuid,
@@ -275,7 +273,5 @@ func (this *ShortyEndPoint) CheckAppInstallInterstitialJSHandler(resp http.Respo
 	var buff bytes.Buffer
 	deeplinkJsTemplate.Execute(&buff, context)
 	resp.Write(buff.Bytes())
-
-	fmt.Println(buff.String())
 	return
 }

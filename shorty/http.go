@@ -175,7 +175,7 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	appOpen, found, _ = this.service.FindAppOpen(UrlScheme(matchedRule.AppUrlScheme), UUID(userId))
 	if !found || float64(time.Now().Unix()-appOpen.Timestamp) >= matchedRule.AppOpenTTLDays*24.*60.*60. {
 
-		glog.Infoln("REDIRECT- no app-open in days:", matchedRule.AppOpenTTLDays)
+		glog.V(10).Infoln("REDIRECT: no app-open in days:", matchedRule.AppOpenTTLDays)
 
 		switch {
 
@@ -221,7 +221,7 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 
 	} else {
 
-		glog.Infoln("REDIRECT- found app-open. redirecting", matchedRule.Destination)
+		glog.V(10).Infoln("REDIRECT- found app-open. redirecting", matchedRule.Destination)
 
 		renderInline = false
 		destination = matchedRule.Destination
