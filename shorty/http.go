@@ -150,6 +150,8 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 
 	var destination string = shortUrl.Destination
 	var renderInline bool = false
+	var appOpen *AppOpen
+	var found bool
 
 	omni_http.SetNoCachingHeaders(resp)
 	cookies := omni_http.NewCookieHandler(secureCookie, resp, req)
@@ -163,14 +165,14 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 
 	matchedRule, notFound := shortUrl.MatchRule(this.service, userAgent, origin, cookies)
 	if notFound != nil || matchedRule == nil {
-		renderError(resp, req, "not found", http.StatusNotFound)
-		return
+		http.Redirect(resp, req, shortUrl.Destination, http.StatusMovedPermanently)
+		goto event
 	}
 
 	glog.Infoln("REDIRECT: matched rule:", matchedRule.Id)
 
 	// check if there's been an appOpen
-	appOpen, found, _ := this.service.FindAppOpen(UrlScheme(matchedRule.AppUrlScheme), UUID(userId))
+	appOpen, found, _ = this.service.FindAppOpen(UrlScheme(matchedRule.AppUrlScheme), UUID(userId))
 	if !found || float64(time.Now().Unix()-appOpen.Timestamp) >= matchedRule.AppOpenTTLDays*24.*60.*60. {
 
 		glog.Infoln("REDIRECT- no app-open in days:", matchedRule.AppOpenTTLDays)
@@ -232,6 +234,7 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 		http.Redirect(resp, req, destination, http.StatusMovedPermanently)
 	}
 
+event:
 	// Record stats asynchronously
 	timestamp := timestamp()
 
@@ -282,6 +285,8 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 		})
 		shortUrl.Record(origin, visits > 1)
 	}()
+
+	return
 }
 
 func injectContext(dest string, matchedRule *RoutingRule, shortUrl *ShortUrl, userId string) string {
