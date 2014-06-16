@@ -259,8 +259,10 @@ event:
 
 		// Save a fingerprint
 		deeplink := ""
+		matchedRuleId := ""
 		if matchedRule != nil {
 			deeplink = matchedRule.Destination
+			matchedRuleId = matchedRule.Id
 		}
 
 		fingerprint := omni_http.FingerPrint(origin)
@@ -281,7 +283,7 @@ event:
 			Origin:        shortUrl.Origin,
 			AppKey:        shortUrl.AppKey,
 			CampaignKey:   shortUrl.CampaignKey,
-			MatchedRuleId: matchedRule.Id,
+			MatchedRuleId: matchedRuleId,
 		})
 		shortUrl.Record(origin, visits > 1)
 	}()
