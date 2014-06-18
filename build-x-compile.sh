@@ -8,6 +8,7 @@ GITHUB=github.com/qorio/omni
 DIRS_TO_COPY=$(ls -d */)
 FILES_TO_COPY="GeoLiteCity.dat"
 
+
 # Git commit hash / message
 GIT_COMMIT_HASH=$(git rev-list --max-count=1 --reverse HEAD)
 GIT_COMMIT_MESSAGE=$(git log -1 | tail -1 | sed -e "s/^[ ]*//g")

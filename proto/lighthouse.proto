@@ -1,0 +1,42 @@
+package lighthouse;
+
+// To be transformed to GeoJson - ex)  {"location" : [-71.34, 41.12]}
+// See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-geo-point-type.html
+message Location {
+    required double lon = 1;
+    required double lat = 2;
+}
+
+message User {
+	required string id = 1;
+	required string name = 2;
+}
+
+message Beacon {
+
+	required bytes uuid = 1;
+	optional int32 major = 2;
+	optional int32 minor = 3;
+
+	required Location location = 4;
+	required User owner = 5;
+	required bytes permissions = 6;  // Same as file system 0666 - public, group, self read/write-able
+
+	required string label = 7;
+}
+
+message Content {
+    required string mime = 1;
+    required bytes data = 2;
+}
+
+message Message {
+
+	required Beacon beacon = 1;
+	required double timestamp = 2;  // fractional seconds
+	required User from = 3;
+	repeated User to = 4;
+
+	required Content body = 5;
+
+}
