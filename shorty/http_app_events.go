@@ -135,7 +135,7 @@ func (this *ShortyEndPoint) ReportInstallOnOrganicAppLaunch(resp http.ResponseWr
 		fingerprint := omni_http.FingerPrint(origin)
 		score, visit, _ := this.service.MatchFingerPrint(fingerprint)
 		glog.Infoln("Matching fingerprint: score=", score, "visit=", visit)
-		if score > *fingerPrintMinMatchingScore && (time.Now().Unix()-visit.Timestamp) < *fingerPrintExpirationMinutes*60 {
+		if score > *fingerPrintMinMatchingScore && (timestamp()-visit.Timestamp) < *fingerPrintExpirationMinutes*60 {
 			sc = visit.ShortCode
 			deeplink = visit.Deeplink
 			sourceApplication = visit.Referrer
@@ -272,7 +272,6 @@ func (this *ShortyEndPoint) handleAppOpen(app UrlScheme, appContext UUID, appOpe
 	}
 
 	if shortUrl == nil {
-		// Problem - we can't do attribution
 		glog.Warningln("cannot-determine-short-code", "appOpen=", appOpen)
 	}
 

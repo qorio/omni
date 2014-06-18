@@ -263,17 +263,21 @@ event:
 		if matchedRule != nil {
 			deeplink = matchedRule.Destination
 			matchedRuleId = matchedRule.Id
+		} else {
+			glog.Warningln(">>>>>>>>>>>>  MATCHED RULE IS NIL", origin, req)
 		}
 
 		fingerprint := omni_http.FingerPrint(origin)
 		this.service.SaveFingerprintedVisit(&FingerprintedVisit{
-			Fingerprint: fingerprint,
-			Context:     UUID(userId),
-			ShortCode:   shortUrl.Id,
-			Visit:       destination,
-			Deeplink:    deeplink,
-			Timestamp:   timestamp,
-			Referrer:    origin.Referrer,
+			Fingerprint:   fingerprint,
+			Context:       UUID(userId),
+			ShortCode:     shortUrl.Id,
+			Visit:         destination,
+			Deeplink:      deeplink,
+			Timestamp:     timestamp,
+			Referrer:      origin.Referrer,
+			MatchedRuleId: matchedRuleId,
+			UserAgent:     origin.UserAgent.Header,
 		})
 
 		this.service.PublishDecode(&DecodeEvent{

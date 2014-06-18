@@ -99,13 +99,15 @@ type ShortUrl struct {
 }
 
 type FingerprintedVisit struct {
-	Fingerprint string
-	Context     UUID   `json:"uuid,omitempty"`
-	ShortCode   string `json:"shortCode,omitempty"`
-	Deeplink    string `json:"deeplink,omitempty"`
-	Visit       string
-	Timestamp   int64
-	Referrer    string `json:"sourceApplication,omitempty"`
+	Fingerprint   string
+	Context       UUID   `json:"uuid,omitempty"`
+	ShortCode     string `json:"shortCode,omitempty"`
+	Deeplink      string `json:"deeplink,omitempty"`
+	Visit         string
+	Timestamp     int64
+	Referrer      string `json:"sourceApplication,omitempty"`
+	MatchedRuleId string
+	UserAgent     string
 }
 
 type AppOpen struct {
