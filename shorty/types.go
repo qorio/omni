@@ -80,6 +80,9 @@ type RoutingRule struct {
 	InterstitialToAppStoreOnTimeout  OnOff `json:"x-interstitial-to-appstore-on-timeout,omitempty"`
 	InterstitialAppLinkTimeoutMillis int64 `json:"x-interstitial-open-app-timeout-millis,omitempty"`
 
+	// iOS8 Safari webkitHidden property doesn't seem to work
+	CheckWebkitHidden OnOff `json:"x-check-webkit-hidden,omitempty"`
+
 	// True to indicate that this is a http url destination but mapped in the intent filter to an app.
 	IsAndroidIntentFilter OnOff `json:"x-android-intent-filter,omitempty"`
 

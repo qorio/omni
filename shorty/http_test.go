@@ -16,6 +16,7 @@ func TestGenerateInterstitial(t *testing.T) {
 		Destination:                     destination,
 		AppStoreUrl:                     appstore,
 		InterstitialToAppStoreOnTimeout: OnOff("on"),
+		CheckWebkitHidden:               OnOff("off"),
 	}
 
 	context := appInstallInterstitialContext{

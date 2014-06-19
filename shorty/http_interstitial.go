@@ -67,14 +67,22 @@ function onLoad() {
         deeplink += "&__xrlc=" + getCookie("uuid") + "&__xrlp=" + scheme + "&__xrls=" + shortCode;
         setTimeout(function() {
 {{if eq .Rule.InterstitialToAppStoreOnTimeout "on"}}
+{{if eq .Rule.CheckWebkitHidden "off"}}
+              {
+{{else}}
               if (!document.webkitHidden) {
+{{end}}
                   setTimeout(function(){
                       redirectWithLocation(interstitialUrl + "&__xrl_noapp=");
                   }, 2000)
                   window.location = appstore;
               }
 {{else}}
+{{if eq .Rule.CheckWebkitHidden "off"}}
+              {
+{{else}}
               if (!document.webkitHidden) {
+{{end}}
                   redirectWithLocation(interstitialUrl + "&__xrl_noapp=");
               }
 {{end}}

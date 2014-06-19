@@ -1,0 +1,31 @@
+{
+	"name": "Dev campaign 8",
+	"description": "Turns of webkitHidden check for ios8",
+	"rules": [
+            {
+	        "id":"ios-rules",
+                "platform": "iPhone|iPod|iPad",
+                "scheme": "qldeeplink",
+                "appstore": "http://www.testflightapp.com/install/d7664015d0282549afaa99e422461c76-MTE1NzEzNTI/",
+		"app-open-ttl-days" : 1,
+		"x-send-to-interstitial": "on",
+		"x-check-webkit-hidden":"off",
+		"x-interstitial-to-appstore-on-timeout": "on",
+		"x-interstitial-open-app-timeout-millis": 1000,
+		"special" : [
+			     {
+			         "id": "ios-FB-TWITTER",
+			         "comment": "when open from FB/Twitter: to-appstore off to force open in safari",
+				 "make": "FB|Twitter",
+				 "x-interstitial-to-appstore-on-timeout": "off"
+			     }
+		]
+            },
+            {
+	        "id": "android-rules",
+                "os": "Android",
+                "scheme": "qldeeplink",
+                "appstore": "https://play.google.com/store/apps/details?id=com.yuilop"
+            }
+        ]
+}

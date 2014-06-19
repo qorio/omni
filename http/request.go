@@ -70,7 +70,7 @@ func MatchFingerPrint(fp string, fingerprints []string) (match string, score flo
 			score = 1.
 		}
 
-		glog.V(50).Infoln("Checking fingerprint", fp, ", candidate=", score)
+		glog.V(50).Infoln("Checking fingerprint", fp, ", candidate=", test, score)
 		if score >= 1. {
 			match = test
 			return

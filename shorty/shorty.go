@@ -319,7 +319,7 @@ func (this *shortyImpl) MatchFingerPrint(fingerprint string) (score float64, vis
 		candidates[i] = strings.Split(v, this.settings.RedisPrefix+"fingerprint:")[1]
 	}
 	match, matchScore := http.MatchFingerPrint(fingerprint, candidates)
-	glog.Infoln("matching fingerprint: match=", match, "score=", score)
+	glog.Infoln("matching fingerprint: match=", match, "score=", matchScore)
 
 	if match != "" {
 		value, err2 := redis.Bytes(c.Do("GET", this.settings.RedisPrefix+"fingerprint:"+match))
