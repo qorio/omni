@@ -159,6 +159,7 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	visits, cookied, last, userId := processCookies(cookies, shortUrl.Id)
 
 	var matchedRule *RoutingRule
+	matchedRuleId, deeplink := "no-match", "?"
 
 	userAgent := omni_http.ParseUserAgent(req)
 	origin, _ := this.requestParser.Parse(req)
@@ -170,6 +171,8 @@ func (this *ShortyEndPoint) RedirectHandler(resp http.ResponseWriter, req *http.
 	}
 
 	glog.Infoln("REDIRECT: matched rule:", matchedRule.Id)
+	matchedRuleId = matchedRule.Id
+	deeplink = matchedRule.Destination
 
 	// check if there's been an appOpen
 	appOpen, found, _ = this.service.FindAppOpen(UrlScheme(matchedRule.AppUrlScheme), UUID(userId))
@@ -258,17 +261,8 @@ event:
 			"cookied", cookied)
 
 		// Save a fingerprint
-		deeplink := ""
-		matchedRuleId := ""
-		if matchedRule != nil {
-			deeplink = matchedRule.Destination
-			matchedRuleId = matchedRule.Id
-		} else {
-			glog.Warningln(">>>>>>>>>>>>  MATCHED RULE IS NIL", origin, req)
-		}
-
 		fingerprint := omni_http.FingerPrint(origin)
-		this.service.SaveFingerprintedVisit(&FingerprintedVisit{
+		fv := &FingerprintedVisit{
 			Fingerprint:   fingerprint,
 			Context:       UUID(userId),
 			ShortCode:     shortUrl.Id,
@@ -278,7 +272,9 @@ event:
 			Referrer:      origin.Referrer,
 			MatchedRuleId: matchedRuleId,
 			UserAgent:     origin.UserAgent.Header,
-		})
+		}
+		this.service.SaveFingerprintedVisit(fv)
+		glog.V(20).Infoln("saved visit", "fingerprint=", fingerprint, "visit=", fv)
 
 		this.service.PublishDecode(&DecodeEvent{
 			RequestOrigin: origin,
