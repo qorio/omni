@@ -46,12 +46,16 @@ func (this *ShortyEndPoint) ApiTryMatchInstallOnOrganicAppLaunch(resp http.Respo
 	fingerprint := omni_http.FingerPrint(origin)
 	score, visit, _ := this.service.MatchFingerPrint(fingerprint)
 
-	glog.Infoln("Matching fingerprint: score=", score, "visit=", visit)
+	glog.Infoln("/api/v1/events/try/: - Matching fingerprint: score=", score, "visit=", visit)
+
+	if visit == nil {
+		resp.WriteHeader(http.StatusNotAcceptable) // 406
+		return
+	}
 
 	// TOOD - make the min score configurable
 	// Also make sure the last visit was no more than 5 minutes ago
 	if score > *fingerPrintMinMatchingScore && (timestamp()-visit.Timestamp) < *fingerPrintExpirationMinutes*60 {
-
 		go func() {
 			appOpen := &AppOpen{
 				SourceContext:     visit.Context,
@@ -74,12 +78,11 @@ func (this *ShortyEndPoint) ApiTryMatchInstallOnOrganicAppLaunch(resp http.Respo
 			renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
 	} else {
 		// No good.  Tell SDK to try to use the switch method
 		resp.WriteHeader(http.StatusNotAcceptable) // 406
 	}
-
+	return
 }
 
 // /i/{scheme}/{app_uuid}

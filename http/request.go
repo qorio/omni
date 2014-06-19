@@ -3,6 +3,7 @@ package http
 import (
 	"errors"
 	"fmt"
+	"github.com/golang/glog"
 	"github.com/mssola/user_agent"
 	"github.com/nranchev/go-libGeoIP"
 	"net/http"
@@ -66,7 +67,13 @@ func MatchFingerPrint(fp string, fingerprints []string) (match string, score flo
 	// TODO - given list of candidates, return the highest score match
 	for _, test := range fingerprints {
 		if test == fp {
-			return test, 1.0
+			score = 1.
+		}
+
+		glog.V(50).Infoln("Checking fingerprint", fp, ", candidate=", score)
+		if score >= 1. {
+			match = test
+			return
 		}
 
 		// TODO - Otherwise, look for partial matches
