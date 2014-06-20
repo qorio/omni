@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	"github.com/qorio/omni/auth"
 	omni_http "github.com/qorio/omni/http"
 	"io"
 	"net/http"
@@ -60,17 +61,17 @@ func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty) (api *Short
 		api.router.HandleFunc("/{id:"+regex+"}", api.RedirectHandler).Methods("GET").Name("redirect")
 
 		// Campaign based
-		api.router.HandleFunc("/api/v1/campaign", api.ApiAddCampaignHandler).
+		api.router.HandleFunc("/api/v1/campaign", auth.RequiresAuth(api.ApiAddCampaignHandler)).
 			Methods("POST").Name("add_campaign")
-		api.router.HandleFunc("/api/v1/campaign/{campaignId}", api.ApiGetCampaignHandler).
+		api.router.HandleFunc("/api/v1/campaign/{campaignId}", auth.RequiresAuth(api.ApiGetCampaignHandler)).
 			Methods("GET").Name("get_campaign")
-		api.router.HandleFunc("/api/v1/campaign/{campaignId}", api.ApiUpdateCampaignHandler).
+		api.router.HandleFunc("/api/v1/campaign/{campaignId}", auth.RequiresAuth(api.ApiUpdateCampaignHandler)).
 			Methods("POST").Name("update_campaign")
-		api.router.HandleFunc("/api/v1/campaign/{campaignId}/url", api.ApiAddCampaignUrlHandler).
+		api.router.HandleFunc("/api/v1/campaign/{campaignId}/url", auth.RequiresAuth(api.ApiAddCampaignUrlHandler)).
 			Methods("POST").Name("add_campaign_url")
 
 		// Stand-alone
-		api.router.HandleFunc("/api/v1/url", api.ApiAddUrlHandler).
+		api.router.HandleFunc("/api/v1/url", auth.RequiresAuth(api.ApiAddUrlHandler)).
 			Methods("POST").Name("add")
 
 		// First attempt if the app starts up organically -- this gives the server an opportunity

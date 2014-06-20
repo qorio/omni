@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	omni_auth "github.com/qorio/omni/auth"
+	"github.com/qorio/omni/auth"
 	omni_http "github.com/qorio/omni/http"
 	"io"
 	"io/ioutil"
@@ -12,24 +12,11 @@ import (
 	"strings"
 )
 
-func (this *ShortyEndPoint) ApiAddCampaignHandler(resp http.ResponseWriter, req *http.Request) {
+func (this *ShortyEndPoint) ApiAddCampaignHandler(credential *auth.Info, resp http.ResponseWriter, req *http.Request) {
 	omni_http.SetCORSHeaders(resp)
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	req.ParseForm()
-	token := ""
-	if tokenParam, exists := req.Form["token"]; exists {
-		token = tokenParam[0]
-	}
-
-	appKey, authErr := omni_auth.GetAppKey(token)
-	if authErr != nil {
-		// TODO - better http status code
-		renderJsonError(resp, req, authErr.Error(), http.StatusUnauthorized)
 		return
 	}
 
@@ -49,7 +36,7 @@ func (this *ShortyEndPoint) ApiAddCampaignHandler(resp http.ResponseWriter, req 
 		campaign.Id = UUID(uuidStr)
 	}
 
-	campaign.AppKey = UUID(appKey)
+	campaign.AppKey = UUID(credential.AppKey)
 
 	err = campaign.Save()
 	if err != nil {
@@ -65,7 +52,7 @@ func (this *ShortyEndPoint) ApiAddCampaignHandler(resp http.ResponseWriter, req 
 	resp.Write(buff)
 }
 
-func (this *ShortyEndPoint) ApiGetCampaignHandler(resp http.ResponseWriter, req *http.Request) {
+func (this *ShortyEndPoint) ApiGetCampaignHandler(credential *auth.Info, resp http.ResponseWriter, req *http.Request) {
 	omni_http.SetCORSHeaders(resp)
 	vars := mux.Vars(req)
 	campaignId := vars["campaignId"]
@@ -89,7 +76,7 @@ func (this *ShortyEndPoint) ApiGetCampaignHandler(resp http.ResponseWriter, req 
 	resp.Write(buff)
 }
 
-func (this *ShortyEndPoint) ApiUpdateCampaignHandler(resp http.ResponseWriter, req *http.Request) {
+func (this *ShortyEndPoint) ApiUpdateCampaignHandler(credential *auth.Info, resp http.ResponseWriter, req *http.Request) {
 
 	omni_http.SetCORSHeaders(resp)
 	body, err := ioutil.ReadAll(req.Body)
@@ -139,7 +126,7 @@ func (this *ShortyEndPoint) ApiUpdateCampaignHandler(resp http.ResponseWriter, r
 	resp.Write(buff)
 }
 
-func (this *ShortyEndPoint) ApiAddCampaignUrlHandler(resp http.ResponseWriter, req *http.Request) {
+func (this *ShortyEndPoint) ApiAddCampaignUrlHandler(credential *auth.Info, resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 
 	omni_http.SetCORSHeaders(resp)
@@ -246,7 +233,7 @@ func (this *ShortyEndPoint) ApiAddCampaignUrlHandler(resp http.ResponseWriter, r
 	resp.Write(buff)
 }
 
-func (this *ShortyEndPoint) ApiAddUrlHandler(resp http.ResponseWriter, req *http.Request) {
+func (this *ShortyEndPoint) ApiAddUrlHandler(credential *auth.Info, resp http.ResponseWriter, req *http.Request) {
 	omni_http.SetCORSHeaders(resp)
 
 	body, err := ioutil.ReadAll(req.Body)
@@ -278,7 +265,7 @@ func (this *ShortyEndPoint) ApiAddUrlHandler(resp http.ResponseWriter, req *http
 		// TODO - add lookup of api token to valid apiKey.
 		// A api token is used by client as a way to authenticate and identify the actual app.
 		// This way, we can revoke the token and shut down a client.
-		AppKey: UUID(message.ApiToken),
+		AppKey: UUID(credential.AppKey),
 
 		// TODO - this is a key that references a future struct that encapsulates all the
 		// rules around default routing (appstore, etc.).  This will simplify the api by not

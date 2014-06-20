@@ -2,26 +2,49 @@ package auth
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
+	"io/ioutil"
 	"time"
+)
+
+var (
+	authTokenTTLHours = flag.Int64("auth_token_ttl_hours", 24, "TTL hours for auth token")
+	authKeyFile       = flag.String("auth_public_key_file", "", "Auth public key file")
+	doAuth            = flag.Bool("auth", true, "Turns on authentication")
+
+	InvalidToken error = errors.New("invalid-token")
+	ExpiredToken error = errors.New("token-expired")
 )
 
 type UUID string
 
-type Auth struct {
+type Service struct {
 	signingKey []byte
 	TTLHours   time.Duration
 	GetTime    func() time.Time
 }
 
 var (
-	InvalidToken error = errors.New("invalid-token")
-	ExpiredToken error = errors.New("token-expired")
+	service Service
 )
 
-func NewAuth(key []byte) *Auth {
-	return &Auth{
+func init() {
+	service.signingKey = []byte("")
+	service.TTLHours = time.Duration(*authTokenTTLHours)
+}
+
+func ReadPublicKey(filename string) (key []byte, err error) {
+	// TODO -- this really isn't doing anything like parsing
+	// a proper file format like X.509 or anything.
+
+	key, err = ioutil.ReadFile(filename)
+	return
+}
+
+func NewService(key []byte) *Service {
+	return &Service{
 		signingKey: key,
 		TTLHours:   72,
 		GetTime:    func() time.Time { return time.Now() },
@@ -29,24 +52,24 @@ func NewAuth(key []byte) *Auth {
 }
 
 // Resolve from token to app key
-func (this *Auth) GetAppKey(tokenString string) (appKey UUID, err error) {
+func (this *Service) GetAppKey(tokenString string) (appKey UUID, err error) {
 	token, err := jwt.Parse(tokenString, func(t *jwt.Token) ([]byte, error) {
 		return this.signingKey, nil
 	})
 
 	if err == nil && token.Valid {
-		// Check expiration
-		exp, ok := token.Claims["exp"].(float64)
-		if !ok {
-			err = InvalidToken
-			return
+		// Check expiration if there is one
+		if expClaim, has := token.Claims["exp"]; has {
+			exp, ok := expClaim.(float64)
+			if !ok {
+				err = InvalidToken
+				return
+			}
+			if this.GetTime().After(time.Unix(int64(exp), 0)) {
+				err = ExpiredToken
+				return
+			}
 		}
-
-		if this.GetTime().After(time.Unix(int64(exp), 0)) {
-			err = ExpiredToken
-			return
-		}
-
 		appKey = UUID(fmt.Sprintf("%s", token.Claims["appKey"]))
 		return
 	} else {
@@ -56,12 +79,12 @@ func (this *Auth) GetAppKey(tokenString string) (appKey UUID, err error) {
 }
 
 // Given the app key, returns the token -- used during signup
-func (this *Auth) GetAppToken(appKey UUID) (tokenString string, err error) {
+func (this *Service) GetAppToken(appKey UUID) (tokenString string, err error) {
 	token := jwt.New(jwt.GetSigningMethod("HS256"))
-	// Set some claims
 	token.Claims["appKey"] = appKey
-	token.Claims["exp"] = time.Now().Add(time.Hour * this.TTLHours).Unix()
-	// Sign and get the complete encoded token as a string
+	if this.TTLHours > 0 {
+		token.Claims["exp"] = time.Now().Add(time.Hour * this.TTLHours).Unix()
+	}
 	tokenString, err = token.SignedString(this.signingKey)
 	return
 }

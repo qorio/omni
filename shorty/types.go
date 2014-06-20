@@ -21,7 +21,6 @@ type ShortyAddRequest struct {
 	LongUrl  string        `json:"longUrl"`
 	Rules    []RoutingRule `json:"rules"`
 	Origin   string        `json:"origin"`
-	ApiToken string        `json:"token"` // user facing token that resolves to appKey
 	Campaign string        `json:"campaign"`
 }
 

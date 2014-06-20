@@ -39,7 +39,7 @@ database:
 ## Customize test commands
 test:
   override:
-    - go test github.com/qorio/omni/auth
+    - go test github.com/qorio/omni/auth --auth_public_key_file=test/authKey.pub
     - go test github.com/qorio/omni/shorty
 
 ## Customize deployment commands
