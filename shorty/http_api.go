@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/qorio/omni/auth"
+	omni_auth "github.com/qorio/omni/auth"
 	omni_http "github.com/qorio/omni/http"
 	"io"
 	"io/ioutil"
@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-func (this *ShortyEndPoint) ApiAddCampaignHandler(credential *auth.Info, resp http.ResponseWriter, req *http.Request) {
+func (this *ShortyEndPoint) ApiAddCampaignHandler(credential *omni_auth.Info, resp http.ResponseWriter, req *http.Request) {
 	omni_http.SetCORSHeaders(resp)
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
@@ -52,7 +52,7 @@ func (this *ShortyEndPoint) ApiAddCampaignHandler(credential *auth.Info, resp ht
 	resp.Write(buff)
 }
 
-func (this *ShortyEndPoint) ApiGetCampaignHandler(credential *auth.Info, resp http.ResponseWriter, req *http.Request) {
+func (this *ShortyEndPoint) ApiGetCampaignHandler(credential *omni_auth.Info, resp http.ResponseWriter, req *http.Request) {
 	omni_http.SetCORSHeaders(resp)
 	vars := mux.Vars(req)
 	campaignId := vars["campaignId"]
@@ -76,7 +76,7 @@ func (this *ShortyEndPoint) ApiGetCampaignHandler(credential *auth.Info, resp ht
 	resp.Write(buff)
 }
 
-func (this *ShortyEndPoint) ApiUpdateCampaignHandler(credential *auth.Info, resp http.ResponseWriter, req *http.Request) {
+func (this *ShortyEndPoint) ApiUpdateCampaignHandler(credential *omni_auth.Info, resp http.ResponseWriter, req *http.Request) {
 
 	omni_http.SetCORSHeaders(resp)
 	body, err := ioutil.ReadAll(req.Body)
@@ -126,7 +126,7 @@ func (this *ShortyEndPoint) ApiUpdateCampaignHandler(credential *auth.Info, resp
 	resp.Write(buff)
 }
 
-func (this *ShortyEndPoint) ApiAddCampaignUrlHandler(credential *auth.Info, resp http.ResponseWriter, req *http.Request) {
+func (this *ShortyEndPoint) ApiAddCampaignUrlHandler(credential *omni_auth.Info, resp http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 
 	omni_http.SetCORSHeaders(resp)
@@ -233,7 +233,7 @@ func (this *ShortyEndPoint) ApiAddCampaignUrlHandler(credential *auth.Info, resp
 	resp.Write(buff)
 }
 
-func (this *ShortyEndPoint) ApiAddUrlHandler(credential *auth.Info, resp http.ResponseWriter, req *http.Request) {
+func (this *ShortyEndPoint) ApiAddUrlHandler(credential *omni_auth.Info, resp http.ResponseWriter, req *http.Request) {
 	omni_http.SetCORSHeaders(resp)
 
 	body, err := ioutil.ReadAll(req.Body)

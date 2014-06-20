@@ -2,18 +2,12 @@ package shorty
 
 import (
 	"encoding/json"
-	"flag"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	omni_http "github.com/qorio/omni/http"
 	"io/ioutil"
 	"net/http"
 	"strings"
-)
-
-var (
-	fingerPrintExpirationMinutes = flag.Int64("fingerprint_expiration_minutes", 2, "Minutes TTL matching by fingerprint")
-	fingerPrintMinMatchingScore  = flag.Float64("fingerprint_min_score", 0.8, "Minimum score to match by fingerprint")
 )
 
 // /api/v1/events/try/{scheme}/{app_uuid}

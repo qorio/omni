@@ -27,7 +27,7 @@ cat runtime/build_info.go
 # Script for cross-compiling go binaries for different platforms
 # SKIPPING darwin/amd64 -- that seems to create just some binary file that we can't tell.
 # PLATFORMS="darwin/386 freebsd/386 freebsd/amd64 freebsd/arm linux/386 linux/amd64 linux/arm windows/386 windows/amd64"
-PLATFORMS="darwin/386 linux/amd64 windows/amd64"
+PLATFORMS="darwin/386 linux/amd64"
 
 eval "$(go env)"
 

@@ -1,17 +1,21 @@
 package auth
 
 import (
+	"flag"
 	"fmt"
 	"testing"
 	"time"
+)
+
+var (
+	authKeyFile = flag.String("auth_public_key_file", "", "Auth public key file")
 )
 
 func TestGetAppToken(t *testing.T) {
 
 	id := UUID("1234")
 
-	auth := NewService([]byte("test"))
-	auth.TTLHours = 0 // no expiration
+	auth := Init(Settings{SignKey: []byte("test"), TTLHours: 0})
 
 	token, err := auth.GetAppToken(UUID(id))
 	fmt.Println("token=", token, "err=", err)
@@ -34,8 +38,7 @@ func TestGetAppTokenAuthRsaKey(t *testing.T) {
 
 	id := UUID("1234")
 
-	auth := NewService(key)
-	auth.TTLHours = 0 // no expiration
+	auth := Init(Settings{SignKey: key, TTLHours: 0})
 
 	token, err := auth.GetAppToken(UUID(id))
 	fmt.Println("token=", token, "err=", err)
@@ -53,8 +56,7 @@ func TestTokenExpiration(t *testing.T) {
 
 	id := UUID("1234")
 
-	auth := NewService([]byte("test"))
-	auth.TTLHours = 1
+	auth := Init(Settings{SignKey: []byte("test"), TTLHours: 1})
 	auth.GetTime = func() time.Time {
 		return time.Now().Add(time.Hour * 2)
 	}

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/qorio/omni/auth"
+	omni_auth "github.com/qorio/omni/auth"
 	omni_http "github.com/qorio/omni/http"
 	"io"
 	"net/http"
@@ -40,16 +40,7 @@ type ShortyEndPoint struct {
 	service       Shorty
 }
 
-func init() {
-	var err error
-	secureCookie, err = omni_http.NewSecureCookie([]byte(""), nil)
-	if err != nil {
-		glog.Warningln("Cannot initialize secure cookie!")
-		panic(err)
-	}
-}
-
-func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty) (api *ShortyEndPoint, err error) {
+func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty, auth *omni_auth.Service) (api *ShortyEndPoint, err error) {
 	if requestParser, err := omni_http.NewRequestParser(settings.GeoIpDbFilePath); err == nil {
 		api = &ShortyEndPoint{
 			settings:      settings,

@@ -10,9 +10,7 @@ import (
 )
 
 var (
-	authTokenTTLHours = flag.Int64("auth_token_ttl_hours", 24, "TTL hours for auth token")
-	authKeyFile       = flag.String("auth_public_key_file", "", "Auth public key file")
-	doAuth            = flag.Bool("auth", true, "Turns on authentication")
+	doAuth = flag.Bool("auth", true, "Turns on authentication")
 
 	InvalidToken error = errors.New("invalid-token")
 	ExpiredToken error = errors.New("token-expired")
@@ -20,19 +18,14 @@ var (
 
 type UUID string
 
-type Service struct {
-	signingKey []byte
-	TTLHours   time.Duration
-	GetTime    func() time.Time
+type Settings struct {
+	SignKey  []byte
+	TTLHours time.Duration
 }
 
-var (
-	service Service
-)
-
-func init() {
-	service.signingKey = []byte("")
-	service.TTLHours = time.Duration(*authTokenTTLHours)
+type Service struct {
+	settings Settings
+	GetTime  func() time.Time
 }
 
 func ReadPublicKey(filename string) (key []byte, err error) {
@@ -43,18 +36,17 @@ func ReadPublicKey(filename string) (key []byte, err error) {
 	return
 }
 
-func NewService(key []byte) *Service {
+func Init(settings Settings) *Service {
 	return &Service{
-		signingKey: key,
-		TTLHours:   72,
-		GetTime:    func() time.Time { return time.Now() },
+		settings: settings,
+		GetTime:  func() time.Time { return time.Now() },
 	}
 }
 
 // Resolve from token to app key
 func (this *Service) GetAppKey(tokenString string) (appKey UUID, err error) {
 	token, err := jwt.Parse(tokenString, func(t *jwt.Token) ([]byte, error) {
-		return this.signingKey, nil
+		return this.settings.SignKey, nil
 	})
 
 	if err == nil && token.Valid {
@@ -82,9 +74,9 @@ func (this *Service) GetAppKey(tokenString string) (appKey UUID, err error) {
 func (this *Service) GetAppToken(appKey UUID) (tokenString string, err error) {
 	token := jwt.New(jwt.GetSigningMethod("HS256"))
 	token.Claims["appKey"] = appKey
-	if this.TTLHours > 0 {
-		token.Claims["exp"] = time.Now().Add(time.Hour * this.TTLHours).Unix()
+	if this.settings.TTLHours > 0 {
+		token.Claims["exp"] = time.Now().Add(time.Hour * this.settings.TTLHours).Unix()
 	}
-	tokenString, err = token.SignedString(this.signingKey)
+	tokenString, err = token.SignedString(this.settings.SignKey)
 	return
 }

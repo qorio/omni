@@ -13,7 +13,7 @@ type Info struct {
 
 type HttpHandler func(auth *Info, resp http.ResponseWriter, req *http.Request)
 
-func RequiresAuth(handler HttpHandler) func(http.ResponseWriter, *http.Request) {
+func (service *Service) RequiresAuth(handler HttpHandler) func(http.ResponseWriter, *http.Request) {
 	return func(resp http.ResponseWriter, req *http.Request) {
 		info := &Info{
 			AppKey: UUID("dev"),

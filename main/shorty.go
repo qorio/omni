@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/golang/glog"
+	omni_auth "github.com/qorio/omni/auth"
 	omni_http "github.com/qorio/omni/http"
 	"github.com/qorio/omni/runtime"
 	"github.com/qorio/omni/shorty"
@@ -12,6 +13,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"time"
 )
 
 var (
@@ -39,7 +41,10 @@ var (
 	port           = flag.Int("port", 8080, "Port where server is listening on")
 	apiSocket      = flag.String("api_socket", "", "File name for domain socket instead of port")
 	directorSocket = flag.String("redirect_socket", "", "File name for domain socket instead of port")
-	adminPort      = flag.Int("admin_port", 7070, "Port where management server is listening on")
+	adminPort      = flag.Int("admin_port", 7071, "Port where management server is listening on")
+
+	authKeyFile       = flag.String("auth_public_key_file", "", "Auth public key file")
+	authTokenTTLHours = flag.Int64("auth_token_ttl_hours", 24, "TTL hours for auth token")
 )
 
 func translate(r *omni_http.RequestOrigin) (event *tally.Event) {
@@ -143,6 +148,17 @@ func main() {
 	buildInfo := runtime.BuildInfo()
 	glog.Infoln("Build", buildInfo.Number, "Commit", buildInfo.Commit, "When", buildInfo.Timestamp)
 
+	// the auth service
+	key, err := omni_auth.ReadPublicKey(*authKeyFile)
+	if err != nil {
+		glog.Warningln("Cannot read public key file", *authKeyFile)
+		panic(err)
+	}
+	auth := omni_auth.Init(omni_auth.Settings{
+		SignKey:  key,
+		TTLHours: time.Duration(*authTokenTTLHours),
+	})
+
 	if *startSubscriber {
 		// Set up a subscriber service that will subscribe to the channel and
 		// push the message to a work queue for indexing
@@ -195,14 +211,10 @@ func main() {
 		}
 	}()
 
-	// HTTP endpoints
-	httpSettings := shorty.ShortyEndPointSettings{
-		Redirect404:     *redirect404,
-		GeoIpDbFilePath: *geoDbFilePath,
-	}
-
 	shutdownc := make(chan io.Closer, 1)
 	go runtime.HandleSignals(shutdownc)
+
+	// HTTP endpoints
 
 	// Run the http server in a separate go routine
 	// When stopping, send a true to the httpDone channel.
@@ -216,6 +228,11 @@ func main() {
 	glog.Infoln("Starting redirector")
 	redirectorDone := make(chan bool)
 	var redirectorStopped chan bool
+
+	httpSettings := shorty.ShortyEndPointSettings{
+		Redirect404:     *redirect404,
+		GeoIpDbFilePath: *geoDbFilePath,
+	}
 	if redirector, err := shorty.NewRedirector(httpSettings, shortyService); err == nil {
 		redirectorHttpServer := &http.Server{
 			Handler: redirector,
@@ -234,7 +251,7 @@ func main() {
 	glog.Infoln("Starting api endpoint")
 	apiDone := make(chan bool)
 	var apiStopped chan bool
-	if endpoint, err := shorty.NewApiEndPoint(httpSettings, shortyService); err == nil {
+	if endpoint, err := shorty.NewApiEndPoint(httpSettings, shortyService, auth); err == nil {
 		apiHttpServer := &http.Server{
 			Handler: endpoint,
 			Addr:    addr,
