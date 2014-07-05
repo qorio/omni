@@ -12,6 +12,8 @@ machine:
   # Add some environment variables
   environment:
     CIRCLE_ENV: test
+    STRIPE_PUB_KEY pk_test_4LSOwxgf2ksQd29Bj8j4ttYy
+    STRIPE_API_KEY sk_test_4LSOS9XcC9KDQR4qTBuoHCmJ
     GOPATH: /tmp/build:/tmp/build/src/github.com/qorio/omni/third_party
 
 ## Customize checkout
@@ -41,6 +43,7 @@ test:
   override:
     - go test github.com/qorio/omni/auth --auth_public_key_file=/tmp/build/src/github.com/qorio/omni/test/authKey.pub
     - go test github.com/qorio/omni/shorty
+    - go test github.com/qorio/omni/stripe
 
 ## Customize deployment commands
 deployment:
