@@ -12,8 +12,8 @@ machine:
   # Add some environment variables
   environment:
     CIRCLE_ENV: test
-    STRIPE_PUB_KEY pk_test_4LSOwxgf2ksQd29Bj8j4ttYy
-    STRIPE_API_KEY sk_test_4LSOS9XcC9KDQR4qTBuoHCmJ
+    STRIPE_PUB_KEY: pk_test_4LSOwxgf2ksQd29Bj8j4ttYy
+    STRIPE_API_KEY: sk_test_4LSOS9XcC9KDQR4qTBuoHCmJ
     GOPATH: /tmp/build:/tmp/build/src/github.com/qorio/omni/third_party
 
 ## Customize checkout
