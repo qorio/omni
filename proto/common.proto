@@ -1,0 +1,13 @@
+message Content {
+    required string mime = 1;
+    required bytes data = 2;
+}
+
+message Attribute {
+    required string key = 1;
+    optional string string_value = 2;
+    optional int64 int_value = 3;
+    optional double double_value = 4;
+    optional bool bool_value = 5;
+    optional Content content_value = 6;
+}
