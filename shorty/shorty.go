@@ -250,8 +250,8 @@ func (this *shortyImpl) VanityUrl(vanity, data string, rules []RoutingRule, defa
 	if entity.Id != "" {
 		// copy the defaults
 		entity.Origin = defaults.Origin
-		entity.AppKey = defaults.AppKey
-		entity.CampaignKey = defaults.CampaignKey
+		entity.AccountId = defaults.AccountId
+		entity.CampaignId = defaults.CampaignId
 
 		entity.Save()
 		return entity, nil

@@ -91,8 +91,8 @@ func translateDecode(decodeEvent *shorty.DecodeEvent) (event *tally.Event) {
 	event.SetAttribute("destination", decodeEvent.Destination)
 	event.SetAttribute("uuid", string(decodeEvent.Context))
 	event.SetAttribute("origin", decodeEvent.Origin)
-	event.SetAttribute("app_key", string(decodeEvent.AppKey))
-	event.SetAttribute("campaign_key", string(decodeEvent.CampaignKey))
+	event.SetAttribute("account_id", string(decodeEvent.AccountId))
+	event.SetAttribute("campaign_id", string(decodeEvent.CampaignId))
 	event.SetAttribute("matched_rule", decodeEvent.MatchedRuleId)
 
 	return
@@ -108,8 +108,8 @@ func translateInstall(installEvent *shorty.InstallEvent) (event *tally.Event) {
 	event.SetAttribute("uuid", string(installEvent.SourceContext))
 	event.SetAttribute("source_application", installEvent.SourceApplication)
 	event.SetAttribute("origin", installEvent.Origin)
-	event.SetAttribute("app_key", string(installEvent.AppKey))
-	event.SetAttribute("campaign_key", string(installEvent.CampaignKey))
+	event.SetAttribute("account_id", string(installEvent.AccountId))
+	event.SetAttribute("campaign_id", string(installEvent.CampaignId))
 	event.SetAttribute("reporting_method", installEvent.ReportingMethod)
 	return
 }
@@ -123,8 +123,8 @@ func translateAppOpen(appOpenEvent *shorty.AppOpenEvent) (event *tally.Event) {
 	event.SetAttribute("uuid", string(appOpenEvent.SourceContext))
 	event.SetAttribute("source_application", appOpenEvent.SourceApplication)
 	event.SetAttribute("origin", appOpenEvent.Origin)
-	event.SetAttribute("app_key", string(appOpenEvent.AppKey))
-	event.SetAttribute("campaign_key", string(appOpenEvent.CampaignKey))
+	event.SetAttribute("account_id", string(appOpenEvent.AccountId))
+	event.SetAttribute("campaign_id", string(appOpenEvent.CampaignId))
 	return
 }
 
@@ -136,8 +136,8 @@ func translateLink(linkEvent *shorty.LinkEvent) (event *tally.Event) {
 	event.SetAttribute("uuid1", string(linkEvent.Context1))
 	event.SetAttribute("uuid2", string(linkEvent.Context2))
 	event.SetAttribute("origin", linkEvent.Origin)
-	event.SetAttribute("app_key", string(linkEvent.AppKey))
-	event.SetAttribute("campaign_key", string(linkEvent.CampaignKey))
+	event.SetAttribute("account_id", string(linkEvent.AccountId))
+	event.SetAttribute("campaign_id", string(linkEvent.CampaignId))
 	return
 }
 
@@ -151,7 +151,7 @@ func main() {
 	// the auth service
 	key, err := omni_auth.ReadPublicKey(*authKeyFile)
 	if err != nil {
-		glog.Warningln("Cannot read public key file", *authKeyFile)
+		fmt.Println("Cannot read public key file", *authKeyFile)
 		panic(err)
 	}
 	auth := omni_auth.Init(omni_auth.Settings{

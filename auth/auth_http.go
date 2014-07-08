@@ -8,16 +8,26 @@ import (
 )
 
 type Info struct {
-	AppKey UUID
+	token *Token
+}
+
+func (this *Info) HasKey(key string) bool {
+	return this.token.HasKey(key)
+}
+
+func (this *Info) GetString(key string) string {
+	return this.token.GetString(key)
+}
+
+func (this *Info) Get(key string) interface{} {
+	return this.token.Get(key)
 }
 
 type HttpHandler func(auth *Info, resp http.ResponseWriter, req *http.Request)
 
 func (service *Service) RequiresAuth(handler HttpHandler) func(http.ResponseWriter, *http.Request) {
 	return func(resp http.ResponseWriter, req *http.Request) {
-		info := &Info{
-			AppKey: UUID("dev"),
-		}
+		info := &Info{}
 		if *doAuth {
 			// Get the auth header
 			header := req.Header.Get("Authorization")
@@ -26,16 +36,15 @@ func (service *Service) RequiresAuth(handler HttpHandler) func(http.ResponseWrit
 				return
 			}
 
-			token := strings.Trim(strings.TrimLeft(header, "Bearer "), " ")
-			appKey, err := service.GetAppKey(token)
+			tokenString := strings.Trim(strings.TrimLeft(header, "Bearer "), " ")
+			token, err := service.Parse(tokenString)
 			if err != nil {
 				glog.Warningln("auth-error", err)
 				renderError(resp, req, err.Error(), http.StatusUnauthorized)
 				return
 			}
 
-			// Get the auth info
-			info.AppKey = appKey
+			info.token = token
 		}
 		glog.Infoln("AuthHandler", info)
 		handler(info, resp, req)

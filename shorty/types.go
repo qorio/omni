@@ -28,7 +28,7 @@ type Campaign struct {
 	Id          UUID          `json:"id,omitempty"`
 	Name        string        `json:"name,omitempty"`
 	Description string        `json:"description,omitempty"`
-	AppKey      UUID          `json:"appKey"`
+	AccountId   UUID          `json:"accountId"`
 	Rules       []RoutingRule `json:"rules,omitempty"`
 	Created     int64         `json:"created,omitempty"`
 	IOS_SDK     bool          `json:"iosSDK,omitempty"`
@@ -95,8 +95,8 @@ type ShortUrl struct {
 	Destination string        `json:"destination"`
 	Created     time.Time     `json:"created,omitempty"`
 	Origin      string        `json:"origin,omitempty"`
-	AppKey      UUID          `json:"appKey"`
-	CampaignKey UUID          `json:"campaignKey"`
+	AccountId   UUID          `json:"accountId"`
+	CampaignId  UUID          `json:"campaignId"`
 	service     *shortyImpl
 }
 
@@ -131,9 +131,9 @@ type AppOpenEvent struct {
 	SourceContext     UUID
 	SourceApplication string
 
-	Origin      string
-	AppKey      UUID
-	CampaignKey UUID
+	Origin     string
+	AccountId  UUID
+	CampaignId UUID
 }
 
 type DecodeEvent struct {
@@ -141,9 +141,9 @@ type DecodeEvent struct {
 	Destination   string
 	Context       UUID
 
-	Origin      string
-	AppKey      UUID
-	CampaignKey UUID
+	Origin     string
+	AccountId  UUID
+	CampaignId UUID
 
 	MatchedRuleId string
 }
@@ -157,9 +157,9 @@ type InstallEvent struct {
 	SourceContext     UUID
 	SourceApplication string
 
-	Origin      string
-	AppKey      UUID
-	CampaignKey UUID
+	Origin     string
+	AccountId  UUID
+	CampaignId UUID
 
 	ReportingMethod string // 'fingerprint', 'browser-switch', 'referred-app-open'
 }
@@ -170,7 +170,7 @@ type LinkEvent struct {
 	Context1      UUID
 	Context2      UUID
 
-	Origin      string
-	AppKey      UUID
-	CampaignKey UUID
+	Origin     string
+	AccountId  UUID
+	CampaignId UUID
 }

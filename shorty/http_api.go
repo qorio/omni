@@ -12,6 +12,8 @@ import (
 	"strings"
 )
 
+var accountIdKey string = "accountId"
+
 func (this *ShortyEndPoint) ApiAddCampaignHandler(credential *omni_auth.Info, resp http.ResponseWriter, req *http.Request) {
 	omni_http.SetCORSHeaders(resp)
 	body, err := ioutil.ReadAll(req.Body)
@@ -36,7 +38,7 @@ func (this *ShortyEndPoint) ApiAddCampaignHandler(credential *omni_auth.Info, re
 		campaign.Id = UUID(uuidStr)
 	}
 
-	campaign.AppKey = UUID(credential.AppKey)
+	campaign.AccountId = UUID(credential.GetString(accountIdKey))
 
 	err = campaign.Save()
 	if err != nil {
@@ -200,14 +202,14 @@ func (this *ShortyEndPoint) ApiAddCampaignUrlHandler(credential *omni_auth.Info,
 		// TODO - add lookup of api token to valid apiKey.
 		// A api token is used by client as a way to authenticate and identify the actual app.
 		// This way, we can revoke the token and shut down a client.
-		AppKey: UUID(campaign.AppKey),
+		AccountId: UUID(campaign.AccountId),
 
 		// TODO - this is a key that references a future struct that encapsulates all the
 		// rules around default routing (appstore, etc.).  This will simplify the api by not
 		// requiring ios client to send in rules on android, for example.  The service should
 		// check to see if there's valid campaign for the same app key. If yes, then merge the
 		// routing rules.  If not, just let this value be a tag of some kind.
-		CampaignKey: campaign.Id,
+		CampaignId: campaign.Id,
 	}
 	if message.Vanity != "" {
 		shortUrl, err = this.service.VanityUrl(message.Vanity, message.LongUrl, mergedRules, *shortUrl)
@@ -265,14 +267,14 @@ func (this *ShortyEndPoint) ApiAddUrlHandler(credential *omni_auth.Info, resp ht
 		// TODO - add lookup of api token to valid apiKey.
 		// A api token is used by client as a way to authenticate and identify the actual app.
 		// This way, we can revoke the token and shut down a client.
-		AppKey: UUID(credential.AppKey),
+		AccountId: UUID(credential.GetString(accountIdKey)),
 
 		// TODO - this is a key that references a future struct that encapsulates all the
 		// rules around default routing (appstore, etc.).  This will simplify the api by not
 		// requiring ios client to send in rules on android, for example.  The service should
 		// check to see if there's valid campaign for the same app key. If yes, then merge the
 		// routing rules.  If not, just let this value be a tag of some kind.
-		CampaignKey: UUID(message.Campaign),
+		CampaignId: UUID(message.Campaign),
 	}
 	if message.Vanity != "" {
 		shortUrl, err = this.service.VanityUrl(message.Vanity, message.LongUrl, message.Rules, *shortUrl)

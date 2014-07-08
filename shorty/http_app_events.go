@@ -260,13 +260,13 @@ func (this *ShortyEndPoint) handleAppOpen(shortUrl *ShortUrl, app UrlScheme, app
 	origin, geoParseErr := this.requestParser.Parse(req)
 	origin.Destination = appOpen.Deeplink
 
-	installOrigin, installAppKey, installCampaignKey := "NONE", UUID(app), UUID("ORGANIC")
+	installOrigin, installAccountId, installCampaignId := "NONE", UUID(app), UUID("ORGANIC")
 
 	if shortUrl != nil {
 		origin.ShortCode = shortUrl.Id
 		installOrigin = shortUrl.Origin
-		installAppKey = shortUrl.AppKey
-		installCampaignKey = shortUrl.CampaignKey
+		installAccountId = shortUrl.AccountId
+		installCampaignId = shortUrl.CampaignId
 	}
 
 	if geoParseErr != nil {
@@ -281,8 +281,8 @@ func (this *ShortyEndPoint) handleAppOpen(shortUrl *ShortUrl, app UrlScheme, app
 		SourceContext:     appOpen.SourceContext,
 		SourceApplication: appOpen.SourceApplication,
 		Origin:            installOrigin,
-		AppKey:            installAppKey,
-		CampaignKey:       installCampaignKey,
+		AccountId:         installAccountId,
+		CampaignId:        installCampaignId,
 	})
 
 	if found, _ := this.service.FindLink(UUID(appContext), appOpen.SourceContext); !found {
@@ -291,8 +291,8 @@ func (this *ShortyEndPoint) handleAppOpen(shortUrl *ShortUrl, app UrlScheme, app
 			Context1:      appContext,
 			Context2:      appOpen.SourceContext,
 			Origin:        installOrigin,
-			AppKey:        installAppKey,
-			CampaignKey:   installCampaignKey,
+			AccountId:     installAccountId,
+			CampaignId:    installCampaignId,
 		})
 	}
 	return nil
@@ -308,13 +308,13 @@ func (this *ShortyEndPoint) handleInstall(shortUrl *ShortUrl, app UrlScheme, app
 	origin, geoParseErr := this.requestParser.Parse(req)
 	origin.Destination = appOpen.Deeplink
 
-	installOrigin, installAppKey, installCampaignKey := "NONE", UUID(app), UUID("ORGANIC")
+	installOrigin, installAccountId, installCampaignId := "NONE", UUID(app), UUID("ORGANIC")
 
 	if shortUrl != nil {
 		origin.ShortCode = shortUrl.Id
 		installOrigin = shortUrl.Origin
-		installAppKey = shortUrl.AppKey
-		installCampaignKey = shortUrl.CampaignKey
+		installAccountId = shortUrl.AccountId
+		installCampaignId = shortUrl.CampaignId
 	}
 
 	if geoParseErr != nil {
@@ -329,8 +329,8 @@ func (this *ShortyEndPoint) handleInstall(shortUrl *ShortUrl, app UrlScheme, app
 		SourceContext:     appOpen.SourceContext,
 		SourceApplication: appOpen.SourceApplication,
 		Origin:            installOrigin,
-		AppKey:            installAppKey,
-		CampaignKey:       installCampaignKey,
+		AccountId:         installAccountId,
+		CampaignId:        installCampaignId,
 		ReportingMethod:   reportingMethod,
 	})
 
@@ -341,8 +341,8 @@ func (this *ShortyEndPoint) handleInstall(shortUrl *ShortUrl, app UrlScheme, app
 				Context1:      appContext,
 				Context2:      appOpen.SourceContext,
 				Origin:        installOrigin,
-				AppKey:        installAppKey,
-				CampaignKey:   installCampaignKey,
+				AccountId:     installAccountId,
+				CampaignId:    installCampaignId,
 			})
 		}
 	}

@@ -28,6 +28,10 @@ type Service struct {
 	GetTime  func() time.Time
 }
 
+type Token struct {
+	token *jwt.Token
+}
+
 func ReadPublicKey(filename string) (key []byte, err error) {
 	// TODO -- this really isn't doing anything like parsing
 	// a proper file format like X.509 or anything.
@@ -43,15 +47,27 @@ func Init(settings Settings) *Service {
 	}
 }
 
-// Resolve from token to app key
-func (this *Service) GetAppKey(tokenString string) (appKey UUID, err error) {
-	token, err := jwt.Parse(tokenString, func(t *jwt.Token) ([]byte, error) {
+func (this *Service) NewToken() (token *Token) {
+	token = &Token{token: jwt.New(jwt.GetSigningMethod("HS256"))}
+	if this.settings.TTLHours > 0 {
+		token.token.Claims["exp"] = time.Now().Add(time.Hour * this.settings.TTLHours).Unix()
+	}
+	return
+}
+
+func (this *Service) SignedString(token *Token) (tokenString string, err error) {
+	tokenString, err = token.token.SignedString(this.settings.SignKey)
+	return
+}
+
+func (this *Service) Parse(tokenString string) (token *Token, err error) {
+	t, err := jwt.Parse(tokenString, func(t *jwt.Token) ([]byte, error) {
 		return this.settings.SignKey, nil
 	})
 
-	if err == nil && token.Valid {
+	if err == nil && t.Valid {
 		// Check expiration if there is one
-		if expClaim, has := token.Claims["exp"]; has {
+		if expClaim, has := t.Claims["exp"]; has {
 			exp, ok := expClaim.(float64)
 			if !ok {
 				err = InvalidToken
@@ -62,7 +78,7 @@ func (this *Service) GetAppKey(tokenString string) (appKey UUID, err error) {
 				return
 			}
 		}
-		appKey = UUID(fmt.Sprintf("%s", token.Claims["appKey"]))
+		token = &Token{token: t}
 		return
 	} else {
 		err = InvalidToken
@@ -70,13 +86,25 @@ func (this *Service) GetAppKey(tokenString string) (appKey UUID, err error) {
 	return
 }
 
-// Given the app key, returns the token -- used during signup
-func (this *Service) GetAppToken(appKey UUID) (tokenString string, err error) {
-	token := jwt.New(jwt.GetSigningMethod("HS256"))
-	token.Claims["appKey"] = appKey
-	if this.settings.TTLHours > 0 {
-		token.Claims["exp"] = time.Now().Add(time.Hour * this.settings.TTLHours).Unix()
+func (this *Token) Add(key string, value interface{}) *Token {
+	this.token.Claims[key] = value
+	return this
+}
+
+func (this *Token) Get(key string) interface{} {
+	if v, has := this.token.Claims[key]; has {
+		return v
 	}
-	tokenString, err = token.SignedString(this.settings.SignKey)
-	return
+	return nil
+}
+
+func (this *Token) GetString(key string) string {
+	return fmt.Sprintf("%s", this.Get(key))
+}
+
+func (this *Token) HasKey(key string) bool {
+	if _, has := this.token.Claims[key]; has {
+		return true
+	}
+	return false
 }

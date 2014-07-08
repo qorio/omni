@@ -273,8 +273,8 @@ event:
 			Destination:   destination,
 			Context:       UUID(userId),
 			Origin:        shortUrl.Origin,
-			AppKey:        shortUrl.AppKey,
-			CampaignKey:   shortUrl.CampaignKey,
+			AccountId:     shortUrl.AccountId,
+			CampaignId:    shortUrl.CampaignId,
 			MatchedRuleId: matchedRuleId,
 		})
 		shortUrl.Record(origin, visits > 1)

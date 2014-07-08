@@ -3,6 +3,7 @@ package auth
 import (
 	"flag"
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -11,21 +12,54 @@ var (
 	authKeyFile = flag.String("auth_public_key_file", "", "Auth public key file")
 )
 
-func TestGetAppToken(t *testing.T) {
-
-	id := UUID("1234")
+func TestNewToken(t *testing.T) {
 
 	auth := Init(Settings{SignKey: []byte("test"), TTLHours: 0})
 
-	token, err := auth.GetAppToken(UUID(id))
-	fmt.Println("token=", token, "err=", err)
+	token := auth.NewToken()
+	token.Add("foo1", "foo1").Add("foo2", "foo2").Add("count", 2)
+
+	signedString, err := auth.SignedString(token)
+	if err != nil {
+		t.Error(err)
+	}
+
+	fmt.Println("token=", signedString)
+	parsed, err := auth.Parse(signedString)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if !parsed.HasKey("count") {
+		t.Error("Should have count")
+	}
+
+	if float64(2) != parsed.Get("count") {
+		t.Error("Should be 2", parsed.Get("count"),
+			reflect.TypeOf(parsed.Get("count")))
+	}
+
+	if "foo1" != parsed.Get("foo1") {
+		t.Error("Should be foo1", parsed.Get("foo1"))
+	}
+
+}
+
+func TestTokenExpiration(t *testing.T) {
+
+	auth := Init(Settings{SignKey: []byte("test"), TTLHours: 1})
+	auth.GetTime = func() time.Time {
+		return time.Now().Add(time.Hour * 2)
+	}
+
+	token := auth.NewToken()
+	encoded, err := auth.SignedString(token)
 
 	// decode
-	appKey, err := auth.GetAppKey(token)
-	fmt.Println("appkey=", appKey, "err=", err)
+	_, err = auth.Parse(encoded)
 
-	if appKey != id {
-		t.Error("expecting", id, "but got", appKey)
+	if err != ExpiredToken {
+		t.Error("expecting", ExpiredToken, "but got", err)
 	}
 }
 
@@ -37,39 +71,21 @@ func TestGetAppTokenAuthRsaKey(t *testing.T) {
 	}
 
 	id := UUID("1234")
-
 	auth := Init(Settings{SignKey: key, TTLHours: 0})
 
-	token, err := auth.GetAppToken(UUID(id))
-	fmt.Println("token=", token, "err=", err)
+	token := auth.NewToken().Add("appKey", id)
+	encoded, err := auth.SignedString(token)
 
 	// decode
-	appKey, err := auth.GetAppKey(token)
-	fmt.Println("appkey=", appKey, "err=", err)
+	parsed, err := auth.Parse(encoded)
+	if err != nil {
+		t.Error(err)
+	}
 
-	if appKey != id {
+	appKey := parsed.GetString("appKey")
+	fmt.Println("appkey=", appKey)
+
+	if UUID(appKey) != id {
 		t.Error("expecting", id, "but got", appKey)
 	}
-}
-
-func TestTokenExpiration(t *testing.T) {
-
-	id := UUID("1234")
-
-	auth := Init(Settings{SignKey: []byte("test"), TTLHours: 1})
-	auth.GetTime = func() time.Time {
-		return time.Now().Add(time.Hour * 2)
-	}
-
-	token, err := auth.GetAppToken(UUID(id))
-	fmt.Println("token=", token, "err=", err)
-
-	// decode
-	appKey, err := auth.GetAppKey(token)
-	fmt.Println("appkey=", appKey, "err=", err)
-
-	if err != ExpiredToken {
-		t.Error("expecting", ExpiredToken, "but got", err)
-	}
-
 }
