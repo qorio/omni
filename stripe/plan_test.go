@@ -163,7 +163,8 @@ func TestListPlan(t *testing.T) {
 	}
 
 	// since we added 2 dummy plans, we expect the array to be a size of 2
-	if len(plans) != 2 {
-		t.Errorf("Expected 2 Plans, got %d", len(plans))
+	// there are also 2 there were added manually.
+	if len(plans) != 4 {
+		t.Errorf("Expected 4 Plans, got %d", len(plans))
 	}
 }
