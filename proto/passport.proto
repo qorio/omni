@@ -1,7 +1,14 @@
 package passport;
 
 // Generalized account / user schema
-import "common.proto";
+
+message Attribute {
+    required string key = 1;
+    optional string string_value = 2;
+    optional int64 int_value = 3;
+    optional double double_value = 4;
+    optional bool bool_value = 5;
+}
 
 
 message Login {
