@@ -19,13 +19,15 @@ type EndPoint struct {
 	settings Settings
 	router   *mux.Router
 	auth     *omni_auth.Service
+	service  *Service
 }
 
-func NewApiEndPoint(settings Settings, service *omni_auth.Service) (api *EndPoint, err error) {
+func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service) (api *EndPoint, err error) {
 	api = &EndPoint{
 		settings: settings,
 		router:   mux.NewRouter(),
-		auth:     service,
+		auth:     auth,
+		service:  service,
 	}
 
 	api.router.HandleFunc("/api/v1/auth", api.ApiAuthenticate).
@@ -56,10 +58,23 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 	}
 
 	// do the lookup here...
-	appKey := omni_auth.UUID("test-key")
-	// encode the token
+	account, err := this.service.FindAccountByEmail(request.Email)
+	switch {
+	case err == ERROR_ACCOUNT_NOT_FOUND:
+		renderJsonError(resp, req, "error-lookup-account", http.StatusNotAuthorized)
+		return
+	case err != nil:
+		renderJsonError(resp, req, "error-lookup-account", http.StatusInternalServerError)
+	case err == nil && account.Primary.GetPassword() != request.Password:
+		renderJsonError(resp, req, "error-lookup-account", http.StatusNotAuthorized)
+		return
+	}
 
-	token, err := this.auth.GetAppToken(appKey)
+	// encode the token
+	token := this.auth.NewToken()
+	token.Add(accountIdKey, account.GetId())
+
+	tokenString, err := this.auth.SignedString(token)
 	if err != nil {
 		glog.Warningln("error-generating-auth-token", err)
 		renderJsonError(resp, req, "cannot-generate-auth-token", http.StatusInternalServerError)

@@ -65,8 +65,12 @@ func main() {
 	apiDone := make(chan bool)
 	var apiStopped chan bool
 
-	httpSettings := passport.Settings{}
-	if endpoint, err := passport.NewApiEndPoint(httpSettings, auth); err == nil {
+	passportSettings := passport.Settings{}
+
+	if endpoint, err := passport.NewApiEndPoint(
+		passportSettings,
+		auth,
+		passport.NewService(passportSettings)); err == nil {
 		apiHttpServer := &http.Server{
 			Handler: endpoint,
 			Addr:    addr,
