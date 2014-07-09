@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export GOPATH=$(pwd)/third_party:~/go
+export GOPATH=$(pwd)/third_party:~/go:$GOPATH
 export PATH=$(pwd)/third_party/bin:$PATH
 
 pushd proto
