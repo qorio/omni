@@ -61,12 +61,12 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 	account, err := this.service.FindAccountByEmail(request.Email)
 	switch {
 	case err == ERROR_ACCOUNT_NOT_FOUND:
-		renderJsonError(resp, req, "error-lookup-account", http.StatusUnauthorized)
+		renderJsonError(resp, req, "error-account-not-found", http.StatusUnauthorized)
 		return
 	case err != nil:
 		renderJsonError(resp, req, "error-lookup-account", http.StatusInternalServerError)
 	case err == nil && account.Primary.GetPassword() != request.Password:
-		renderJsonError(resp, req, "error-lookup-account", http.StatusUnauthorized)
+		renderJsonError(resp, req, "error-bad-credentials", http.StatusUnauthorized)
 		return
 	}
 
