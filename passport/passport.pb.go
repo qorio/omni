@@ -9,6 +9,7 @@ It is generated from these files:
 	passport.proto
 
 It has these top-level messages:
+	Blob
 	Attribute
 	Login
 	Application
@@ -23,18 +24,125 @@ import math "math"
 var _ = proto.Marshal
 var _ = math.Inf
 
+type Attribute_Type int32
+
+const (
+	Attribute_STRING Attribute_Type = 1
+	Attribute_NUMBER Attribute_Type = 2
+	Attribute_BOOL   Attribute_Type = 3
+	Attribute_BLOB   Attribute_Type = 4
+)
+
+var Attribute_Type_name = map[int32]string{
+	1: "STRING",
+	2: "NUMBER",
+	3: "BOOL",
+	4: "BLOB",
+}
+var Attribute_Type_value = map[string]int32{
+	"STRING": 1,
+	"NUMBER": 2,
+	"BOOL":   3,
+	"BLOB":   4,
+}
+
+func (x Attribute_Type) Enum() *Attribute_Type {
+	p := new(Attribute_Type)
+	*p = x
+	return p
+}
+func (x Attribute_Type) String() string {
+	return proto.EnumName(Attribute_Type_name, int32(x))
+}
+func (x *Attribute_Type) UnmarshalJSON(data []byte) error {
+	value, err := proto.UnmarshalJSONEnum(Attribute_Type_value, data, "Attribute_Type")
+	if err != nil {
+		return err
+	}
+	*x = Attribute_Type(value)
+	return nil
+}
+
+type Login_Status int32
+
+const (
+	Login_CREATED  Login_Status = 1
+	Login_VERIFIED Login_Status = 2
+	Login_BLOCKED  Login_Status = 3
+)
+
+var Login_Status_name = map[int32]string{
+	1: "CREATED",
+	2: "VERIFIED",
+	3: "BLOCKED",
+}
+var Login_Status_value = map[string]int32{
+	"CREATED":  1,
+	"VERIFIED": 2,
+	"BLOCKED":  3,
+}
+
+func (x Login_Status) Enum() *Login_Status {
+	p := new(Login_Status)
+	*p = x
+	return p
+}
+func (x Login_Status) String() string {
+	return proto.EnumName(Login_Status_name, int32(x))
+}
+func (x *Login_Status) UnmarshalJSON(data []byte) error {
+	value, err := proto.UnmarshalJSONEnum(Login_Status_value, data, "Login_Status")
+	if err != nil {
+		return err
+	}
+	*x = Login_Status(value)
+	return nil
+}
+
+type Blob struct {
+	Type             *string `protobuf:"bytes,1,req,name=type" json:"type,omitempty"`
+	Data             []byte  `protobuf:"bytes,2,req,name=data" json:"data,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *Blob) Reset()         { *m = Blob{} }
+func (m *Blob) String() string { return proto.CompactTextString(m) }
+func (*Blob) ProtoMessage()    {}
+
+func (m *Blob) GetType() string {
+	if m != nil && m.Type != nil {
+		return *m.Type
+	}
+	return ""
+}
+
+func (m *Blob) GetData() []byte {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
+
 type Attribute struct {
-	Key              *string  `protobuf:"bytes,1,req,name=key" json:"key,omitempty"`
-	StringValue      *string  `protobuf:"bytes,2,opt,name=string_value" json:"string_value,omitempty"`
-	IntValue         *int64   `protobuf:"varint,3,opt,name=int_value" json:"int_value,omitempty"`
-	DoubleValue      *float64 `protobuf:"fixed64,4,opt,name=double_value" json:"double_value,omitempty"`
-	BoolValue        *bool    `protobuf:"varint,5,opt,name=bool_value" json:"bool_value,omitempty"`
-	XXX_unrecognized []byte   `json:"-"`
+	Type             *Attribute_Type `protobuf:"varint,1,req,name=type,enum=passport.Attribute_Type" json:"type,omitempty"`
+	Key              *string         `protobuf:"bytes,2,req,name=key" json:"key,omitempty"`
+	StringValue      *string         `protobuf:"bytes,3,opt,name=string_value" json:"string_value,omitempty"`
+	NumberValue      *float64        `protobuf:"fixed64,4,opt,name=number_value" json:"number_value,omitempty"`
+	BoolValue        *bool           `protobuf:"varint,5,opt,name=bool_value" json:"bool_value,omitempty"`
+	BlobValue        *Blob           `protobuf:"bytes,6,opt,name=blob_value" json:"blob_value,omitempty"`
+	XXX_unrecognized []byte          `json:"-"`
 }
 
 func (m *Attribute) Reset()         { *m = Attribute{} }
 func (m *Attribute) String() string { return proto.CompactTextString(m) }
 func (*Attribute) ProtoMessage()    {}
+
+func (m *Attribute) GetType() Attribute_Type {
+	if m != nil && m.Type != nil {
+		return *m.Type
+	}
+	return Attribute_STRING
+}
 
 func (m *Attribute) GetKey() string {
 	if m != nil && m.Key != nil {
@@ -50,16 +158,9 @@ func (m *Attribute) GetStringValue() string {
 	return ""
 }
 
-func (m *Attribute) GetIntValue() int64 {
-	if m != nil && m.IntValue != nil {
-		return *m.IntValue
-	}
-	return 0
-}
-
-func (m *Attribute) GetDoubleValue() float64 {
-	if m != nil && m.DoubleValue != nil {
-		return *m.DoubleValue
+func (m *Attribute) GetNumberValue() float64 {
+	if m != nil && m.NumberValue != nil {
+		return *m.NumberValue
 	}
 	return 0
 }
@@ -71,17 +172,27 @@ func (m *Attribute) GetBoolValue() bool {
 	return false
 }
 
+func (m *Attribute) GetBlobValue() *Blob {
+	if m != nil {
+		return m.BlobValue
+	}
+	return nil
+}
+
 type Login struct {
-	Id               *string `protobuf:"bytes,1,req,name=id" json:"id,omitempty"`
-	Email            *string `protobuf:"bytes,2,req,name=email" json:"email,omitempty"`
-	Password         *string `protobuf:"bytes,3,req,name=password" json:"password,omitempty"`
-	AccountId        *string `protobuf:"bytes,4,req,name=accountId" json:"accountId,omitempty"`
-	XXX_unrecognized []byte  `json:"-"`
+	Id               *string       `protobuf:"bytes,1,req,name=id" json:"id,omitempty"`
+	Status           *Login_Status `protobuf:"varint,2,opt,name=status,enum=passport.Login_Status,def=1" json:"status,omitempty"`
+	Email            *string       `protobuf:"bytes,3,opt,name=email" json:"email,omitempty"`
+	Phone            *string       `protobuf:"bytes,4,opt,name=phone" json:"phone,omitempty"`
+	Password         *string       `protobuf:"bytes,5,req,name=password" json:"password,omitempty"`
+	XXX_unrecognized []byte        `json:"-"`
 }
 
 func (m *Login) Reset()         { *m = Login{} }
 func (m *Login) String() string { return proto.CompactTextString(m) }
 func (*Login) ProtoMessage()    {}
+
+const Default_Login_Status Login_Status = Login_CREATED
 
 func (m *Login) GetId() string {
 	if m != nil && m.Id != nil {
@@ -90,9 +201,23 @@ func (m *Login) GetId() string {
 	return ""
 }
 
+func (m *Login) GetStatus() Login_Status {
+	if m != nil && m.Status != nil {
+		return *m.Status
+	}
+	return Default_Login_Status
+}
+
 func (m *Login) GetEmail() string {
 	if m != nil && m.Email != nil {
 		return *m.Email
+	}
+	return ""
+}
+
+func (m *Login) GetPhone() string {
+	if m != nil && m.Phone != nil {
+		return *m.Phone
 	}
 	return ""
 }
@@ -104,16 +229,9 @@ func (m *Login) GetPassword() string {
 	return ""
 }
 
-func (m *Login) GetAccountId() string {
-	if m != nil && m.AccountId != nil {
-		return *m.AccountId
-	}
-	return ""
-}
-
 type Application struct {
-	Status           *string      `protobuf:"bytes,1,req,name=status" json:"status,omitempty"`
-	Id               *string      `protobuf:"bytes,2,req,name=id" json:"id,omitempty"`
+	Id               *string      `protobuf:"bytes,1,req,name=id" json:"id,omitempty"`
+	Status           *string      `protobuf:"bytes,2,req,name=status" json:"status,omitempty"`
 	AccountId        *string      `protobuf:"bytes,3,req,name=accountId" json:"accountId,omitempty"`
 	StartTimestamp   *float64     `protobuf:"fixed64,4,req,name=startTimestamp" json:"startTimestamp,omitempty"`
 	Attributes       []*Attribute `protobuf:"bytes,5,rep,name=attributes" json:"attributes,omitempty"`
@@ -124,16 +242,16 @@ func (m *Application) Reset()         { *m = Application{} }
 func (m *Application) String() string { return proto.CompactTextString(m) }
 func (*Application) ProtoMessage()    {}
 
-func (m *Application) GetStatus() string {
-	if m != nil && m.Status != nil {
-		return *m.Status
+func (m *Application) GetId() string {
+	if m != nil && m.Id != nil {
+		return *m.Id
 	}
 	return ""
 }
 
-func (m *Application) GetId() string {
-	if m != nil && m.Id != nil {
-		return *m.Id
+func (m *Application) GetStatus() string {
+	if m != nil && m.Status != nil {
+		return *m.Status
 	}
 	return ""
 }
@@ -161,9 +279,10 @@ func (m *Application) GetAttributes() []*Attribute {
 
 type Account struct {
 	Id               *string        `protobuf:"bytes,1,req,name=id" json:"id,omitempty"`
-	Primary          *Login         `protobuf:"bytes,2,req,name=primary" json:"primary,omitempty"`
-	CreatedTimestamp *float64       `protobuf:"fixed64,3,req,name=createdTimestamp" json:"createdTimestamp,omitempty"`
-	Services         []*Application `protobuf:"bytes,4,rep,name=services" json:"services,omitempty"`
+	Status           *string        `protobuf:"bytes,2,req,name=status" json:"status,omitempty"`
+	Primary          *Login         `protobuf:"bytes,3,req,name=primary" json:"primary,omitempty"`
+	CreatedTimestamp *float64       `protobuf:"fixed64,4,req,name=createdTimestamp" json:"createdTimestamp,omitempty"`
+	Services         []*Application `protobuf:"bytes,5,rep,name=services" json:"services,omitempty"`
 	XXX_unrecognized []byte         `json:"-"`
 }
 
@@ -174,6 +293,13 @@ func (*Account) ProtoMessage()    {}
 func (m *Account) GetId() string {
 	if m != nil && m.Id != nil {
 		return *m.Id
+	}
+	return ""
+}
+
+func (m *Account) GetStatus() string {
+	if m != nil && m.Status != nil {
+		return *m.Status
 	}
 	return ""
 }
@@ -200,4 +326,6 @@ func (m *Account) GetServices() []*Application {
 }
 
 func init() {
+	proto.RegisterEnum("passport.Attribute_Type", Attribute_Type_name, Attribute_Type_value)
+	proto.RegisterEnum("passport.Login_Status", Login_Status_name, Login_Status_value)
 }
