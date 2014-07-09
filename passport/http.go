@@ -19,10 +19,10 @@ type EndPoint struct {
 	settings Settings
 	router   *mux.Router
 	auth     *omni_auth.Service
-	service  *Service
+	service  Service
 }
 
-func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service *Service) (api *EndPoint, err error) {
+func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service) (api *EndPoint, err error) {
 	api = &EndPoint{
 		settings: settings,
 		router:   mux.NewRouter(),
