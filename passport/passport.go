@@ -16,6 +16,6 @@ func NewService(settings Settings) *Service {
 	return &Service{settings: settings}
 }
 
-func (this *Service) FindAccountByEmail(email string) *Account {
-	return &Account{}
+func (this *Service) FindAccountByEmail(email string) (account *Account, err error) {
+	return &Account{}, nil
 }

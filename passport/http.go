@@ -22,7 +22,7 @@ type EndPoint struct {
 	service  *Service
 }
 
-func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service) (api *EndPoint, err error) {
+func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service *Service) (api *EndPoint, err error) {
 	api = &EndPoint{
 		settings: settings,
 		router:   mux.NewRouter(),
@@ -61,18 +61,18 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 	account, err := this.service.FindAccountByEmail(request.Email)
 	switch {
 	case err == ERROR_ACCOUNT_NOT_FOUND:
-		renderJsonError(resp, req, "error-lookup-account", http.StatusNotAuthorized)
+		renderJsonError(resp, req, "error-lookup-account", http.StatusUnauthorized)
 		return
 	case err != nil:
 		renderJsonError(resp, req, "error-lookup-account", http.StatusInternalServerError)
 	case err == nil && account.Primary.GetPassword() != request.Password:
-		renderJsonError(resp, req, "error-lookup-account", http.StatusNotAuthorized)
+		renderJsonError(resp, req, "error-lookup-account", http.StatusUnauthorized)
 		return
 	}
 
 	// encode the token
 	token := this.auth.NewToken()
-	token.Add(accountIdKey, account.GetId())
+	//token.Add(accountIdKey, account.GetId())
 
 	tokenString, err := this.auth.SignedString(token)
 	if err != nil {
@@ -83,7 +83,7 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 
 	// Response
 	authResponse := AuthResponse{
-		Token: token,
+		Token: tokenString,
 	}
 
 	buff, err := json.Marshal(authResponse)

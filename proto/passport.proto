@@ -18,10 +18,10 @@ message Login {
 	required string accountId = 4;  // "" means primary
 }
 
-message Service {
+message Application {
 	required string status = 1;
-	required string application = 2;
-	required string id = 3;
+	required string id = 2;
+	required string accountId = 3;
 	required double startTimestamp = 4;
 	repeated Attribute attributes = 5;
 }
@@ -30,5 +30,5 @@ message Account {
 	required string id = 1;
 	required Login primary = 2;
 	required double createdTimestamp = 3; // unix seconds
-	repeated Service services = 4;
+	repeated Application services = 4;
 }
