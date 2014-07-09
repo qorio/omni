@@ -41,7 +41,8 @@ database:
 ## Customize test commands
 test:
   override:
-    - cd /tmp/build/src/github.com/qorio/omni & ./build-gen-proto.sh
+    - cd /tmp/build/src/github.com/qorio/omni
+    - ./build-gen-proto.sh
     - go test github.com/qorio/omni/auth --auth_public_key_file=/tmp/build/src/github.com/qorio/omni/test/authKey.pub
     - go test github.com/qorio/omni/passport --auth_public_key_file=/tmp/build/src/github.com/qorio/omni/test/authKey.pub
     - go test github.com/qorio/omni/shorty
