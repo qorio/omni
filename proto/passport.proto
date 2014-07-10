@@ -2,6 +2,16 @@ package passport;
 
 // Generalized account / user schema
 
+message AuthRequest {
+	required string password = 1;
+	optional string email = 2;
+	optional string phone = 3;
+}
+
+message AuthResponse {
+	required string token = 1;
+}
+
 message Blob {
 	required string type = 1;
 	required bytes data = 2;
@@ -16,10 +26,11 @@ message Attribute {
 	}
 	required Type type = 1;
 	required string key = 2;
-	optional string string_value = 3;
-	optional double number_value = 4;
-	optional bool bool_value = 5;
-	optional Blob blob_value = 6;
+	optional bool embed_signin_token = 3 [default = false];  // True to include in signin JWT token
+	optional string string_value = 4;
+	optional double number_value = 5;
+	optional bool bool_value = 6;
+	optional Blob blob_value = 7;
 }
 
 message Login {

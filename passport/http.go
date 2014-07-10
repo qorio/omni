@@ -13,6 +13,9 @@ import (
 )
 
 type Settings struct {
+	// Function that takes the http request and determine the application id
+	// The default is to take the request's URL host, e.g. qor.io or shorty.qor.io
+	ResolveApplicationId func(req *http.Request) string
 }
 
 type EndPoint struct {
@@ -20,6 +23,10 @@ type EndPoint struct {
 	router   *mux.Router
 	auth     *omni_auth.Service
 	service  Service
+}
+
+func defaultResolveApplicationId(req *http.Request) string {
+	return req.URL.Host
 }
 
 func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service) (api *EndPoint, err error) {
@@ -58,22 +65,68 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 	}
 
 	// do the lookup here...
-	account, err := this.service.FindAccountByEmail(request.Email)
+	var account *Account
+
+	switch {
+	case request.GetEmail() != "":
+		account, err = this.service.FindAccountByEmail(request.GetEmail())
+	case request.GetPhone() != "":
+		account, err = this.service.FindAccountByPhone(request.GetPhone())
+	case request.GetPhone() == "" && request.GetEmail() == "":
+		renderJsonError(resp, req, "error-no-phone-or-email", http.StatusBadRequest)
+		return
+	}
+
 	switch {
 	case err == ERROR_ACCOUNT_NOT_FOUND:
 		renderJsonError(resp, req, "error-account-not-found", http.StatusUnauthorized)
 		return
 	case err != nil:
 		renderJsonError(resp, req, "error-lookup-account", http.StatusInternalServerError)
-	case err == nil && account.Primary.GetPassword() != request.Password:
+	case err == nil && account.Primary.GetPassword() != request.GetPassword():
 		renderJsonError(resp, req, "error-bad-credentials", http.StatusUnauthorized)
+		return
+	}
+
+	// now look for the application
+	var requestedApplicationId string
+	if this.settings.ResolveApplicationId != nil {
+		requestedApplicationId = this.settings.ResolveApplicationId(req)
+	} else {
+		requestedApplicationId = defaultResolveApplicationId(req)
+	}
+	var application *Application
+	for _, application = range account.GetServices() {
+		if application.GetId() == requestedApplicationId {
+			break
+		}
+	}
+
+	if application == nil {
+		renderJsonError(resp, req, "error-not-a-member", http.StatusUnauthorized)
 		return
 	}
 
 	// encode the token
 	token := this.auth.NewToken()
-	//token.Add(accountIdKey, account.GetId())
+	token.Add("@id", application.GetId()).
+		Add("@status", application.GetStatus()).
+		Add("@accountId", application.GetAccountId())
 
+	for _, attribute := range application.GetAttributes() {
+		if attribute.GetEmbedSigninToken() {
+			switch attribute.GetType() {
+			case Attribute_STRING:
+				token.Add(attribute.GetKey(), attribute.GetStringValue())
+			case Attribute_NUMBER:
+				token.Add(attribute.GetKey(), attribute.GetNumberValue())
+			case Attribute_BOOL:
+				token.Add(attribute.GetKey(), attribute.GetBoolValue())
+			case Attribute_BLOB:
+				token.Add(attribute.GetKey(), attribute.GetBlobValue())
+			}
+		}
+	}
 	tokenString, err := this.auth.SignedString(token)
 	if err != nil {
 		glog.Warningln("error-generating-auth-token", err)
@@ -82,8 +135,8 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 	}
 
 	// Response
-	authResponse := AuthResponse{
-		Token: tokenString,
+	authResponse := &AuthResponse{
+		Token: &tokenString,
 	}
 
 	buff, err := json.Marshal(authResponse)

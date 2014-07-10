@@ -9,6 +9,8 @@ It is generated from these files:
 	passport.proto
 
 It has these top-level messages:
+	AuthRequest
+	AuthResponse
 	Blob
 	Attribute
 	Login
@@ -99,6 +101,54 @@ func (x *Login_Status) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+type AuthRequest struct {
+	Password         *string `protobuf:"bytes,1,req,name=password" json:"password,omitempty"`
+	Email            *string `protobuf:"bytes,2,opt,name=email" json:"email,omitempty"`
+	Phone            *string `protobuf:"bytes,3,opt,name=phone" json:"phone,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *AuthRequest) Reset()         { *m = AuthRequest{} }
+func (m *AuthRequest) String() string { return proto.CompactTextString(m) }
+func (*AuthRequest) ProtoMessage()    {}
+
+func (m *AuthRequest) GetPassword() string {
+	if m != nil && m.Password != nil {
+		return *m.Password
+	}
+	return ""
+}
+
+func (m *AuthRequest) GetEmail() string {
+	if m != nil && m.Email != nil {
+		return *m.Email
+	}
+	return ""
+}
+
+func (m *AuthRequest) GetPhone() string {
+	if m != nil && m.Phone != nil {
+		return *m.Phone
+	}
+	return ""
+}
+
+type AuthResponse struct {
+	Token            *string `protobuf:"bytes,1,req,name=token" json:"token,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *AuthResponse) Reset()         { *m = AuthResponse{} }
+func (m *AuthResponse) String() string { return proto.CompactTextString(m) }
+func (*AuthResponse) ProtoMessage()    {}
+
+func (m *AuthResponse) GetToken() string {
+	if m != nil && m.Token != nil {
+		return *m.Token
+	}
+	return ""
+}
+
 type Blob struct {
 	Type             *string `protobuf:"bytes,1,req,name=type" json:"type,omitempty"`
 	Data             []byte  `protobuf:"bytes,2,req,name=data" json:"data,omitempty"`
@@ -126,16 +176,19 @@ func (m *Blob) GetData() []byte {
 type Attribute struct {
 	Type             *Attribute_Type `protobuf:"varint,1,req,name=type,enum=passport.Attribute_Type" json:"type,omitempty"`
 	Key              *string         `protobuf:"bytes,2,req,name=key" json:"key,omitempty"`
-	StringValue      *string         `protobuf:"bytes,3,opt,name=string_value" json:"string_value,omitempty"`
-	NumberValue      *float64        `protobuf:"fixed64,4,opt,name=number_value" json:"number_value,omitempty"`
-	BoolValue        *bool           `protobuf:"varint,5,opt,name=bool_value" json:"bool_value,omitempty"`
-	BlobValue        *Blob           `protobuf:"bytes,6,opt,name=blob_value" json:"blob_value,omitempty"`
+	EmbedSigninToken *bool           `protobuf:"varint,3,opt,name=embed_signin_token,def=0" json:"embed_signin_token,omitempty"`
+	StringValue      *string         `protobuf:"bytes,4,opt,name=string_value" json:"string_value,omitempty"`
+	NumberValue      *float64        `protobuf:"fixed64,5,opt,name=number_value" json:"number_value,omitempty"`
+	BoolValue        *bool           `protobuf:"varint,6,opt,name=bool_value" json:"bool_value,omitempty"`
+	BlobValue        *Blob           `protobuf:"bytes,7,opt,name=blob_value" json:"blob_value,omitempty"`
 	XXX_unrecognized []byte          `json:"-"`
 }
 
 func (m *Attribute) Reset()         { *m = Attribute{} }
 func (m *Attribute) String() string { return proto.CompactTextString(m) }
 func (*Attribute) ProtoMessage()    {}
+
+const Default_Attribute_EmbedSigninToken bool = false
 
 func (m *Attribute) GetType() Attribute_Type {
 	if m != nil && m.Type != nil {
@@ -149,6 +202,13 @@ func (m *Attribute) GetKey() string {
 		return *m.Key
 	}
 	return ""
+}
+
+func (m *Attribute) GetEmbedSigninToken() bool {
+	if m != nil && m.EmbedSigninToken != nil {
+		return *m.EmbedSigninToken
+	}
+	return Default_Attribute_EmbedSigninToken
 }
 
 func (m *Attribute) GetStringValue() string {
