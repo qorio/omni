@@ -63,6 +63,13 @@ message Application {
 	required string accountId = 3;  // account key used by the application
 	optional double startTimestamp = 4;
 	repeated Attribute attributes = 5;
+
+	message Log {
+		required double timestamp = 1;
+		required string entry = 2;
+	}
+
+	repeated Log log = 6;
 }
 
 message Account {

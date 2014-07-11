@@ -3,15 +3,21 @@ package passport
 import (
 	"code.google.com/p/goprotobuf/proto"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	omni_auth "github.com/qorio/omni/auth"
 	omni_common "github.com/qorio/omni/common"
 	omni_http "github.com/qorio/omni/http"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
+)
+
+var (
+	ERROR_UNKNOWN_CONTENT_TYPE = errors.New("error-no-content-type")
 )
 
 type Settings struct {
@@ -46,6 +52,10 @@ func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service)
 	// Account management endpoints
 	api.router.HandleFunc("/api/v1/account", api.ApiSaveAccount).
 		Methods("POST").Name("account-save")
+	api.router.HandleFunc("/api/v1/account/{id}/primary", api.ApiSaveAccountPrimary).
+		Methods("POST").Name("account-login-update")
+	api.router.HandleFunc("/api/v1/account/{id}/services", api.ApiSaveAccountService).
+		Methods("POST").Name("account-services-update")
 	api.router.HandleFunc("/api/v1/account/{id}", api.ApiGetAccount).
 		Methods("GET").Name("account-get")
 	api.router.HandleFunc("/api/v1/account/{id}", api.ApiDeleteAccount).
@@ -162,32 +172,29 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 	resp.Write(buff)
 }
 
-func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request) {
-	omni_http.SetCORSHeaders(resp)
-	body, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	contentType := req.Header.Get("Content-Type")
-
-	account := &Account{}
+func unmarshal(contentType string, body io.ReadCloser, typed proto.Message) (err error) {
 	switch {
 	case contentType == "application/json":
-		dec := json.NewDecoder(strings.NewReader(string(body)))
-		if err := dec.Decode(account); err != nil {
-			renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
-			return
-		}
+		dec := json.NewDecoder(body)
+		return dec.Decode(typed)
 	case contentType == "application/protobuf":
-		err := proto.Unmarshal(body, account)
+		buff, err := ioutil.ReadAll(body)
 		if err != nil {
-			renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
-			return
+			return err
 		}
+		return proto.Unmarshal(buff, typed)
 	default:
-		renderJsonError(resp, req, "error-no-content-type", http.StatusBadRequest)
+		return ERROR_UNKNOWN_CONTENT_TYPE
+	}
+}
+
+func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request) {
+	omni_http.SetCORSHeaders(resp)
+
+	account := &Account{}
+	err := unmarshal(req.Header.Get("Content-Type"), req.Body, account)
+	if err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -195,6 +202,112 @@ func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request
 		uuid, _ := omni_common.NewUUID()
 		account.Id = &uuid
 	}
+	if account.GetPrimary().GetId() == "" {
+		uuid, _ := omni_common.NewUUID()
+		account.GetPrimary().Id = &uuid
+	}
+
+	err = this.service.SaveAccount(account)
+	if err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (this *EndPoint) ApiSaveAccountPrimary(resp http.ResponseWriter, req *http.Request) {
+	omni_http.SetCORSHeaders(resp)
+	vars := mux.Vars(req)
+	id := vars["id"]
+
+	login := &Login{}
+	err := unmarshal(req.Header.Get("Content-Type"), req.Body, login)
+	if err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if id == "" {
+		renderJsonError(resp, req, "error-missing-id", http.StatusBadRequest)
+		return
+	}
+
+	account, err := this.service.GetAccount(id)
+
+	switch {
+	case err == ERROR_ACCOUNT_NOT_FOUND:
+		renderJsonError(resp, req, "error-account-not-found", http.StatusNotFound)
+		return
+	case err != nil:
+		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	switch {
+	case login.GetPhone() == "" && login.GetEmail() == "":
+		renderJsonError(resp, req, "error-missing-email-or-phone", http.StatusBadRequest)
+		return
+	case login.GetPassword() == "":
+		renderJsonError(resp, req, "error-missing-password", http.StatusBadRequest)
+		return
+	}
+
+	if login.GetId() == "" {
+		uuid, _ := omni_common.NewUUID()
+		login.Id = &uuid
+	}
+
+	// update the primary
+	account.Primary = login
+
+	err = this.service.SaveAccount(account)
+	if err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (this *EndPoint) ApiSaveAccountService(resp http.ResponseWriter, req *http.Request) {
+	omni_http.SetCORSHeaders(resp)
+	vars := mux.Vars(req)
+	id := vars["id"]
+
+	application := &Application{}
+	err := unmarshal(req.Header.Get("Content-Type"), req.Body, application)
+	if err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if id == "" {
+		renderJsonError(resp, req, "error-missing-id", http.StatusBadRequest)
+		return
+	}
+
+	account, err := this.service.GetAccount(id)
+
+	switch {
+	case err == ERROR_ACCOUNT_NOT_FOUND:
+		renderJsonError(resp, req, "error-account-not-found", http.StatusNotFound)
+		return
+	case err != nil:
+		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// find the application by id and replace it
+	if len(account.GetServices()) == 0 {
+		account.Services = []*Application{
+			application,
+		}
+	} else {
+		for i, app := range account.GetServices() {
+			if app.GetId() == application.GetId() {
+				account.Services[i] = application
+				break
+			}
+		}
+	}
+
 	err = this.service.SaveAccount(account)
 	if err != nil {
 		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
