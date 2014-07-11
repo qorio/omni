@@ -13,6 +13,7 @@ It has these top-level messages:
 	AuthResponse
 	Blob
 	Attribute
+	Location
 	Login
 	Application
 	Account
@@ -105,6 +106,7 @@ type AuthRequest struct {
 	Password         *string `protobuf:"bytes,1,req,name=password" json:"password,omitempty"`
 	Email            *string `protobuf:"bytes,2,opt,name=email" json:"email,omitempty"`
 	Phone            *string `protobuf:"bytes,3,opt,name=phone" json:"phone,omitempty"`
+	Application      *string `protobuf:"bytes,4,opt,name=application" json:"application,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -129,6 +131,13 @@ func (m *AuthRequest) GetEmail() string {
 func (m *AuthRequest) GetPhone() string {
 	if m != nil && m.Phone != nil {
 		return *m.Phone
+	}
+	return ""
+}
+
+func (m *AuthRequest) GetApplication() string {
+	if m != nil && m.Application != nil {
+		return *m.Application
 	}
 	return ""
 }
@@ -239,12 +248,39 @@ func (m *Attribute) GetBlobValue() *Blob {
 	return nil
 }
 
+// To be transformed to GeoJson - ex)  {"location" : [-71.34, 41.12]}
+// See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-geo-point-type.html
+type Location struct {
+	Lon              *float64 `protobuf:"fixed64,1,req,name=lon" json:"lon,omitempty"`
+	Lat              *float64 `protobuf:"fixed64,2,req,name=lat" json:"lat,omitempty"`
+	XXX_unrecognized []byte   `json:"-"`
+}
+
+func (m *Location) Reset()         { *m = Location{} }
+func (m *Location) String() string { return proto.CompactTextString(m) }
+func (*Location) ProtoMessage()    {}
+
+func (m *Location) GetLon() float64 {
+	if m != nil && m.Lon != nil {
+		return *m.Lon
+	}
+	return 0
+}
+
+func (m *Location) GetLat() float64 {
+	if m != nil && m.Lat != nil {
+		return *m.Lat
+	}
+	return 0
+}
+
 type Login struct {
-	Id               *string       `protobuf:"bytes,1,req,name=id" json:"id,omitempty"`
+	Id               *string       `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
 	Status           *Login_Status `protobuf:"varint,2,opt,name=status,enum=passport.Login_Status,def=1" json:"status,omitempty"`
 	Email            *string       `protobuf:"bytes,3,opt,name=email" json:"email,omitempty"`
 	Phone            *string       `protobuf:"bytes,4,opt,name=phone" json:"phone,omitempty"`
 	Password         *string       `protobuf:"bytes,5,req,name=password" json:"password,omitempty"`
+	Location         *Location     `protobuf:"bytes,6,opt,name=location" json:"location,omitempty"`
 	XXX_unrecognized []byte        `json:"-"`
 }
 
@@ -289,11 +325,18 @@ func (m *Login) GetPassword() string {
 	return ""
 }
 
+func (m *Login) GetLocation() *Location {
+	if m != nil {
+		return m.Location
+	}
+	return nil
+}
+
 type Application struct {
 	Id               *string      `protobuf:"bytes,1,req,name=id" json:"id,omitempty"`
 	Status           *string      `protobuf:"bytes,2,req,name=status" json:"status,omitempty"`
 	AccountId        *string      `protobuf:"bytes,3,req,name=accountId" json:"accountId,omitempty"`
-	StartTimestamp   *float64     `protobuf:"fixed64,4,req,name=startTimestamp" json:"startTimestamp,omitempty"`
+	StartTimestamp   *float64     `protobuf:"fixed64,4,opt,name=startTimestamp" json:"startTimestamp,omitempty"`
 	Attributes       []*Attribute `protobuf:"bytes,5,rep,name=attributes" json:"attributes,omitempty"`
 	XXX_unrecognized []byte       `json:"-"`
 }
@@ -338,10 +381,10 @@ func (m *Application) GetAttributes() []*Attribute {
 }
 
 type Account struct {
-	Id               *string        `protobuf:"bytes,1,req,name=id" json:"id,omitempty"`
-	Status           *string        `protobuf:"bytes,2,req,name=status" json:"status,omitempty"`
+	Id               *string        `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	Status           *string        `protobuf:"bytes,2,opt,name=status" json:"status,omitempty"`
 	Primary          *Login         `protobuf:"bytes,3,req,name=primary" json:"primary,omitempty"`
-	CreatedTimestamp *float64       `protobuf:"fixed64,4,req,name=createdTimestamp" json:"createdTimestamp,omitempty"`
+	CreatedTimestamp *float64       `protobuf:"fixed64,4,opt,name=createdTimestamp" json:"createdTimestamp,omitempty"`
 	Services         []*Application `protobuf:"bytes,5,rep,name=services" json:"services,omitempty"`
 	XXX_unrecognized []byte         `json:"-"`
 }

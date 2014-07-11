@@ -1,11 +1,13 @@
 package passport
 
 import (
+	"code.google.com/p/goprotobuf/proto"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	omni_auth "github.com/qorio/omni/auth"
+	omni_common "github.com/qorio/omni/common"
 	omni_http "github.com/qorio/omni/http"
 	"io/ioutil"
 	"net/http"
@@ -37,8 +39,17 @@ func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service)
 		service:  service,
 	}
 
+	// Authentication endpoint
 	api.router.HandleFunc("/api/v1/auth", api.ApiAuthenticate).
 		Methods("POST").Name("auth")
+
+	// Account management endpoints
+	api.router.HandleFunc("/api/v1/account", api.ApiSaveAccount).
+		Methods("POST").Name("account-save")
+	api.router.HandleFunc("/api/v1/account/{id}", api.ApiGetAccount).
+		Methods("GET").Name("account-get")
+	api.router.HandleFunc("/api/v1/account/{id}", api.ApiDeleteAccount).
+		Methods("DELETE").Name("account-delete")
 
 	return api, nil
 }
@@ -83,21 +94,25 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 		return
 	case err != nil:
 		renderJsonError(resp, req, "error-lookup-account", http.StatusInternalServerError)
+		return
 	case err == nil && account.Primary.GetPassword() != request.GetPassword():
 		renderJsonError(resp, req, "error-bad-credentials", http.StatusUnauthorized)
 		return
 	}
 
 	// now look for the application
-	var requestedApplicationId string
-	if this.settings.ResolveApplicationId != nil {
-		requestedApplicationId = this.settings.ResolveApplicationId(req)
-	} else {
-		requestedApplicationId = defaultResolveApplicationId(req)
+	requestedApplicationId := request.GetApplication()
+	if requestedApplicationId == "" {
+		if this.settings.ResolveApplicationId != nil {
+			requestedApplicationId = this.settings.ResolveApplicationId(req)
+		} else {
+			requestedApplicationId = defaultResolveApplicationId(req)
+		}
 	}
 	var application *Application
-	for _, application = range account.GetServices() {
-		if application.GetId() == requestedApplicationId {
+	for _, test := range account.GetServices() {
+		if test.GetId() == requestedApplicationId {
+			application = test
 			break
 		}
 	}
@@ -145,6 +160,97 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 		return
 	}
 	resp.Write(buff)
+}
+
+func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request) {
+	omni_http.SetCORSHeaders(resp)
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	contentType := req.Header.Get("Content-Type")
+
+	account := &Account{}
+	switch {
+	case contentType == "application/json":
+		dec := json.NewDecoder(strings.NewReader(string(body)))
+		if err := dec.Decode(account); err != nil {
+			renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
+			return
+		}
+	case contentType == "application/protobuf":
+		err := proto.Unmarshal(body, account)
+		if err != nil {
+			renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
+			return
+		}
+	default:
+		renderJsonError(resp, req, "error-no-content-type", http.StatusBadRequest)
+		return
+	}
+
+	if account.GetId() == "" {
+		uuid, _ := omni_common.NewUUID()
+		account.Id = &uuid
+	}
+	err = this.service.SaveAccount(account)
+	if err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (this *EndPoint) ApiGetAccount(resp http.ResponseWriter, req *http.Request) {
+	omni_http.SetCORSHeaders(resp)
+	vars := mux.Vars(req)
+	id := vars["id"]
+
+	if id == "" {
+		renderJsonError(resp, req, "error-missing-id", http.StatusBadRequest)
+		return
+	}
+
+	account, err := this.service.GetAccount(id)
+
+	switch {
+	case err == ERROR_ACCOUNT_NOT_FOUND:
+		renderJsonError(resp, req, "error-account-not-found", http.StatusNotFound)
+		return
+	case err != nil:
+		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	buff, err := json.Marshal(account)
+	if err != nil {
+		renderJsonError(resp, req, "malformed-account", http.StatusInternalServerError)
+		return
+	}
+	resp.Write(buff)
+}
+
+func (this *EndPoint) ApiDeleteAccount(resp http.ResponseWriter, req *http.Request) {
+	omni_http.SetCORSHeaders(resp)
+	vars := mux.Vars(req)
+	id := vars["id"]
+
+	if id == "" {
+		renderJsonError(resp, req, "error-missing-id", http.StatusBadRequest)
+		return
+	}
+
+	err := this.service.DeleteAccount(id)
+
+	switch {
+	case err == ERROR_ACCOUNT_NOT_FOUND:
+		renderJsonError(resp, req, "error-account-not-found", http.StatusNotFound)
+		return
+	case err != nil:
+		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func renderJsonError(resp http.ResponseWriter, req *http.Request, message string, code int) (err error) {

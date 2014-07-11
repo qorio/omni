@@ -1,13 +1,12 @@
 package shorty
 
 import (
-	"crypto/rand"
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	omni_auth "github.com/qorio/omni/auth"
+	omni_common "github.com/qorio/omni/common"
 	omni_http "github.com/qorio/omni/http"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -319,20 +318,6 @@ func renderError(resp http.ResponseWriter, req *http.Request, message string, co
 	return
 }
 
-// newUUID generates a random UUID according to RFC 4122
-func newUUID() (string, error) {
-	uuid := make([]byte, 16)
-	n, err := io.ReadFull(rand.Reader, uuid)
-	if n != len(uuid) || err != nil {
-		return "", err
-	}
-	// variant bits; see section 4.1.1
-	uuid[8] = uuid[8]&^0xc0 | 0x80
-	// version 4 (pseudo-random); see section 4.1.3
-	uuid[6] = uuid[6]&^0xf0 | 0x40
-	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:]), nil
-}
-
 // cookied = if the user uuid is cookied
 func processCookies(cookies omni_http.Cookies, shortCode string) (visits int, cookied bool, last, uuid string) {
 	last, _ = cookies.GetPlainString(lastViewedCookieKey)
@@ -347,7 +332,7 @@ func processCookies(cookies omni_http.Cookies, shortCode string) (visits int, co
 
 	uuid, _ = cookies.GetPlainString(uuidCookieKey)
 	if uuid == "" {
-		if uuid, _ = newUUID(); uuid != "" {
+		if uuid, _ = omni_common.NewUUID(); uuid != "" {
 			cookieError = cookies.SetPlainString(uuidCookieKey, uuid)
 			cookied = cookieError == nil
 		}

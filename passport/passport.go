@@ -11,6 +11,9 @@ var (
 type Service interface {
 	FindAccountByEmail(email string) (account *Account, err error)
 	FindAccountByPhone(phone string) (account *Account, err error)
+	SaveAccount(account *Account) (err error)
+	GetAccount(id string) (account *Account, err error)
+	DeleteAccount(id string) (err error)
 }
 
 func NewService(settings Settings) Service {
@@ -27,4 +30,16 @@ func (this *serviceImpl) FindAccountByEmail(email string) (account *Account, err
 
 func (this *serviceImpl) FindAccountByPhone(email string) (account *Account, err error) {
 	return nil, ERROR_ACCOUNT_NOT_FOUND
+}
+
+func (this *serviceImpl) SaveAccount(account *Account) (err error) {
+	return nil
+}
+
+func (this *serviceImpl) GetAccount(id string) (account *Account, err error) {
+	return nil, ERROR_ACCOUNT_NOT_FOUND
+}
+
+func (this *serviceImpl) DeleteAccount(id string) (err error) {
+	return nil
 }

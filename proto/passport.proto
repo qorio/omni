@@ -6,6 +6,7 @@ message AuthRequest {
 	required string password = 1;
 	optional string email = 2;
 	optional string phone = 3;
+	optional string application = 4;
 }
 
 message AuthResponse {
@@ -33,8 +34,16 @@ message Attribute {
 	optional Blob blob_value = 7;
 }
 
+// To be transformed to GeoJson - ex)  {"location" : [-71.34, 41.12]}
+// See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-geo-point-type.html
+message Location {
+    required double lon = 1;
+    required double lat = 2;
+}
+
+
 message Login {
-	required string id = 1;
+	optional string id = 1;
 
 	enum Status {
 	     CREATED = 1;
@@ -45,20 +54,21 @@ message Login {
 	optional string email = 3;
 	optional string phone = 4;
 	required string password = 5;
+	optional Location location = 6;
 }
 
 message Application {
 	required string id = 1;
 	required string status = 2;  // free-form for the application to interpret
 	required string accountId = 3;  // account key used by the application
-	required double startTimestamp = 4;
+	optional double startTimestamp = 4;
 	repeated Attribute attributes = 5;
 }
 
 message Account {
-	required string id = 1;
-	required string status = 2;
+	optional string id = 1;
+	optional string status = 2;
 	required Login primary = 3;
-	required double createdTimestamp = 4; // unix seconds
+	optional double createdTimestamp = 4; // unix seconds
 	repeated Application services = 5;
 }

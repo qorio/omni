@@ -5,6 +5,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	omni_auth "github.com/qorio/omni/auth"
+	omni_common "github.com/qorio/omni/common"
 	omni_http "github.com/qorio/omni/http"
 	"io"
 	"io/ioutil"
@@ -12,7 +13,7 @@ import (
 	"strings"
 )
 
-var accountIdKey string = "accountId"
+var accountIdKey string = "@accountId"
 
 func (this *ShortyEndPoint) ApiAddCampaignHandler(credential *omni_auth.Info, resp http.ResponseWriter, req *http.Request) {
 	omni_http.SetCORSHeaders(resp)
@@ -30,7 +31,7 @@ func (this *ShortyEndPoint) ApiAddCampaignHandler(credential *omni_auth.Info, re
 	}
 
 	if campaign.Id == "" {
-		uuidStr, err := newUUID()
+		uuidStr, err := omni_common.NewUUID()
 		if err != nil {
 			renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
 			return
