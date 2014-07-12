@@ -214,6 +214,22 @@ func (message *Application) to_protobuf(t *testing.T) []byte {
 	return data
 }
 
+func (message *Attribute) to_json(t *testing.T) []byte {
+	data, err := json.Marshal(message)
+	if err != nil {
+		t.Error(err)
+	}
+	return data
+}
+
+func (message *Attribute) to_protobuf(t *testing.T) []byte {
+	data, err := proto.Marshal(message)
+	if err != nil {
+		t.Error(err)
+	}
+	return data
+}
+
 func TestNotAMember(t *testing.T) {
 
 	signKey := []byte("test")
@@ -735,6 +751,107 @@ func TestSaveAccountService(t *testing.T) {
 		}
 
 		assert.Equal(t, "value-1-changed", account.GetServices()[0].GetAttributes()[0].GetStringValue())
+	})
+
+}
+
+func TestSaveAccountServiceAttribute(t *testing.T) {
+
+	signKey := []byte("test")
+	settings := Settings{}
+
+	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
+	service := &mock{}
+
+	endpoint, err := NewApiEndPoint(settings, auth, service)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// initially no services
+	input := &Account{
+		Primary: &Login{},
+	}
+
+	embed := true
+	attribute_type := Attribute_STRING
+
+	input.Id = ptr("account-1")
+	input.Primary.Password = ptr("password-1")
+
+	application := &Application{Attributes: []*Attribute{&Attribute{}}}
+	application.Id = ptr("app-1")
+	application.Status = ptr("verified")
+	application.AccountId = ptr("app-account-1")
+	application.Attributes[0].Key = ptr("key-1")
+	application.Attributes[0].Type = &attribute_type
+	application.Attributes[0].EmbedSigninToken = &embed
+	application.Attributes[0].StringValue = ptr("value-1")
+
+	service.getAccount = func(id string) (account *Account, err error) {
+		assert.Equal(t, input.GetId(), id)
+		t.Log("account id", id)
+		return input, nil
+	}
+
+	service.saveAccount = func(account *Account) (err error) {
+		assert.Equal(t, input.GetId(), account.GetId())
+		assert.Equal(t, 1, len(account.GetServices()))
+		assert.Equal(t, application, account.GetServices()[0])
+		return nil
+	}
+
+	t.Log("using application/json serialization")
+	testflight.WithServer(endpoint, func(r *testflight.Requester) {
+		response := r.Post("/api/v1/account/"+input.GetId()+"/services", "application/json", string(application.to_json(t)))
+		t.Log("Got response", response.Body)
+		assert.Equal(t, 200, response.StatusCode)
+	})
+
+	t.Log("using application/protobuf serialization")
+	attribute := application.Attributes[0]
+	attribute.StringValue = ptr("value-1-changed")
+	service.saveAccount = func(account *Account) (err error) {
+		assert.Equal(t, input.GetId(), account.GetId())
+		assert.Equal(t, 1, len(account.GetServices()))
+		assert.Equal(t, attribute.GetStringValue(), account.GetServices()[0].GetAttributes()[0].GetStringValue())
+		return nil
+	}
+
+	testflight.WithServer(endpoint, func(r *testflight.Requester) {
+		response := r.Post("/api/v1/account/"+input.GetId()+"/service/"+application.GetId()+"/attributes", "application/protobuf",
+			string(attribute.to_protobuf(t)))
+		t.Log("Got response", response.Body)
+		assert.Equal(t, 200, response.StatusCode)
+	})
+
+	// add a new attribute
+	attribute2 := *attribute
+	attribute2.Key = ptr("new-key")
+	attribute2.StringValue = ptr("new-value")
+
+	testflight.WithServer(endpoint, func(r *testflight.Requester) {
+		response := r.Post("/api/v1/account/"+input.GetId()+"/service/"+application.GetId()+"/attributes", "application/protobuf",
+			string(attribute2.to_protobuf(t)))
+		t.Log("Got response", response.Body)
+		assert.Equal(t, 200, response.StatusCode)
+	})
+
+	// Now do a get
+	testflight.WithServer(endpoint, func(r *testflight.Requester) {
+		response := r.Get("/api/v1/account/" + input.GetId())
+
+		t.Log("Got response", response.Body)
+		assert.Equal(t, 200, response.StatusCode)
+
+		account := &Account{}
+		dec := json.NewDecoder(strings.NewReader(response.Body))
+		if err := dec.Decode(account); err != nil {
+			t.Error(err)
+		}
+
+		assert.Equal(t, "value-1-changed", account.GetServices()[0].GetAttributes()[0].GetStringValue())
+		assert.Equal(t, 2, len(account.GetServices()[0].GetAttributes()))
 	})
 
 }

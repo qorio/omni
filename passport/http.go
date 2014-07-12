@@ -45,6 +45,8 @@ func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service)
 		Methods("POST").Name("account-login-update")
 	api.router.HandleFunc("/api/v1/account/{id}/services", api.ApiSaveAccountService).
 		Methods("POST").Name("account-services-update")
+	api.router.HandleFunc("/api/v1/account/{id}/service/{applicationId}/attributes", api.ApiSaveAccountServiceAttribute).
+		Methods("POST").Name("account-services-attribute-update")
 	api.router.HandleFunc("/api/v1/account/{id}", api.ApiGetAccount).
 		Methods("GET").Name("account-get")
 	api.router.HandleFunc("/api/v1/account/{id}", api.ApiDeleteAccount).
@@ -290,11 +292,84 @@ func (this *EndPoint) ApiSaveAccountService(resp http.ResponseWriter, req *http.
 			application,
 		}
 	} else {
+		match := false
 		for i, app := range account.GetServices() {
 			if app.GetId() == application.GetId() {
 				account.Services[i] = application
+				match = true
 				break
 			}
+		}
+		if !match {
+			account.Services = append(account.Services, application)
+		}
+	}
+
+	err = this.service.SaveAccount(account)
+	if err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (this *EndPoint) ApiSaveAccountServiceAttribute(resp http.ResponseWriter, req *http.Request) {
+	omni_http.SetCORSHeaders(resp)
+	vars := mux.Vars(req)
+	id := vars["id"]
+	applicationId := vars["applicationId"]
+
+	attribute := &Attribute{}
+	err := unmarshal(req.Header.Get("Content-Type"), req.Body, attribute)
+	if err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if id == "" {
+		renderJsonError(resp, req, "error-missing-id", http.StatusBadRequest)
+		return
+	}
+
+	account, err := this.service.GetAccount(id)
+
+	switch {
+	case err == ERROR_NOT_FOUND:
+		renderJsonError(resp, req, "error-account-not-found", http.StatusNotFound)
+		return
+	case err != nil:
+		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// find the application by id and update its attributes
+	var application *Application
+	for _, app := range account.GetServices() {
+		if app.GetId() == applicationId {
+			application = app
+			break
+		}
+	}
+
+	if application == nil {
+		renderJsonError(resp, req, "error-application-id-not-found", http.StatusBadRequest)
+		return
+	}
+
+	if len(application.GetAttributes()) == 0 {
+		application.Attributes = []*Attribute{
+			attribute,
+		}
+	} else {
+		match := false
+		for i, attr := range application.GetAttributes() {
+			if attr.GetKey() == attribute.GetKey() {
+				application.Attributes[i] = attribute
+				match = true
+				break
+			}
+		}
+		if !match {
+			application.Attributes = append(application.Attributes, attribute)
 		}
 	}
 

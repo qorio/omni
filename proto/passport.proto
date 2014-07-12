@@ -60,13 +60,6 @@ message Application {
 	repeated string permissions = 4; // capability strings
 	optional double startTimestamp = 5;
 	repeated Attribute attributes = 6;
-
-	message Log {
-		required double timestamp = 1;
-		required string entry = 2;
-	}
-
-	repeated Log log = 7;
 }
 
 message Account {
@@ -75,4 +68,11 @@ message Account {
 	required Login primary = 3;
 	optional double createdTimestamp = 4; // unix seconds
 	repeated Application services = 5;
+
+
+	message Log {
+		required double timestamp = 1;
+		required string entry = 2;
+	}
+	repeated Log log = 6;
 }

@@ -308,14 +308,13 @@ func (m *Login) GetLocation() []float64 {
 }
 
 type Application struct {
-	Id               *string            `protobuf:"bytes,1,req,name=id" json:"id,omitempty"`
-	Status           *string            `protobuf:"bytes,2,req,name=status" json:"status,omitempty"`
-	AccountId        *string            `protobuf:"bytes,3,req,name=accountId" json:"accountId,omitempty"`
-	Permissions      []string           `protobuf:"bytes,4,rep,name=permissions" json:"permissions,omitempty"`
-	StartTimestamp   *float64           `protobuf:"fixed64,5,opt,name=startTimestamp" json:"startTimestamp,omitempty"`
-	Attributes       []*Attribute       `protobuf:"bytes,6,rep,name=attributes" json:"attributes,omitempty"`
-	Log              []*Application_Log `protobuf:"bytes,7,rep,name=log" json:"log,omitempty"`
-	XXX_unrecognized []byte             `json:"-"`
+	Id               *string      `protobuf:"bytes,1,req,name=id" json:"id,omitempty"`
+	Status           *string      `protobuf:"bytes,2,req,name=status" json:"status,omitempty"`
+	AccountId        *string      `protobuf:"bytes,3,req,name=accountId" json:"accountId,omitempty"`
+	Permissions      []string     `protobuf:"bytes,4,rep,name=permissions" json:"permissions,omitempty"`
+	StartTimestamp   *float64     `protobuf:"fixed64,5,opt,name=startTimestamp" json:"startTimestamp,omitempty"`
+	Attributes       []*Attribute `protobuf:"bytes,6,rep,name=attributes" json:"attributes,omitempty"`
+	XXX_unrecognized []byte       `json:"-"`
 }
 
 func (m *Application) Reset()         { *m = Application{} }
@@ -364,43 +363,13 @@ func (m *Application) GetAttributes() []*Attribute {
 	return nil
 }
 
-func (m *Application) GetLog() []*Application_Log {
-	if m != nil {
-		return m.Log
-	}
-	return nil
-}
-
-type Application_Log struct {
-	Timestamp        *float64 `protobuf:"fixed64,1,req,name=timestamp" json:"timestamp,omitempty"`
-	Entry            *string  `protobuf:"bytes,2,req,name=entry" json:"entry,omitempty"`
-	XXX_unrecognized []byte   `json:"-"`
-}
-
-func (m *Application_Log) Reset()         { *m = Application_Log{} }
-func (m *Application_Log) String() string { return proto.CompactTextString(m) }
-func (*Application_Log) ProtoMessage()    {}
-
-func (m *Application_Log) GetTimestamp() float64 {
-	if m != nil && m.Timestamp != nil {
-		return *m.Timestamp
-	}
-	return 0
-}
-
-func (m *Application_Log) GetEntry() string {
-	if m != nil && m.Entry != nil {
-		return *m.Entry
-	}
-	return ""
-}
-
 type Account struct {
 	Id               *string        `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
 	Status           *string        `protobuf:"bytes,2,opt,name=status" json:"status,omitempty"`
 	Primary          *Login         `protobuf:"bytes,3,req,name=primary" json:"primary,omitempty"`
 	CreatedTimestamp *float64       `protobuf:"fixed64,4,opt,name=createdTimestamp" json:"createdTimestamp,omitempty"`
 	Services         []*Application `protobuf:"bytes,5,rep,name=services" json:"services,omitempty"`
+	Log              []*Account_Log `protobuf:"bytes,6,rep,name=log" json:"log,omitempty"`
 	XXX_unrecognized []byte         `json:"-"`
 }
 
@@ -441,6 +410,37 @@ func (m *Account) GetServices() []*Application {
 		return m.Services
 	}
 	return nil
+}
+
+func (m *Account) GetLog() []*Account_Log {
+	if m != nil {
+		return m.Log
+	}
+	return nil
+}
+
+type Account_Log struct {
+	Timestamp        *float64 `protobuf:"fixed64,1,req,name=timestamp" json:"timestamp,omitempty"`
+	Entry            *string  `protobuf:"bytes,2,req,name=entry" json:"entry,omitempty"`
+	XXX_unrecognized []byte   `json:"-"`
+}
+
+func (m *Account_Log) Reset()         { *m = Account_Log{} }
+func (m *Account_Log) String() string { return proto.CompactTextString(m) }
+func (*Account_Log) ProtoMessage()    {}
+
+func (m *Account_Log) GetTimestamp() float64 {
+	if m != nil && m.Timestamp != nil {
+		return *m.Timestamp
+	}
+	return 0
+}
+
+func (m *Account_Log) GetEntry() string {
+	if m != nil && m.Entry != nil {
+		return *m.Entry
+	}
+	return ""
 }
 
 func init() {
