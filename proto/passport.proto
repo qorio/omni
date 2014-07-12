@@ -34,13 +34,6 @@ message Attribute {
 	optional Blob blob_value = 7;
 }
 
-// To be transformed to GeoJson - ex)  {"location" : [-71.34, 41.12]}
-// See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-geo-point-type.html
-message Location {
-    required double lon = 1;
-    required double lat = 2;
-}
-
 
 message Login {
 	optional string id = 1;
@@ -54,7 +47,10 @@ message Login {
 	optional string email = 3;
 	optional string phone = 4;
 	required string password = 5;
-	optional Location location = 6;
+
+	// Loccation in GeoJson - ex)  {"location" : [-71.34, 41.12]} -- [lon, lat]
+	// See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-geo-point-type.html
+	repeated double location = 6;
 }
 
 message Application {

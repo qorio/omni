@@ -43,6 +43,11 @@ func (this *mock) GetAccount(id string) (account *Account, err error) {
 func (this *mock) DeleteAccount(id string) (err error) {
 	return this.deleteAccount(id)
 }
+
+func (this *mock) Close() {
+	return
+}
+
 func ptr(s string) *string {
 	return &s
 }
@@ -68,7 +73,7 @@ func TestAuthNotFound(t *testing.T) {
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
 	service := &mock{
 		findByEmail: func(email string) (account *Account, err error) {
-			return nil, ERROR_ACCOUNT_NOT_FOUND
+			return nil, ERROR_NOT_FOUND
 		},
 		findByPhone: func(phone string) (account *Account, err error) {
 			t.Error("testing look up by email; this shouldn't be called")

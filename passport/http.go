@@ -3,7 +3,6 @@ package passport
 import (
 	"code.google.com/p/goprotobuf/proto"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -15,16 +14,6 @@ import (
 	"net/http"
 	"strings"
 )
-
-var (
-	ERROR_UNKNOWN_CONTENT_TYPE = errors.New("error-no-content-type")
-)
-
-type Settings struct {
-	// Function that takes the http request and determine the application id
-	// The default is to take the request's URL host, e.g. qor.io or shorty.qor.io
-	ResolveApplicationId func(req *http.Request) string
-}
 
 type EndPoint struct {
 	settings Settings
@@ -99,7 +88,7 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 	}
 
 	switch {
-	case err == ERROR_ACCOUNT_NOT_FOUND:
+	case err == ERROR_NOT_FOUND:
 		renderJsonError(resp, req, "error-account-not-found", http.StatusUnauthorized)
 		return
 	case err != nil:
@@ -234,7 +223,7 @@ func (this *EndPoint) ApiSaveAccountPrimary(resp http.ResponseWriter, req *http.
 	account, err := this.service.GetAccount(id)
 
 	switch {
-	case err == ERROR_ACCOUNT_NOT_FOUND:
+	case err == ERROR_NOT_FOUND:
 		renderJsonError(resp, req, "error-account-not-found", http.StatusNotFound)
 		return
 	case err != nil:
@@ -286,7 +275,7 @@ func (this *EndPoint) ApiSaveAccountService(resp http.ResponseWriter, req *http.
 	account, err := this.service.GetAccount(id)
 
 	switch {
-	case err == ERROR_ACCOUNT_NOT_FOUND:
+	case err == ERROR_NOT_FOUND:
 		renderJsonError(resp, req, "error-account-not-found", http.StatusNotFound)
 		return
 	case err != nil:
@@ -328,7 +317,7 @@ func (this *EndPoint) ApiGetAccount(resp http.ResponseWriter, req *http.Request)
 	account, err := this.service.GetAccount(id)
 
 	switch {
-	case err == ERROR_ACCOUNT_NOT_FOUND:
+	case err == ERROR_NOT_FOUND:
 		renderJsonError(resp, req, "error-account-not-found", http.StatusNotFound)
 		return
 	case err != nil:
@@ -357,7 +346,7 @@ func (this *EndPoint) ApiDeleteAccount(resp http.ResponseWriter, req *http.Reque
 	err := this.service.DeleteAccount(id)
 
 	switch {
-	case err == ERROR_ACCOUNT_NOT_FOUND:
+	case err == ERROR_NOT_FOUND:
 		renderJsonError(resp, req, "error-account-not-found", http.StatusNotFound)
 		return
 	case err != nil:

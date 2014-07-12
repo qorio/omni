@@ -1,45 +1,135 @@
 package passport
 
 import (
-	"errors"
+	_ "github.com/golang/glog"
+	omni_common "github.com/qorio/omni/common"
+	"labix.org/v2/mgo"
+	"labix.org/v2/mgo/bson"
+	"strings"
 )
-
-var (
-	ERROR_ACCOUNT_NOT_FOUND = errors.New("account-not-found")
-)
-
-type Service interface {
-	FindAccountByEmail(email string) (account *Account, err error)
-	FindAccountByPhone(phone string) (account *Account, err error)
-	SaveAccount(account *Account) (err error)
-	GetAccount(id string) (account *Account, err error)
-	DeleteAccount(id string) (err error)
-}
-
-func NewService(settings Settings) Service {
-	return &serviceImpl{settings: settings}
-}
 
 type serviceImpl struct {
-	settings Settings
+	settings   Settings
+	db         *mgo.Database
+	session    *mgo.Session
+	collection *mgo.Collection
+}
+
+func NewService(settings Settings) (Service, error) {
+
+	impl := &serviceImpl{
+		settings: settings,
+	}
+
+	var err error
+	impl.session, err = mgo.Dial(strings.Join(settings.Mongo.Hosts, ","))
+	if err != nil {
+		return nil, err
+	}
+	// Optional. Switch the session to a monotonic behavior.
+	impl.session.SetMode(mgo.Monotonic, true)
+
+	impl.db = impl.session.DB(settings.Mongo.Db)
+	impl.collection = impl.db.C("accounts")
+	// 2d spatial index on primary login's location
+	impl.collection.EnsureIndex(mgo.Index{
+		Key:      []string{"primary.location"},
+		Unique:   false,
+		DropDups: false,
+		Name:     "2dsphere",
+	})
+
+	impl.collection.EnsureIndex(mgo.Index{
+		Key:      []string{"primary.phone"},
+		Unique:   true,
+		DropDups: true,
+		Name:     "primary.phone",
+	})
+
+	impl.collection.EnsureIndex(mgo.Index{
+		Key:      []string{"primary.email"},
+		Unique:   true,
+		DropDups: true,
+		Name:     "primary.email",
+	})
+	return impl, nil
 }
 
 func (this *serviceImpl) FindAccountByEmail(email string) (account *Account, err error) {
-	return nil, ERROR_ACCOUNT_NOT_FOUND
+	result := Account{}
+	err = this.collection.Find(bson.M{"primary.email": email}).One(&result)
+	switch {
+	case err == mgo.ErrNotFound:
+		return nil, ERROR_NOT_FOUND
+	case err != nil:
+		return nil, err
+	}
+	return &result, nil
 }
 
-func (this *serviceImpl) FindAccountByPhone(email string) (account *Account, err error) {
-	return nil, ERROR_ACCOUNT_NOT_FOUND
+func (this *serviceImpl) FindAccountByPhone(phone string) (account *Account, err error) {
+	result := Account{}
+	err = this.collection.Find(bson.M{"primary.phone": phone}).One(&result)
+	switch {
+	case err == mgo.ErrNotFound:
+		return nil, ERROR_NOT_FOUND
+	case err != nil:
+		return nil, err
+	}
+	return &result, nil
 }
 
 func (this *serviceImpl) SaveAccount(account *Account) (err error) {
-	return nil
+	uuid, _ := omni_common.NewUUID()
+	if account.GetId() == "" {
+		account.Id = &uuid
+	}
+	if account.GetPrimary().GetId() == "" {
+		uuid2, _ := omni_common.NewUUID()
+		account.GetPrimary().Id = &uuid2
+	}
+	// To work around the problem with Go's default "" value for string causing problem
+	// with unique indexes (email, phone), we assign some uuid to fill up the fields so
+	// that the fields that have unique indexes are never empty strings
+	if account.GetPrimary().GetPhone() == "" {
+		uuid3, _ := omni_common.NewUUID()
+		account.GetPrimary().Phone = &uuid3
+	}
+	if account.GetPrimary().GetEmail() == "" {
+		uuid4, _ := omni_common.NewUUID()
+		account.GetPrimary().Email = &uuid4
+	}
+
+	changeInfo, err := this.collection.Upsert(bson.M{"id": account.GetId()}, account)
+	if changeInfo != nil && changeInfo.Updated >= 0 {
+		return nil
+	}
+	return err
 }
 
 func (this *serviceImpl) GetAccount(id string) (account *Account, err error) {
-	return nil, ERROR_ACCOUNT_NOT_FOUND
+	result := Account{}
+	err = this.collection.Find(bson.M{"id": id}).One(&result)
+	switch {
+	case err == mgo.ErrNotFound:
+		return nil, ERROR_NOT_FOUND
+	case err != nil:
+		return nil, err
+	}
+	return &result, nil
 }
 
 func (this *serviceImpl) DeleteAccount(id string) (err error) {
+	err = this.collection.Remove(bson.M{"id": id})
+	switch {
+	case err == mgo.ErrNotFound:
+		return nil
+	case err != nil:
+		return err
+	}
 	return nil
+}
+
+func (this *serviceImpl) Close() {
+	this.session.Close()
 }
