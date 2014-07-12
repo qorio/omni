@@ -57,15 +57,16 @@ message Application {
 	required string id = 1;
 	required string status = 2;  // free-form for the application to interpret
 	required string accountId = 3;  // account key used by the application
-	optional double startTimestamp = 4;
-	repeated Attribute attributes = 5;
+	repeated string permissions = 4; // capability strings
+	optional double startTimestamp = 5;
+	repeated Attribute attributes = 6;
 
 	message Log {
 		required double timestamp = 1;
 		required string entry = 2;
 	}
 
-	repeated Log log = 6;
+	repeated Log log = 7;
 }
 
 message Account {

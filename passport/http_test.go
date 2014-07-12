@@ -286,6 +286,10 @@ func TestFoundAccountAndApplication(t *testing.T) {
 					Id:        &applicationId,
 					Status:    &applicationStatus,
 					AccountId: &applicationAccountId,
+					Permissions: []string{
+						"admin",
+						"readwrite",
+					},
 					Attributes: []*Attribute{
 						&Attribute{
 							Type:             &attributeType1,
@@ -321,6 +325,7 @@ func TestFoundAccountAndApplication(t *testing.T) {
 		}
 		assert.Equal(t, applicationStatus, token.GetString("@status"))
 		assert.Equal(t, applicationAccountId, token.GetString("@accountId"))
+		assert.Equal(t, "admin,readwrite", token.GetString("@permissions"))
 		assert.Equal(t, value1, token.GetString(attribute1))
 	})
 

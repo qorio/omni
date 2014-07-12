@@ -1,7 +1,7 @@
 package passport
 
 import (
-	_ "github.com/golang/glog"
+	"github.com/golang/glog"
 	omni_common "github.com/qorio/omni/common"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -52,6 +52,8 @@ func NewService(settings Settings) (Service, error) {
 		DropDups: true,
 		Name:     "primary.email",
 	})
+
+	glog.Infoln("Passport MongoDb backend initialized:", impl)
 	return impl, nil
 }
 
@@ -132,4 +134,5 @@ func (this *serviceImpl) DeleteAccount(id string) (err error) {
 
 func (this *serviceImpl) Close() {
 	this.session.Close()
+	glog.Infoln("Session closed", this.session)
 }

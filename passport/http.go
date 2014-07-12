@@ -125,7 +125,8 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 	token := this.auth.NewToken()
 	token.Add("@id", application.GetId()).
 		Add("@status", application.GetStatus()).
-		Add("@accountId", application.GetAccountId())
+		Add("@accountId", application.GetAccountId()).
+		Add("@permissions", strings.Join(application.GetPermissions(), ","))
 
 	for _, attribute := range application.GetAttributes() {
 		if attribute.GetEmbedSigninToken() {
