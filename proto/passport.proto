@@ -1,17 +1,7 @@
 package passport;
 
 // Generalized account / user schema
-
-message AuthRequest {
-	required string password = 1;
-	optional string email = 2;
-	optional string phone = 3;
-	optional string application = 4;
-}
-
-message AuthResponse {
-	required string token = 1;
-}
+import "passport_client.proto";
 
 message Blob {
 	required string type = 1;
@@ -32,25 +22,6 @@ message Attribute {
 	optional double number_value = 5;
 	optional bool bool_value = 6;
 	optional Blob blob_value = 7;
-}
-
-
-message Login {
-	optional string id = 1;
-
-	enum Status {
-	     CREATED = 1;
-	     VERIFIED = 2;
-	     BLOCKED = 3;
-	}
-	optional Status status = 2 [default = CREATED];
-	optional string email = 3;
-	optional string phone = 4;
-	required string password = 5;
-
-	// Loccation in GeoJson - ex)  {"location" : [-71.34, 41.12]} -- [lon, lat]
-	// See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-geo-point-type.html
-	repeated double location = 6;
 }
 
 message Application {
