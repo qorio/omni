@@ -63,15 +63,9 @@ func (this *EndPoint) ServeHTTP(resp http.ResponseWriter, request *http.Request)
 func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Request) {
 	omni_http.SetCORSHeaders(resp)
 
-	body, err := ioutil.ReadAll(req.Body)
+	request := &AuthRequest{}
+	err := unmarshal(req.Header.Get("Content-Type"), req.Body, request)
 	if err != nil {
-		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	var request AuthRequest
-	dec := json.NewDecoder(strings.NewReader(string(body)))
-	if err := dec.Decode(&request); err != nil {
 		renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -156,28 +150,12 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 		Token: &tokenString,
 	}
 
-	buff, err := json.Marshal(authResponse)
+	buff, err := marshal(req.Header.Get("Content-Type"), authResponse)
 	if err != nil {
 		renderJsonError(resp, req, "malformed-response", http.StatusInternalServerError)
 		return
 	}
 	resp.Write(buff)
-}
-
-func unmarshal(contentType string, body io.ReadCloser, typed proto.Message) (err error) {
-	switch {
-	case contentType == "application/json":
-		dec := json.NewDecoder(body)
-		return dec.Decode(typed)
-	case contentType == "application/protobuf":
-		buff, err := ioutil.ReadAll(body)
-		if err != nil {
-			return err
-		}
-		return proto.Unmarshal(buff, typed)
-	default:
-		return ERROR_UNKNOWN_CONTENT_TYPE
-	}
 }
 
 func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request) {
@@ -401,7 +379,7 @@ func (this *EndPoint) ApiGetAccount(resp http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	buff, err := json.Marshal(account)
+	buff, err := marshal(req.Header.Get("Content-Type"), account)
 	if err != nil {
 		renderJsonError(resp, req, "malformed-account", http.StatusInternalServerError)
 		return
@@ -429,6 +407,34 @@ func (this *EndPoint) ApiDeleteAccount(resp http.ResponseWriter, req *http.Reque
 		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func unmarshal(contentType string, body io.ReadCloser, typed proto.Message) (err error) {
+	switch {
+	case contentType == "application/json" || contentType == "":
+		dec := json.NewDecoder(body)
+		return dec.Decode(typed)
+	case contentType == "application/protobuf":
+		buff, err := ioutil.ReadAll(body)
+		if err != nil {
+			return err
+		}
+		return proto.Unmarshal(buff, typed)
+	default:
+		return ERROR_UNKNOWN_CONTENT_TYPE
+	}
+}
+
+func marshal(contentType string, typed proto.Message) (buff []byte, err error) {
+	switch {
+	case contentType == "application/json" || contentType == "":
+		buff, err = json.Marshal(typed)
+	case contentType == "application/protobuf":
+		buff, err = proto.Marshal(typed)
+	default:
+		err = ERROR_UNKNOWN_CONTENT_TYPE
+	}
+	return
 }
 
 func renderJsonError(resp http.ResponseWriter, req *http.Request, message string, code int) (err error) {

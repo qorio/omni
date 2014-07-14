@@ -99,7 +99,7 @@ func TestAuthNotFound(t *testing.T) {
 
 	// Account does not exist
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/auth", "applicaton/json", string(data))
+		response := r.Post("/api/v1/auth", "application/json", string(data))
 
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 401, response.StatusCode)
@@ -112,7 +112,7 @@ func TestAuthNotFound(t *testing.T) {
 		return &Account{Primary: &Login{Password: &password}}, nil
 	}
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/auth", "applicaton/json", string(data))
+		response := r.Post("/api/v1/auth", "application/json", string(data))
 
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 401, response.StatusCode)
@@ -135,7 +135,7 @@ func TestAuthNotFound(t *testing.T) {
 		return &Account{Primary: &Login{Password: &password}}, nil
 	}
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/auth", "applicaton/json", string(data))
+		response := r.Post("/api/v1/auth", "application/json", string(data))
 
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 401, response.StatusCode)
@@ -150,7 +150,7 @@ func TestAuthNotFound(t *testing.T) {
 		t.Error(err)
 	}
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/auth", "applicaton/json", string(data))
+		response := r.Post("/api/v1/auth", "application/json", string(data))
 
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 400, response.StatusCode)
@@ -160,6 +160,14 @@ func TestAuthNotFound(t *testing.T) {
 
 func (authRequest *AuthRequest) to_json(t *testing.T) []byte {
 	data, err := json.Marshal(authRequest)
+	if err != nil {
+		t.Error(err)
+	}
+	return data
+}
+
+func (message *AuthRequest) to_protobuf(t *testing.T) []byte {
+	data, err := proto.Marshal(message)
 	if err != nil {
 		t.Error(err)
 	}
@@ -254,7 +262,7 @@ func TestNotAMember(t *testing.T) {
 	}
 
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/auth", "applicaton/json", string(ar.to_json(t)))
+		response := r.Post("/api/v1/auth", "application/json", string(ar.to_json(t)))
 
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 401, response.StatusCode)
@@ -320,7 +328,8 @@ func TestFoundAccountAndApplication(t *testing.T) {
 	}
 
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/auth", "applicaton/json", string(ar.to_json(t)))
+		t.Log("Testing authRequest in json")
+		response := r.Post("/api/v1/auth", "application/json", string(ar.to_json(t)))
 
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 200, response.StatusCode)
@@ -329,6 +338,31 @@ func TestFoundAccountAndApplication(t *testing.T) {
 		authResponse := AuthResponse{}
 
 		if err := dec.Decode(&authResponse); err != nil {
+			t.Error(err)
+		}
+
+		assert.NotEqual(t, "", authResponse.Token)
+
+		// decode the token
+		token, err := auth.Parse(*authResponse.Token)
+		if err != nil {
+			t.Error(err)
+		}
+		assert.Equal(t, applicationStatus, token.GetString("@status"))
+		assert.Equal(t, applicationAccountId, token.GetString("@accountId"))
+		assert.Equal(t, "admin,readwrite", token.GetString("@permissions"))
+		assert.Equal(t, value1, token.GetString(attribute1))
+	})
+
+	testflight.WithServer(endpoint, func(r *testflight.Requester) {
+		t.Log("Testing authRequest in protobuf")
+		response := r.Post("/api/v1/auth", "application/protobuf", string(ar.to_protobuf(t)))
+
+		t.Log("Got response", response.Body)
+		assert.Equal(t, 200, response.StatusCode)
+
+		authResponse := AuthResponse{}
+		if err := proto.Unmarshal(response.RawBody, &authResponse); err != nil {
 			t.Error(err)
 		}
 
@@ -355,7 +389,7 @@ func TestFoundAccountAndApplication(t *testing.T) {
 		Password: ptr("test"),
 	}
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/auth", "applicaton/json", string(ar.to_json(t)))
+		response := r.Post("/api/v1/auth", "application/json", string(ar.to_json(t)))
 
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 200, response.StatusCode)
@@ -434,7 +468,7 @@ func TestFoundAccountButNotMatchApplication(t *testing.T) {
 	}
 
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/auth", "applicaton/json", string(ar.to_json(t)))
+		response := r.Post("/api/v1/auth", "application/json", string(ar.to_json(t)))
 
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 401, response.StatusCode)
