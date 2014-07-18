@@ -154,7 +154,7 @@ func TestAuthNotFound(t *testing.T) {
 
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 400, response.StatusCode)
-		check_error_response_reason(t, response.Body, "error-no-phone-or-email")
+		check_error_response_reason(t, response.Body, "error-missing-input")
 	})
 }
 
@@ -594,7 +594,9 @@ func TestSaveAccount(t *testing.T) {
 	attribute1, value1 := "attribute1", "value1"
 
 	input := &Account{
-		Primary: &Login{Password: &password},
+		Primary: &Login{
+			Email:    ptr("test@foo.com"),
+			Password: &password},
 		Services: []*Application{
 			&Application{
 				Id:        &applicationId,
@@ -612,7 +614,60 @@ func TestSaveAccount(t *testing.T) {
 		},
 	}
 
+	service.findByEmail = func(email string) (*Account, error) {
+		return nil, ERROR_NOT_FOUND
+	}
 	service.saveAccount = func(account *Account) (err error) {
+		assert.NotEqual(t, "", account.GetId())
+		t.Log("account id", account.GetId())
+		return nil
+	}
+
+	t.Log("using application/json serialization")
+	testflight.WithServer(endpoint, func(r *testflight.Requester) {
+		response := r.Post("/api/v1/account", "application/json", string(input.to_json(t)))
+		t.Log("Got response", response)
+		assert.Equal(t, 200, response.StatusCode)
+	})
+
+	t.Log("using application/protobuf serialization")
+	testflight.WithServer(endpoint, func(r *testflight.Requester) {
+		response := r.Post("/api/v1/account", "application/protobuf", string(input.to_protobuf(t)))
+		assert.Equal(t, 200, response.StatusCode)
+	})
+
+}
+
+func TestNewAccount(t *testing.T) {
+
+	signKey := []byte("test")
+	settings := Settings{}
+
+	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
+	service := &mock{}
+
+	endpoint, err := NewApiEndPoint(settings, auth, service)
+	if err != nil {
+		t.Error(err)
+	}
+
+	input := &Account{
+		Primary: &Login{
+			Password: ptr("password"),
+			Phone:    ptr("111-222-9999"),
+		},
+	}
+
+	var state struct {
+		CalledFindByPhone bool
+		CalledSaveAccount bool
+	}
+	service.findByPhone = func(phone string) (account *Account, err error) {
+		(&state).CalledFindByPhone = true
+		return nil, ERROR_NOT_FOUND
+	}
+	service.saveAccount = func(account *Account) (err error) {
+		(&state).CalledSaveAccount = true
 		assert.NotEqual(t, "", account.GetId())
 		t.Log("account id", account.GetId())
 		return nil
@@ -630,6 +685,98 @@ func TestSaveAccount(t *testing.T) {
 		assert.Equal(t, 200, response.StatusCode)
 	})
 
+	assert.Equal(t, true, state.CalledFindByPhone)
+	assert.Equal(t, true, state.CalledSaveAccount)
+}
+
+func TestNewAccountMissingInput(t *testing.T) {
+
+	signKey := []byte("test")
+	settings := Settings{}
+
+	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
+	service := &mock{}
+
+	endpoint, err := NewApiEndPoint(settings, auth, service)
+	if err != nil {
+		t.Error(err)
+	}
+
+	input := &Account{
+		Primary: &Login{Password: ptr("foo")},
+	}
+
+	var state struct {
+		CalledFindByPhone bool
+		CalledSaveAccount bool
+	}
+	service.findByPhone = func(phone string) (account *Account, err error) {
+		(&state).CalledFindByPhone = true
+		return nil, ERROR_NOT_FOUND
+	}
+	service.saveAccount = func(account *Account) (err error) {
+		(&state).CalledSaveAccount = true
+		assert.NotEqual(t, "", account.GetId())
+		t.Log("account id", account.GetId())
+		return nil
+	}
+
+	t.Log("using application/protobuf serialization")
+	testflight.WithServer(endpoint, func(r *testflight.Requester) {
+		response := r.Post("/api/v1/account", "application/protobuf", string(input.to_protobuf(t)))
+		assert.Equal(t, 400, response.StatusCode)
+	})
+
+	assert.Equal(t, false, state.CalledFindByPhone)
+	assert.Equal(t, false, state.CalledSaveAccount)
+}
+
+func TestNewAccountConflict(t *testing.T) {
+
+	signKey := []byte("test")
+	settings := Settings{}
+
+	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
+	service := &mock{}
+
+	endpoint, err := NewApiEndPoint(settings, auth, service)
+	if err != nil {
+		t.Error(err)
+	}
+
+	input := &Account{
+		Primary: &Login{
+			Password: ptr("password"),
+			Phone:    ptr("111-222-9999"),
+		},
+	}
+
+	var state struct {
+		CalledFindByPhone bool
+		CalledSaveAccount bool
+	}
+
+	service.findByPhone = func(phone string) (account *Account, err error) {
+		(&state).CalledFindByPhone = true
+		return input, nil
+	}
+	service.saveAccount = func(account *Account) (err error) {
+		assert.NotEqual(t, "", account.GetId())
+		assert.NotEqual(t, "", account.GetPrimary().GetId())
+		t.Log("account id", account.GetId())
+		(&state).CalledSaveAccount = true
+		return nil
+	}
+
+	t.Log("using application/protobuf serialization")
+	testflight.WithServer(endpoint, func(r *testflight.Requester) {
+		response := r.Post("/api/v1/account", "application/protobuf", string(input.to_protobuf(t)))
+		assert.Equal(t, 409, response.StatusCode)
+		check_error_response_reason(t, response.Body, "error-duplicate")
+	})
+
+	assert.Equal(t, true, state.CalledFindByPhone)
+	assert.Equal(t, false, state.CalledSaveAccount)
 }
 
 func TestSaveAccountPrimay(t *testing.T) {

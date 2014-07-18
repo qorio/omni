@@ -71,22 +71,16 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 	}
 
 	// do the lookup here...
-	var account *Account
-
-	switch {
-	case request.GetEmail() != "":
-		account, err = this.service.FindAccountByEmail(request.GetEmail())
-	case request.GetPhone() != "":
-		account, err = this.service.FindAccountByPhone(request.GetPhone())
-	case request.GetPhone() == "" && request.GetEmail() == "":
-		renderJsonError(resp, req, "error-no-phone-or-email", http.StatusBadRequest)
-		return
-	}
+	account, err := this.findAccount(request.GetEmail(), request.GetPhone())
 
 	switch {
 	case err == ERROR_NOT_FOUND:
 		renderJsonError(resp, req, "error-account-not-found", http.StatusUnauthorized)
 		return
+	case err == ERROR_MISSING_INPUT:
+		renderJsonError(resp, req, err.Error(), http.StatusBadRequest)
+		return
+
 	case err != nil:
 		renderJsonError(resp, req, "error-lookup-account", http.StatusInternalServerError)
 		return
@@ -168,15 +162,73 @@ func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request
 		return
 	}
 
+	if account.GetPrimary().GetPhone() == "" && account.GetPrimary().GetEmail() == "" {
+		renderJsonError(resp, req, ERROR_MISSING_INPUT.Error(), http.StatusBadRequest)
+		return
+	}
+
+	hasLoginId := account.GetPrimary().GetId() != ""
+	hasAccountId := account.GetId() != ""
+
+	switch {
+	case hasLoginId && hasAccountId:
+		// simple update case
+
+	case hasLoginId && !hasAccountId:
+		// not allowed -- should not start a new one.
+		renderJsonError(resp, req, "cannot-transfer-login-to-new-account",
+			http.StatusBadRequest)
+		return
+
+	case !hasLoginId && hasAccountId:
+		// this is changing primary login of the account
+		// check availability of phone/email
+		existing, _ := this.findAccount(account.GetPrimary().GetEmail(),
+			account.GetPrimary().GetPhone())
+		if existing != nil {
+			renderJsonError(resp, req, "error-duplicate", http.StatusConflict)
+			return
+		}
+
+		// Ok - assign login id
+		uuid, _ := omni_common.NewUUID()
+		account.GetPrimary().Id = &uuid
+
+	case !hasLoginId && !hasAccountId:
+		// this is new login and account
+		// check availability of phone/email
+		existing, _ := this.findAccount(account.GetPrimary().GetEmail(),
+			account.GetPrimary().GetPhone())
+		if existing != nil {
+			renderJsonError(resp, req, "error-duplicate", http.StatusConflict)
+			return
+		}
+
+		// Ok - assign new login id
+		uuid, _ := omni_common.NewUUID()
+		account.GetPrimary().Id = &uuid
+		// Ok - assign new account id
+		uuid, _ = omni_common.NewUUID()
+		account.Id = &uuid
+
+	}
+	if account.GetPrimary().GetId() == "" {
+
+		// If no id, then check to see if the email or phone has
+		// been taken already
+
+	} else {
+
+		if account.GetId() == "" {
+
+		}
+	}
+
 	if account.GetId() == "" {
+
 		uuid, _ := omni_common.NewUUID()
 		account.Id = &uuid
 	}
-	if account.GetPrimary().GetId() == "" {
-		uuid, _ := omni_common.NewUUID()
-		account.GetPrimary().Id = &uuid
-	}
-
 	err = this.service.SaveAccount(account)
 	if err != nil {
 		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
@@ -407,6 +459,18 @@ func (this *EndPoint) ApiDeleteAccount(resp http.ResponseWriter, req *http.Reque
 		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func (this *EndPoint) findAccount(email, phone string) (account *Account, err error) {
+	switch {
+	case email != "":
+		account, err = this.service.FindAccountByEmail(email)
+	case phone != "":
+		account, err = this.service.FindAccountByPhone(phone)
+	case email == "" && phone == "":
+		err = ERROR_MISSING_INPUT
+	}
+	return
 }
 
 func unmarshal(contentType string, body io.ReadCloser, typed proto.Message) (err error) {
