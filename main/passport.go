@@ -10,15 +10,15 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
 var (
 	instanceId = flag.String("id", "", "Instance id")
 
-	redisHost   = flag.String("redis_host", "", "Redis host (leave empty for localhost)")
-	redisPort   = flag.Int("redis_port", 6379, "Redis port")
-	redisPrefix = flag.String("redis_prefix", "passport:", "Redis prefix to use")
+	mongoHosts = flag.String("mongo_hosts", "localhost", "Mongo hosts, comma-separated")
+	mongoDb    = flag.String("mongo_db", "accounts", "Mongo Db name")
 
 	currentWorkingDir, _ = os.Getwd()
 
@@ -65,12 +65,18 @@ func main() {
 	apiDone := make(chan bool)
 	var apiStopped chan bool
 
-	passportSettings := passport.Settings{}
+	passportSettings := passport.Settings{
+		Mongo: passport.DbSettings{
+			Hosts: strings.Split(*mongoHosts, ","),
+			Db:    *mongoDb,
+		},
+	}
 
-	if endpoint, err := passport.NewApiEndPoint(
-		passportSettings,
-		auth,
-		passport.NewService(passportSettings)); err == nil {
+	passportService, sErr := passport.NewService(passportSettings)
+	if sErr != nil {
+		panic(sErr)
+	}
+	if endpoint, err := passport.NewApiEndPoint(passportSettings, auth, passportService); err == nil {
 		apiHttpServer := &http.Server{
 			Handler: endpoint,
 			Addr:    addr,
@@ -112,6 +118,7 @@ func main() {
 		runtime.ShutdownHook(func() error {
 			// Clean up database connections
 			glog.Infoln("Stopping database connections")
+			passportService.Close()
 			return nil
 		}),
 		runtime.ShutdownHook(func() error {

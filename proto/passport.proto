@@ -1,34 +1,49 @@
 package passport;
 
 // Generalized account / user schema
+import "passport_client.proto";
 
-message Attribute {
-    required string key = 1;
-    optional string string_value = 2;
-    optional int64 int_value = 3;
-    optional double double_value = 4;
-    optional bool bool_value = 5;
+message Blob {
+	required string type = 1;
+	required bytes data = 2;
 }
 
-
-message Login {
-	required string id = 1;
-	required string email = 2;
-	required string password = 3;
-	required string accountId = 4;  // "" means primary
+message Attribute {
+	enum Type {
+	     STRING = 1;
+	     NUMBER = 2;
+	     BOOL = 3;
+	     BLOB = 4;
+	}
+	required Type type = 1;
+	required string key = 2;
+	optional bool embed_signin_token = 3 [default = false];  // True to include in signin JWT token
+	optional string string_value = 4;
+	optional double number_value = 5;
+	optional bool bool_value = 6;
+	optional Blob blob_value = 7;
 }
 
 message Application {
-	required string status = 1;
-	required string id = 2;
-	required string accountId = 3;
-	required double startTimestamp = 4;
-	repeated Attribute attributes = 5;
+	required string id = 1;
+	required string status = 2;  // free-form for the application to interpret
+	required string accountId = 3;  // account key used by the application
+	repeated string permissions = 4; // capability strings
+	optional double startTimestamp = 5;
+	repeated Attribute attributes = 6;
 }
 
 message Account {
-	required string id = 1;
-	required Login primary = 2;
-	required double createdTimestamp = 3; // unix seconds
-	repeated Application services = 4;
+	optional string id = 1;
+	optional string status = 2;
+	required Login primary = 3;
+	optional double createdTimestamp = 4; // unix seconds
+	repeated Application services = 5;
+
+
+	message Log {
+		required double timestamp = 1;
+		required string entry = 2;
+	}
+	repeated Log log = 6;
 }

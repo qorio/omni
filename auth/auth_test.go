@@ -2,7 +2,6 @@ package auth
 
 import (
 	"flag"
-	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -24,7 +23,7 @@ func TestNewToken(t *testing.T) {
 		t.Error(err)
 	}
 
-	fmt.Println("token=", signedString)
+	t.Log("token=", signedString)
 	parsed, err := auth.Parse(signedString)
 	if err != nil {
 		t.Error(err)
@@ -83,7 +82,7 @@ func TestGetAppTokenAuthRsaKey(t *testing.T) {
 	}
 
 	appKey := parsed.GetString("appKey")
-	fmt.Println("appkey=", appKey)
+	t.Log("appkey=", appKey)
 
 	if UUID(appKey) != id {
 		t.Error("expecting", id, "but got", appKey)
