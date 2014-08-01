@@ -28,7 +28,7 @@ dependencies:
     - go version
   override:
     - ./build-gen-proto.sh
-    - ./build-x-compile.sh main/shorty.go main/dasher.go main/passport.go main/lighthouse.go
+    - ./build-x-compile.sh main/shorty.go main/dasher.go main/passport.go main/lighthouse.go main/blinker.go
   post:
     - cp -r /tmp/build/target/* $CIRCLE_ARTIFACTS
     - cp -r /tmp/build/src/github.com/qorio/omni/GeoLiteCity.dat $CIRCLE_ARTIFACTS
