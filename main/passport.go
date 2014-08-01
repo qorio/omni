@@ -26,7 +26,7 @@ var (
 	apiSocket = flag.String("api_socket", "", "File name for domain socket instead of port")
 	adminPort = flag.Int("admin_port", 7070, "Port where management server is listening on")
 
-	authKeyFile       = flag.String("auth_public_key_file", "", "Auth public key file")
+	authKeyFile       = flag.String("auth_public_key_file", "test/authKey.pub", "Auth public key file")
 	authTokenTTLHours = flag.Int64("auth_token_ttl_hours", 24, "TTL hours for auth token")
 )
 
