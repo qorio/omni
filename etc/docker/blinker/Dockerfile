@@ -11,7 +11,7 @@ FROM ubuntu:14.04
 
 COPY blinker /root/
 COPY testAuthKey.pub /root/testAuthKey.pub
-RUN chmod a+x blinker
+RUN chmod a+x /root/blinker
 
 # Define mountable directories.
 VOLUME ["/data"]
