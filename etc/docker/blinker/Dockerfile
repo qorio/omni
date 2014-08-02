@@ -9,10 +9,9 @@ FROM ubuntu:14.04
 #  wget -O blinker https://circle-artifacts.com/gh/qorio/omni/226/artifacts/0/tmp/circle-artifacts.QncARRk/linux_amd64/blinker?circle-token=b71701145614b93a382a8e3b5d633ee71c360315 && \
 #  chmod a+x blinker
 
-RUN \
-  cp $CIRCLE_ARTIFACTS/testAuthKey.pub . && \
-  cp $CIRCLE_ARTIFACTS/linux_amd64/blinker . && \
-  chmod a+x blinker
+COPY /tmp/build/target/linux_amd64/blinker /root/
+COPY /tmp/build/src/github.com/qorio/omni/test/authKey.pub /root/testAuthKey.pub
+RUN chmod a+x blinker
 
 
 # Define mountable directories.
@@ -22,7 +21,7 @@ VOLUME ["/data"]
 WORKDIR /root
 
 # Define default command.
-CMD ["/root/blinker --logtostderr --dir=/data --auth_public_key_file=testAuthKey.pub"]
+CMD ["/root/blinker", "--logtostderr", "--dir=/data", "--auth_public_key_file=testAuthKey.pub"]
 
 # Expose ports.
 
