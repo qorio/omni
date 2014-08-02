@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/golang/glog"
@@ -25,7 +26,7 @@ var (
 	authKeyFile       = flag.String("auth_public_key_file", "test/authKey.pub", "Auth public key file")
 	authTokenTTLHours = flag.Int64("auth_token_ttl_hours", 24, "TTL hours for auth token")
 
-	rootDir = flag.String("dir", "test/images", "Root directory for filesystem")
+	rootDir = flag.String("dir", "/data/blinker/alpr", "Root directory for filesystem")
 )
 
 func main() {
@@ -45,6 +46,19 @@ func main() {
 		SignKey:  key,
 		TTLHours: time.Duration(*authTokenTTLHours),
 	})
+
+	// Check file directory
+	if fi, err := os.Stat(*rootDir); err != nil {
+		if err := os.MkdirAll(*rootDir, 0644); err != nil {
+			panic(err)
+
+		}
+	} else {
+		glog.Infoln("Root directory:", fi.Name())
+		if !fi.IsDir() {
+			panic(errors.New("root-dir-not-a-dir"))
+		}
+	}
 
 	// HTTP endpoints
 	shutdownc := make(chan io.Closer, 1)

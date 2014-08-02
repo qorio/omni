@@ -2,6 +2,7 @@ package blinker
 
 import (
 	"errors"
+	"io"
 )
 
 // see passport.proto
@@ -11,6 +12,12 @@ var (
 	ERROR_NOT_FOUND            = errors.New("account-not-found")
 	ERROR_UNKNOWN_CONTENT_TYPE = errors.New("error-no-content-type")
 )
+
+type AlprCommand struct {
+	Country string
+	Region  string
+	Path    string
+}
 
 type FsSettings struct {
 	RootDir string
@@ -26,5 +33,7 @@ type Settings struct {
 }
 
 type Service interface {
+	GetImage(country, region, id string) (bytes io.ReadCloser, size int64, err error)
+	ExecAlpr(country, region, id string, image io.ReadCloser) (stdout []byte, err error)
 	Close()
 }
