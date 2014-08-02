@@ -47,7 +47,7 @@ func (this *serviceImpl) GetImage(country, region, id string) (bytes io.ReadClos
 func (this *serviceImpl) ExecAlpr(country, region, id string, image io.ReadCloser) (stdout []byte, err error) {
 	path := getPath(this.settings.FsSettings.RootDir, country, region, id)
 
-	glog.Infoln("Saving to file", path)
+	glog.Infoln("ExecAlpr: saving to file", path)
 
 	dst, err := os.Create(path)
 	defer dst.Close()
@@ -74,8 +74,10 @@ func (this *serviceImpl) ExecAlpr(country, region, id string, image io.ReadClose
 
 	// copy the results
 	json, err := os.Create(path + ".json")
+
 	defer json.Close()
 
+	glog.Infoln("ExecAlpr: saving results to", json.Name())
 	json.Write(stdout)
 
 	return
@@ -86,11 +88,7 @@ func (this *serviceImpl) Close() {
 }
 
 func (this *AlprCommand) Execute() (stdout []byte, err error) {
-	path, err := exec.LookPath("alpr")
-	if err != nil {
-		return nil, err
-	}
-
-	cmd := exec.Command(path, "-c", this.Country, "-t", this.Region, "-j", this.Path)
+	cmd := exec.Command("alpr", "-c", this.Country, "-t", this.Region, "-j", this.Path)
+	glog.Infoln("exec command:", cmd)
 	return cmd.Output()
 }
