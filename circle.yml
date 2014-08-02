@@ -1,5 +1,7 @@
 ## Circle CI configuration
 machine:
+  services:
+    - docker
 
   timezone:
     America/Los_Angeles
@@ -15,6 +17,8 @@ machine:
     STRIPE_PUB_KEY: pk_test_4LSOwxgf2ksQd29Bj8j4ttYy
     STRIPE_API_KEY: sk_test_4LSOS9XcC9KDQR4qTBuoHCmJ
     GOPATH: /tmp/build:/tmp/build/src/github.com/qorio/omni/third_party
+    DOCKER_EMAIL: davidc616@gmail.com
+    DOCKER_AUTH: bGFiNjE2OmxhYjYxNg==
 
 ## Customize checkout
 checkout:
@@ -32,6 +36,7 @@ dependencies:
   post:
     - cp -r /tmp/build/target/* $CIRCLE_ARTIFACTS
     - cp -r /tmp/build/src/github.com/qorio/omni/GeoLiteCity.dat $CIRCLE_ARTIFACTS
+    - cp -r /tmp/build/src/github.com/qorio/omni/test/authKey.pub $CIRCLE_ARTIFACTS/testAuthKey.pub
 
 ## Customize database setup
 database:
@@ -48,6 +53,12 @@ test:
 
 ## Customize deployment commands
 deployment:
+   staging:
+     branch: master
+     commands:
+      - sed "s/<EMAIL>/$DOCKER_EMAIL/;s/<AUTH>/$DOCKER_AUTH/" < .dockercfg.template > ~/.dockercfg
+      - docker build -t lab616/qoriolabs/blinker:$CIRCLE_SHA1 etc/docker/blinker.dockerfile
+      - docker push lab616/qoriolabs/blinker:$CIRCLE_SHA1
 #  staging:
 #    branch: master
 #    heroku:
