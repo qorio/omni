@@ -4,11 +4,8 @@
 # Pull base image.
 FROM ubuntu:14.04
 
-# Install blinker from Circle CI
-#RUN \
-#  wget -O blinker https://circle-artifacts.com/gh/qorio/omni/226/artifacts/0/tmp/circle-artifacts.QncARRk/linux_amd64/blinker?circle-token=b71701145614b93a382a8e3b5d633ee71c360315 && \
-#  chmod a+x blinker
-
+# Install blinker from build directory
+# This assumes that the binary has been copied into the directory where this Dockerfile lives.
 COPY blinker /root/
 COPY testAuthKey.pub /root/testAuthKey.pub
 RUN chmod a+x /root/blinker
