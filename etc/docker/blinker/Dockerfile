@@ -10,7 +10,7 @@ FROM ubuntu:14.04
 #  chmod a+x blinker
 
 COPY blinker /root/
-COPY authKey.pub /root/testAuthKey.pub
+COPY testAuthKey.pub /root/testAuthKey.pub
 RUN chmod a+x blinker
 
 # Define mountable directories.
