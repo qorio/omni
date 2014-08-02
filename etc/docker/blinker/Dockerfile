@@ -2,7 +2,7 @@
 #
 
 # Pull base image.
-FROM ubuntu:14.04
+FROM lab616/openalpr:latest
 
 # Install blinker from build directory
 # This assumes that the binary has been copied into the directory where this Dockerfile lives.
