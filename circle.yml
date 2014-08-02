@@ -57,6 +57,8 @@ deployment:
      branch: master
      commands:
       - sed "s/<EMAIL>/$DOCKER_EMAIL/;s/<AUTH>/$DOCKER_AUTH/" < .dockercfg.template > ~/.dockercfg
+      - cp /tmp/build/target/linux_amd64/blinker etc/docker/blinker
+      - cp test/autheKey.pub etc/docker/blinker/testAuthKey.pub
       - docker build -t lab616/blinker:$CIRCLE_SHA1 etc/docker/blinker
       - docker push lab616/blinker:$CIRCLE_SHA1
 #  staging:
