@@ -19,6 +19,8 @@ type EndPoint struct {
 	service  Service
 }
 
+var ID_FORMAT = "[_A-Za-z0-9\\-]+"
+
 func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service) (api *EndPoint, err error) {
 	api = &EndPoint{
 		settings: settings,
@@ -30,14 +32,14 @@ func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service)
 	// ALPR
 	api.router.HandleFunc("/api/v1/alpr", api.ApiMultiPartUpload).
 		Methods("POST").Name("alpr-multipart")
-	api.router.HandleFunc("/api/v1/alpr/{country}/{region}/{id}", api.ApiExecAlpr).
+	api.router.HandleFunc("/api/v1/alpr/{country}/{region}/{id:"+ID_FORMAT+"}", api.ApiExecAlpr).
 		Methods("POST").Name("alpr")
-	api.router.HandleFunc("/api/v1/alpr/{country}/{region}/{id}", api.ApiGet).
+	api.router.HandleFunc("/api/v1/alpr/{country}/{region}/{id:"+ID_FORMAT+"}", api.ApiGet).
 		Methods("GET").Name("alpr-get")
 
-	api.router.HandleFunc("/api/v1/images/{country}/{region}/{id}", api.ApiSingleUpload).
+	api.router.HandleFunc("/api/v1/blob/{country}/{region}/{id}", api.ApiSingleUpload).
 		Methods("POST").Name("alpr")
-	api.router.HandleFunc("/api/v1/images/{country}/{region}/{id}", api.ApiGet).
+	api.router.HandleFunc("/api/v1/blob/{country}/{region}/{id}", api.ApiGet).
 		Methods("GET").Name("alpr-get")
 
 	glog.Infoln("Api started")

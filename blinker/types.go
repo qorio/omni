@@ -11,6 +11,7 @@ var (
 	ERROR_MISSING_INPUT        = errors.New("error-missing-input")
 	ERROR_NOT_FOUND            = errors.New("account-not-found")
 	ERROR_UNKNOWN_CONTENT_TYPE = errors.New("error-no-content-type")
+	ERROR_UNKNOWN_IMAGE_FORMAT = errors.New("error-unknown-image-format")
 )
 
 type AlprCommand struct {

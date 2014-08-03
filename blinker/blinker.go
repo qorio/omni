@@ -1,6 +1,7 @@
 package blinker
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/golang/glog"
 	"image"
@@ -11,7 +12,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 )
 
 type serviceImpl struct {
@@ -49,41 +49,72 @@ func (this *serviceImpl) GetImage(country, region, id string) (bytes io.ReadClos
 	return
 }
 
-func (this *serviceImpl) ExecAlpr(country, region, id string, src io.ReadCloser) (stdout []byte, err error) {
-	path := getPath(this.settings.FsSettings.RootDir, country, region, id)
+func getFormat(reader *bufio.Reader) (string, error) {
+	bytes, err := reader.Peek(4)
+	if len(bytes) < 4 || err != nil {
+		return "", ERROR_UNKNOWN_IMAGE_FORMAT
+	}
+	if bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47 {
+		return "png", nil
+	}
+	if bytes[0] == 0xFF && bytes[1] == 0xD8 {
+		return "jpg", nil
+	}
+	if bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x38 {
+		return "gif", nil
+	}
+	if bytes[0] == 0x42 && bytes[1] == 0x4D {
+		return "bmp", nil
+	}
+	return "", ERROR_UNKNOWN_IMAGE_FORMAT
+}
 
-	glog.Infoln("ExecAlpr: saving to file", path)
-
-	dst, err := os.Create(path)
-	defer dst.Close()
-
+func transcodeToPng(path string) (err error) {
+	// Transcode the file to png
+	glog.Infoln("Transcode to PNG:", path)
+	imgfile, err := os.Open(path)
+	if err != nil {
+		return
+	}
+	img, format, err := image.Decode(imgfile)
 	if err != nil {
 		return
 	}
 
+	glog.Infoln("Image format is", format)
+	outfile, err := os.Create(path + ".png")
+	if err != nil {
+		return
+	}
+
+	defer outfile.Close()
+	if err := png.Encode(outfile, img); err == nil {
+		path = path + ".png"
+	}
+	return
+}
+
+func (this *serviceImpl) ExecAlpr(country, region, id string, source io.ReadCloser) (stdout []byte, err error) {
+
+	src := bufio.NewReader(source)
+	// read the format
+	format, err := getFormat(src)
+	if err != nil {
+		return
+	}
+
+	glog.Infoln("FORMAT is", format)
+
+	base := getPath(this.settings.FsSettings.RootDir, country, region, id)
+	path := base + "." + format
+
+	glog.Infoln("ExecAlpr: saving to file", path)
+	dst, err := os.Create(path)
 	_, err = io.Copy(dst, src)
 	if err != nil {
 		return
-	}
-
-	// If we can't tell by the extension
-	jsonBase := path
-	if filepath.Ext(path) == "" {
-		// Transcode the file to png
-		glog.Infoln("Transcode to PNG:", path)
-		if imgfile, err := os.Open(path); err == nil {
-			if img, format, err := image.Decode(imgfile); err == nil {
-				glog.Infoln("Image ", path, "is", format)
-				if outfile, err := os.Create(path + ".png"); err == nil {
-					defer outfile.Close()
-					if err := png.Encode(outfile, img); err == nil {
-						path = path + ".png"
-					}
-				}
-			}
-		}
 	} else {
-		jsonBase = filepath.Join(filepath.Dir(path), strings.Split(filepath.Base(path), ".")[0])
+		dst.Close()
 	}
 
 	alpr := &AlprCommand{
@@ -98,12 +129,15 @@ func (this *serviceImpl) ExecAlpr(country, region, id string, src io.ReadCloser)
 	}
 
 	// copy the results
-	json, err := os.Create(jsonBase + ".json")
+	json, err := os.Create(base + ".json")
 
 	defer json.Close()
 
 	glog.Infoln("ExecAlpr: saving results to", json.Name())
 	json.Write(stdout)
+
+	// rename the path to base
+	err = os.Rename(path, base)
 
 	return
 }
