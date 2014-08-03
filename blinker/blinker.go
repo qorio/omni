@@ -3,10 +3,15 @@ package blinker
 import (
 	"fmt"
 	"github.com/golang/glog"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	"image/png"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 type serviceImpl struct {
@@ -44,7 +49,7 @@ func (this *serviceImpl) GetImage(country, region, id string) (bytes io.ReadClos
 	return
 }
 
-func (this *serviceImpl) ExecAlpr(country, region, id string, image io.ReadCloser) (stdout []byte, err error) {
+func (this *serviceImpl) ExecAlpr(country, region, id string, src io.ReadCloser) (stdout []byte, err error) {
 	path := getPath(this.settings.FsSettings.RootDir, country, region, id)
 
 	glog.Infoln("ExecAlpr: saving to file", path)
@@ -56,9 +61,29 @@ func (this *serviceImpl) ExecAlpr(country, region, id string, image io.ReadClose
 		return
 	}
 
-	_, err = io.Copy(dst, image)
+	_, err = io.Copy(dst, src)
 	if err != nil {
 		return
+	}
+
+	// If we can't tell by the extension
+	jsonBase := path
+	if filepath.Ext(path) == "" {
+		// Transcode the file to png
+		glog.Infoln("Transcode to PNG:", path)
+		if imgfile, err := os.Open(path); err == nil {
+			if img, format, err := image.Decode(imgfile); err == nil {
+				glog.Infoln("Image ", path, "is", format)
+				if outfile, err := os.Create(path + ".png"); err == nil {
+					defer outfile.Close()
+					if err := png.Encode(outfile, img); err == nil {
+						path = path + ".png"
+					}
+				}
+			}
+		}
+	} else {
+		jsonBase = filepath.Join(filepath.Dir(path), strings.Split(filepath.Base(path), ".")[0])
 	}
 
 	alpr := &AlprCommand{
@@ -73,7 +98,7 @@ func (this *serviceImpl) ExecAlpr(country, region, id string, image io.ReadClose
 	}
 
 	// copy the results
-	json, err := os.Create(path + ".json")
+	json, err := os.Create(jsonBase + ".json")
 
 	defer json.Close()
 
@@ -90,7 +115,7 @@ func (this *serviceImpl) Close() {
 func (this *AlprCommand) Execute() (stdout []byte, err error) {
 	cmd := exec.Command("alpr", "-c", this.Country, "-t", this.Region, "-j", this.Path)
 	glog.Infoln("exec command:", cmd)
-	stdout, err = cmd.CombinedOutput()
+	stdout, err = cmd.Output()
 	glog.Infoln("exec result", string(stdout), err)
 	return
 }
