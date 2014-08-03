@@ -91,6 +91,6 @@ func (this *AlprCommand) Execute() (stdout []byte, err error) {
 	cmd := exec.Command("alpr", "-c", this.Country, "-t", this.Region, "-j", this.Path)
 	glog.Infoln("exec command:", cmd)
 	stdout, err = cmd.CombinedOutput()
-	glog.Infoln("exec result", stdout, err)
+	glog.Infoln("exec result", string(stdout), err)
 	return
 }
