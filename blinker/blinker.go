@@ -90,7 +90,7 @@ func (this *serviceImpl) Close() {
 func (this *AlprCommand) Execute() (stdout []byte, err error) {
 	cmd := exec.Command("alpr", "-c", this.Country, "-t", this.Region, "-j", this.Path)
 	glog.Infoln("exec command:", cmd)
-	stdout, err = cmd.Output()
+	stdout, err = cmd.CombinedOutput()
 	glog.Infoln("exec result", stdout, err)
 	return
 }

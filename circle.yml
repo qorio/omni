@@ -62,8 +62,8 @@ deployment:
       - sed "s/<EMAIL>/$DOCKER_EMAIL/;s/<AUTH>/$DOCKER_AUTH/" < .dockercfg.template > ~/.dockercfg
       - cp $BUILD_TARGET_DIR/linux_amd64/blinker etc/docker/blinker
       - cp $BUILD_SRC_DIR/test/authKey.pub etc/docker/blinker/testAuthKey.pub
-      - docker build -t $DOCKER_ACCOUNT/blinker:"$CIRCLE_BUILD_NUM-$CIRCLE_SHA1" etc/docker/blinker
-      - docker push $DOCKER_ACCOUNT/blinker:"$CIRCLE_BUILD_NUM-$CIRCLE_SHA1"
+      - docker build -t $DOCKER_ACCOUNT/blinker:"$CIRCLE_BUILD_NUM" etc/docker/blinker
+      - docker push $DOCKER_ACCOUNT/blinker:"$CIRCLE_BUILD_NUM"
 
 ## Custom notifications
 notify:
