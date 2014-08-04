@@ -1,6 +1,7 @@
 package blinker
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -32,10 +33,12 @@ func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service)
 	// ALPR
 	api.router.HandleFunc("/api/v1/alpr", api.ApiMultiPartUpload).
 		Methods("POST").Name("alpr-multipart")
-	api.router.HandleFunc("/api/v1/alpr/{country}/{region}/{id:"+ID_FORMAT+"}", api.ApiExecAlpr).
+	api.router.HandleFunc("/api/v1/alpr/{country}/{region}/{id:"+ID_FORMAT+"}", api.ApiRunLprJob).
 		Methods("POST").Name("alpr")
 	api.router.HandleFunc("/api/v1/alpr/{country}/{region}/{id:"+ID_FORMAT+"}", api.ApiGet).
 		Methods("GET").Name("alpr-get")
+	api.router.HandleFunc("/api/v1/alpr/", api.ApiListLprJobs).
+		Methods("GET").Name("alpr-list")
 
 	api.router.HandleFunc("/api/v1/blob/{country}/{region}/{id}", api.ApiSingleUpload).
 		Methods("POST").Name("alpr")
@@ -76,21 +79,39 @@ func (this *EndPoint) ApiGet(resp http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (this *EndPoint) ApiExecAlpr(resp http.ResponseWriter, req *http.Request) {
+func (this *EndPoint) ApiRunLprJob(resp http.ResponseWriter, req *http.Request) {
 	omni_http.SetCORSHeaders(resp)
 	vars := mux.Vars(req)
 	country := vars["country"]
 	region := vars["region"]
 	id := vars["id"]
 
-	stdout, err := this.service.ExecAlpr(country, region, id, req.Body)
+	stdout, err := this.service.RunLprJob(country, region, id, req.Body)
+
+	if err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	resp.Write(stdout)
+}
+
+func (this *EndPoint) ApiListLprJobs(resp http.ResponseWriter, req *http.Request) {
+	omni_http.SetCORSHeaders(resp)
+
+	jobs, err := this.service.ListLprJobs()
 
 	if err != nil {
 		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	resp.Write(stdout)
+	buff, err := json.Marshal(jobs)
+	if err != nil {
+		renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	resp.Write(buff)
 }
 
 func (this *EndPoint) ApiSingleUpload(resp http.ResponseWriter, req *http.Request) {

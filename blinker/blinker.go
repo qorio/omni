@@ -9,9 +9,11 @@ import (
 	_ "image/jpeg"
 	"image/png"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 type serviceImpl struct {
@@ -22,12 +24,69 @@ func getPath(root, country, region, id string) string {
 	return filepath.Join(root, fmt.Sprintf("%s-%s-%s", country, region, id))
 }
 
+func getLprJob(root, path string) *LprJob {
+	parts := strings.Split(path, "-")
+	if len(parts) != 3 {
+		return nil
+	} else {
+		// open the results file .json
+		raw := ""
+		if json, err := os.Open(filepath.Join(root, path)); err == nil {
+			defer json.Close()
+
+			if buff, err := ioutil.ReadAll(json); err == nil {
+				raw = string(buff)
+			} else {
+				return nil
+			}
+
+			country, region, id := parts[0], parts[1], strings.Replace(parts[2], ".json", "", -1)
+			img := getPath(root, country, region, id)
+			hasImage := false
+			if _, err := os.Stat(img); err == nil {
+				hasImage = true
+			}
+
+			return &LprJob{
+				Country:   country,
+				Region:    region,
+				Id:        id,
+				Path:      path,
+				RawResult: raw,
+				HasImage:  hasImage,
+			}
+		} else {
+			glog.Warningln("error", err)
+		}
+
+		return nil
+	}
+
+}
+
 func NewService(settings Settings) (Service, error) {
 
 	impl := &serviceImpl{
 		settings: settings,
 	}
 	return impl, nil
+}
+
+func (this *serviceImpl) ListLprJobs() (result []*LprJob, err error) {
+	list, err := ioutil.ReadDir(this.settings.FsSettings.RootDir)
+	if err != nil {
+		return
+	}
+
+	result = make([]*LprJob, 0)
+	for _, fi := range list {
+		if strings.HasSuffix(fi.Name(), ".json") {
+			if job := getLprJob(this.settings.FsSettings.RootDir, fi.Name()); job != nil {
+				result = append(result, job)
+			}
+		}
+	}
+	return
 }
 
 func (this *serviceImpl) GetImage(country, region, id string) (bytes io.ReadCloser, size int64, err error) {
@@ -94,7 +153,7 @@ func transcodeToPng(path string) (err error) {
 	return
 }
 
-func (this *serviceImpl) ExecAlpr(country, region, id string, source io.ReadCloser) (stdout []byte, err error) {
+func (this *serviceImpl) RunLprJob(country, region, id string, source io.ReadCloser) (stdout []byte, err error) {
 
 	src := bufio.NewReader(source)
 	// read the format
@@ -117,9 +176,10 @@ func (this *serviceImpl) ExecAlpr(country, region, id string, source io.ReadClos
 		dst.Close()
 	}
 
-	alpr := &AlprCommand{
+	alpr := &LprJob{
 		Country: country,
 		Region:  region,
+		Id:      id,
 		Path:    path,
 	}
 
@@ -146,7 +206,7 @@ func (this *serviceImpl) Close() {
 	glog.Infoln("Service closed")
 }
 
-func (this *AlprCommand) Execute() (stdout []byte, err error) {
+func (this *LprJob) Execute() (stdout []byte, err error) {
 	cmd := exec.Command("alpr", "-c", this.Country, "-t", this.Region, "-j", this.Path)
 	glog.Infoln("exec command:", cmd)
 	stdout, err = cmd.Output()

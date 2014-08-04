@@ -14,10 +14,13 @@ var (
 	ERROR_UNKNOWN_IMAGE_FORMAT = errors.New("error-unknown-image-format")
 )
 
-type AlprCommand struct {
-	Country string
-	Region  string
-	Path    string
+type LprJob struct {
+	Country   string `json:"country"`
+	Region    string `json:"region"`
+	Id        string `json:"id"`
+	Path      string `json:"path"`
+	RawResult string `json:"raw_result"`
+	HasImage  bool   `json:"has_image"`
 }
 
 type FsSettings struct {
@@ -35,6 +38,7 @@ type Settings struct {
 
 type Service interface {
 	GetImage(country, region, id string) (bytes io.ReadCloser, size int64, err error)
-	ExecAlpr(country, region, id string, image io.ReadCloser) (stdout []byte, err error)
+	ListLprJobs() (id []*LprJob, err error)
+	RunLprJob(country, region, id string, image io.ReadCloser) (stdout []byte, err error)
 	Close()
 }
