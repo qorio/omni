@@ -58,7 +58,7 @@ func getLprJob(root, path string) *LprJob {
 		}
 
 		if buff, err := ioutil.ReadAll(jsonf); err == nil {
-			dec := json.NewDecoder(bytes.NewBuffer(buff))
+			dec := json.NewDecoder(bytes.NewBuffer([]byte(strings.Trim(string(buff), " \n"))))
 			raw := make(map[string]interface{})
 			if err = dec.Decode(&raw); err == nil {
 				j.RawResult = raw
@@ -219,6 +219,8 @@ func (this *LprJob) Execute() (stdout []byte, err error) {
 	cmd := exec.Command("alpr", "-c", this.Country, "-t", this.Region, "-j", this.Path)
 	glog.Infoln("exec command:", cmd)
 	stdout, err = cmd.Output()
-	glog.Infoln("exec result", string(stdout), err)
+	str := strings.Trim(string(stdout), " \n")
+	stdout = []byte(str)
+	glog.Infoln("exec result", str, err)
 	return
 }
