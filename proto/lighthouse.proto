@@ -72,20 +72,24 @@ message BeaconSummary {
 	// How this beacon advertises itself
 	required BeaconAdvertisement advertise_info = 2;
 
+	// Install date, unix time
+	required double installed_timestamp = 3;
 	// Where the beacon is installed
-	required Location location = 3;
+	required Location location = 4;
+
+	optional int32 battery = 5;
 
 	// Owner of the beacon -- first user who provisioned a hardware beacon
 	// Ownership can be transferred by releasing the beacon which will cause
 	// a deletion of this record.
-	required UserRef owner = 4;
+	required UserRef owner = 6;
 
 	// At least one label to establish the context of the beacon.  For v1, only 1 label.
-	repeated string labels = 5;
+	repeated string labels = 7;
 
 	// For displaying the beacon icon/ logo etc.
-	optional Content avatar = 6;
-	optional Content avatar_small = 7;
+	optional Content avatar = 8;
+	optional Content avatar_small = 9;
 }
 
 // Detail beacon info -- server side; contains history, device profile, etc.

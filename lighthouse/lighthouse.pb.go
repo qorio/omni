@@ -293,17 +293,20 @@ type BeaconSummary struct {
 	Id []byte `protobuf:"bytes,1,req,name=id" json:"id,omitempty"`
 	// How this beacon advertises itself
 	AdvertiseInfo *BeaconAdvertisement `protobuf:"bytes,2,req,name=advertise_info" json:"advertise_info,omitempty"`
+	// Install date, unix time
+	InstalledTimestamp *float64 `protobuf:"fixed64,3,req,name=installed_timestamp" json:"installed_timestamp,omitempty"`
 	// Where the beacon is installed
-	Location *Location `protobuf:"bytes,3,req,name=location" json:"location,omitempty"`
+	Location *Location `protobuf:"bytes,4,req,name=location" json:"location,omitempty"`
+	Battery  *int32    `protobuf:"varint,5,opt,name=battery" json:"battery,omitempty"`
 	// Owner of the beacon -- first user who provisioned a hardware beacon
 	// Ownership can be transferred by releasing the beacon which will cause
 	// a deletion of this record.
-	Owner *UserRef `protobuf:"bytes,4,req,name=owner" json:"owner,omitempty"`
+	Owner *UserRef `protobuf:"bytes,6,req,name=owner" json:"owner,omitempty"`
 	// At least one label to establish the context of the beacon.  For v1, only 1 label.
-	Labels []string `protobuf:"bytes,5,rep,name=labels" json:"labels,omitempty"`
+	Labels []string `protobuf:"bytes,7,rep,name=labels" json:"labels,omitempty"`
 	// For displaying the beacon icon/ logo etc.
-	Avatar           *Content `protobuf:"bytes,6,opt,name=avatar" json:"avatar,omitempty"`
-	AvatarSmall      *Content `protobuf:"bytes,7,opt,name=avatar_small" json:"avatar_small,omitempty"`
+	Avatar           *Content `protobuf:"bytes,8,opt,name=avatar" json:"avatar,omitempty"`
+	AvatarSmall      *Content `protobuf:"bytes,9,opt,name=avatar_small" json:"avatar_small,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
@@ -325,11 +328,25 @@ func (m *BeaconSummary) GetAdvertiseInfo() *BeaconAdvertisement {
 	return nil
 }
 
+func (m *BeaconSummary) GetInstalledTimestamp() float64 {
+	if m != nil && m.InstalledTimestamp != nil {
+		return *m.InstalledTimestamp
+	}
+	return 0
+}
+
 func (m *BeaconSummary) GetLocation() *Location {
 	if m != nil {
 		return m.Location
 	}
 	return nil
+}
+
+func (m *BeaconSummary) GetBattery() int32 {
+	if m != nil && m.Battery != nil {
+		return *m.Battery
+	}
+	return 0
 }
 
 func (m *BeaconSummary) GetOwner() *UserRef {
