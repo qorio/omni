@@ -2,6 +2,7 @@ package blinker
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
@@ -31,37 +32,40 @@ func getLprJob(root, path string) *LprJob {
 		return nil
 	} else {
 		// open the results file .json
-		raw := make(map[string]interface{})
-		if jsonf, err := os.Open(filepath.Join(root, path)); err == nil {
-			defer jsonf.Close()
-
-			dec := json.NewDecoder(jsonf)
-			if err = dec.Decode(&raw); err == nil {
-				glog.Infoln("json = ", raw)
-			} else {
-				return nil
-			}
-
-			country, region, id := parts[0], parts[1], strings.Replace(parts[2], ".json", "", -1)
-			img := getPath(root, country, region, id)
-			hasImage := false
-			if _, err := os.Stat(img); err == nil {
-				hasImage = true
-			}
-
-			return &LprJob{
-				Country:   country,
-				Region:    region,
-				Id:        id,
-				Path:      path,
-				RawResult: raw,
-				HasImage:  hasImage,
-			}
-		} else {
-			glog.Warningln("error", err)
+		jsonf, err := os.Open(filepath.Join(root, path))
+		if err != nil {
+			return nil
 		}
 
-		return nil
+		defer jsonf.Close()
+
+		country, region, id := parts[0], parts[1], strings.Replace(parts[2], ".json", "", -1)
+		img := getPath(root, country, region, id)
+		hasImage := false
+		if _, err := os.Stat(img); err == nil {
+			hasImage = true
+		}
+
+		j := &LprJob{
+			Country:  country,
+			Region:   region,
+			Id:       id,
+			Path:     path,
+			HasImage: hasImage,
+		}
+
+		if buff, err := ioutil.ReadAll(jsonf); err == nil {
+			dec := json.NewDecoder(bytes.NewBuffer(buff))
+			raw := make(map[string]interface{})
+			if err = dec.Decode(&raw); err == nil {
+				j.RawResult = raw
+				j.RawResultType = "application/json"
+			} else {
+				j.RawResult = string(buff)
+				j.RawResultType = "application/text"
+			}
+		}
+		return j
 	}
 
 }
