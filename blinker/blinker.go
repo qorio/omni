@@ -2,6 +2,7 @@ package blinker
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
 	"image"
@@ -30,12 +31,13 @@ func getLprJob(root, path string) *LprJob {
 		return nil
 	} else {
 		// open the results file .json
-		raw := ""
-		if json, err := os.Open(filepath.Join(root, path)); err == nil {
-			defer json.Close()
+		raw := make(map[string]interface{})
+		if jsonf, err := os.Open(filepath.Join(root, path)); err == nil {
+			defer jsonf.Close()
 
-			if buff, err := ioutil.ReadAll(json); err == nil {
-				raw = string(buff)
+			dec := json.NewDecoder(jsonf)
+			if err = dec.Decode(&raw); err == nil {
+				glog.Infoln("json = ", raw)
 			} else {
 				return nil
 			}
