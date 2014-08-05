@@ -15,12 +15,13 @@ var (
 )
 
 type LprJob struct {
-	Country   string `json:"country"`
-	Region    string `json:"region"`
-	Id        string `json:"id"`
-	Path      string `json:"path"`
-	RawResult string `json:"raw_result"`
-	HasImage  bool   `json:"has_image"`
+	Country       string      `json:"country"`
+	Region        string      `json:"region"`
+	Id            string      `json:"id"`
+	Path          string      `json:"path"`
+	RawResult     interface{} `json:"raw_result"`
+	RawResultType string      `json:"raw_result_type"`
+	ImageUrl      string      `json:"image_url"`
 }
 
 type FsSettings struct {

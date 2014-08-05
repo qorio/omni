@@ -2,6 +2,9 @@ package blinker
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/golang/glog"
 	"image"
@@ -14,6 +17,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+)
+
+var (
+	apiRoot = flag.String("url_prefix", "http://localhost:5050/api/v1/alpr", "prefix for url")
 )
 
 type serviceImpl struct {
@@ -30,36 +37,38 @@ func getLprJob(root, path string) *LprJob {
 		return nil
 	} else {
 		// open the results file .json
-		raw := ""
-		if json, err := os.Open(filepath.Join(root, path)); err == nil {
-			defer json.Close()
-
-			if buff, err := ioutil.ReadAll(json); err == nil {
-				raw = string(buff)
-			} else {
-				return nil
-			}
-
-			country, region, id := parts[0], parts[1], strings.Replace(parts[2], ".json", "", -1)
-			img := getPath(root, country, region, id)
-			hasImage := false
-			if _, err := os.Stat(img); err == nil {
-				hasImage = true
-			}
-
-			return &LprJob{
-				Country:   country,
-				Region:    region,
-				Id:        id,
-				Path:      path,
-				RawResult: raw,
-				HasImage:  hasImage,
-			}
-		} else {
-			glog.Warningln("error", err)
+		jsonf, err := os.Open(filepath.Join(root, path))
+		if err != nil {
+			return nil
 		}
 
-		return nil
+		defer jsonf.Close()
+
+		country, region, id := parts[0], parts[1], strings.Replace(parts[2], ".json", "", -1)
+
+		j := &LprJob{
+			Country: country,
+			Region:  region,
+			Id:      id,
+			Path:    path,
+		}
+		img := getPath(root, country, region, id)
+		if _, err := os.Stat(img); err == nil {
+			j.ImageUrl = strings.Join([]string{*apiRoot, country, region, id}, "/")
+		}
+
+		if buff, err := ioutil.ReadAll(jsonf); err == nil {
+			dec := json.NewDecoder(bytes.NewBuffer([]byte(strings.Trim(string(buff), " \n"))))
+			raw := make(map[string]interface{})
+			if err = dec.Decode(&raw); err == nil {
+				j.RawResult = raw
+				j.RawResultType = "application/json"
+			} else {
+				j.RawResult = string(buff)
+				j.RawResultType = "application/text"
+			}
+		}
+		return j
 	}
 
 }
@@ -210,6 +219,8 @@ func (this *LprJob) Execute() (stdout []byte, err error) {
 	cmd := exec.Command("alpr", "-c", this.Country, "-t", this.Region, "-j", this.Path)
 	glog.Infoln("exec command:", cmd)
 	stdout, err = cmd.Output()
-	glog.Infoln("exec result", string(stdout), err)
+	str := strings.Trim(string(stdout), " \n")
+	stdout = []byte(str)
+	glog.Infoln("exec result", str, err)
 	return
 }
