@@ -21,7 +21,7 @@ type LprJob struct {
 	Path          string      `json:"path"`
 	RawResult     interface{} `json:"raw_result"`
 	RawResultType string      `json:"raw_result_type"`
-	HasImage      bool        `json:"has_image"`
+	ImageUrl      string      `json:"image_url"`
 }
 
 type FsSettings struct {

@@ -17,7 +17,7 @@ VOLUME ["/data"]
 WORKDIR /root
 
 # Define default command.
-CMD ["/root/blinker", "--logtostderr", "--dir=/data", "--auth_public_key_file=testAuthKey.pub"]
+CMD ["/root/blinker", "--logtostderr", "--dir=/data", "--auth_public_key_file=testAuthKey.pub", "--url_prefix=http://blinker.qor.io:5050/api/v1/alpr"]
 
 # Expose ports.
 

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/golang/glog"
 	"image"
@@ -16,6 +17,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+)
+
+var (
+	apiRoot = flag.String("url_prefix", "http://localhost:5050/api/v1/alpr", "prefix for url")
 )
 
 type serviceImpl struct {
@@ -40,18 +45,16 @@ func getLprJob(root, path string) *LprJob {
 		defer jsonf.Close()
 
 		country, region, id := parts[0], parts[1], strings.Replace(parts[2], ".json", "", -1)
-		img := getPath(root, country, region, id)
-		hasImage := false
-		if _, err := os.Stat(img); err == nil {
-			hasImage = true
-		}
 
 		j := &LprJob{
-			Country:  country,
-			Region:   region,
-			Id:       id,
-			Path:     path,
-			HasImage: hasImage,
+			Country: country,
+			Region:  region,
+			Id:      id,
+			Path:    path,
+		}
+		img := getPath(root, country, region, id)
+		if _, err := os.Stat(img); err == nil {
+			j.ImageUrl = strings.Join([]string{*apiRoot, country, region, id}, "/")
 		}
 
 		if buff, err := ioutil.ReadAll(jsonf); err == nil {
