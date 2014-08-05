@@ -7,36 +7,136 @@ message Location {
     required double lat = 2;
 }
 
-message User {
-	required string id = 1;
-	required string name = 2;
+message Content {
+
+    // Id - not required at creation time; assigned by server
+    optional bytes uuid = 1;
+
+    // MIME type. e.g. image/jpeg, image/png, video/mp4
+    required string type = 2;
+
+    // Content data bytes
+    optional bytes data = 3;
+
+    // Or url as content - link sharing or content in cdn.
+    optional string url = 4;
 }
 
+message UserProfile {
+	// Not required at creation time.  Assigned by server.
+	optional bytes uuid = 1;
+
+	required string name = 2;
+
+	optional string status = 3;
+
+	// UI display of user
+	optional Content avatar = 4;
+	optional Content avatar_small = 5;
+}
+
+// Reference handle for user - either by id or by name (@david)
+message UserRef {
+	optional bytes uuid = 1;
+	optional string name = 2;
+}
+
+message BeaconAdvertisement {
+
+	message IBeacon {
+		required bytes uuid = 1;
+		optional int32 major = 2;
+		optional int32 minor = 3;
+	}
+	optional IBeacon ibeacon = 1;
+
+	// For supporting generic BLE mac address as id
+	optional bytes ble_device = 2;
+}
+
+// Hardware profile
+message BeaconDeviceProfile {
+	required bytes hardware_id = 1;
+	required string local_name = 2;
+	required bytes password = 3;
+	required BeaconAdvertisement advertise_info = 4;
+	optional int32 tx_power = 5;
+	optional int32 tx_frequency = 6;
+}
+
+// Summary of a beacon -- this is shared with mobile client.
+message BeaconSummary {
+
+	required bytes id = 1;
+
+	// How this beacon advertises itself
+	required BeaconAdvertisement advertise_info = 2;
+
+	// Where the beacon is installed
+	required Location location = 3;
+
+	// Owner of the beacon -- first user who provisioned a hardware beacon
+	// Ownership can be transferred by releasing the beacon which will cause
+	// a deletion of this record.
+	required UserRef owner = 4;
+
+	// At least one label to establish the context of the beacon.  For v1, only 1 label.
+	repeated string labels = 5;
+
+	// For displaying the beacon icon/ logo etc.
+	optional Content avatar = 6;
+	optional Content avatar_small = 7;
+}
+
+// Detail beacon info -- server side; contains history, device profile, etc.
 message Beacon {
 
-	required bytes uuid = 1;
-	optional int32 major = 2;
-	optional int32 minor = 3;
+	required bytes id = 1;
 
-	required Location location = 4;
-	required User owner = 5;
-	required bytes permissions = 6;  // Same as file system 0666 - public, group, self read/write-able
+	required BeaconSummary summary = 2;
 
-	required string label = 7;
+	// Device programming history to support reseting of beacons on release or rollbacks.
+	// Assumption: this doesn't happen often so a linear history can be stored in-place.
+	// This may not be sent to a viewing mobile client.
+	repeated BeaconDeviceProfile history = 3;
+
+	// Access control list
+	required string acl = 4;
 }
 
-message Content {
-    required string mime = 1;
-    required bytes data = 2;
+message Acl {
+	optional bytes id = 1;
+	required string name = 2;
+	repeated UserRef users = 3;
 }
 
-message Message {
+message Post {
 
-	required Beacon beacon = 1;
-	required double timestamp = 2;  // fractional seconds
-	required User from = 3;
-	repeated User to = 4;
+	// The message id. Optional at creation time.  To be filled in by the server on commit.
+	optional bytes uuid = 1;
 
-	required Content body = 5;
+	// Fractional seconds since epoch (unix time)
+	required double timestamp = 2;
 
+	repeated bytes targets = 3;
+
+	// In reference of another post. Used by comments potentially.
+	optional bytes referencing_post_id = 4;
+
+	// Users are referenced with the '@' syntax in UI, like twitter
+	// Values here should exclude the '@' character.
+	required UserRef from = 5;
+	repeated UserRef to = 6;
+
+	// The content of this post.
+	// One of the following should exist for a properly formed post.
+	// It can be either actual post or comment to another post. Or an original post
+	// with content and comment entered by user.
+	optional Content body = 7;
+	optional string comment = 8;
+
+	// Hashtags, optional. For message targeting / matching - eg. #sfmuni
+	// This may be populated after extracting from user comment.
+	// Values here should exclude the '#' character.
+	repeated string hashtags = 9;
 }

@@ -202,7 +202,6 @@ type Account struct {
 	Primary          *Login         `protobuf:"bytes,3,req,name=primary" json:"primary,omitempty"`
 	CreatedTimestamp *float64       `protobuf:"fixed64,4,opt,name=createdTimestamp" json:"createdTimestamp,omitempty"`
 	Services         []*Application `protobuf:"bytes,5,rep,name=services" json:"services,omitempty"`
-	Log              []*Account_Log `protobuf:"bytes,6,rep,name=log" json:"log,omitempty"`
 	XXX_unrecognized []byte         `json:"-"`
 }
 
@@ -245,31 +244,56 @@ func (m *Account) GetServices() []*Application {
 	return nil
 }
 
-func (m *Account) GetLog() []*Account_Log {
+type AccountLogs struct {
+	Id               *string            `protobuf:"bytes,1,req,name=id" json:"id,omitempty"`
+	Entries          []*AccountLogs_Log `protobuf:"bytes,2,rep,name=entries" json:"entries,omitempty"`
+	XXX_unrecognized []byte             `json:"-"`
+}
+
+func (m *AccountLogs) Reset()         { *m = AccountLogs{} }
+func (m *AccountLogs) String() string { return proto.CompactTextString(m) }
+func (*AccountLogs) ProtoMessage()    {}
+
+func (m *AccountLogs) GetId() string {
+	if m != nil && m.Id != nil {
+		return *m.Id
+	}
+	return ""
+}
+
+func (m *AccountLogs) GetEntries() []*AccountLogs_Log {
 	if m != nil {
-		return m.Log
+		return m.Entries
 	}
 	return nil
 }
 
-type Account_Log struct {
+type AccountLogs_Log struct {
 	Timestamp        *float64 `protobuf:"fixed64,1,req,name=timestamp" json:"timestamp,omitempty"`
-	Entry            *string  `protobuf:"bytes,2,req,name=entry" json:"entry,omitempty"`
+	User             *string  `protobuf:"bytes,2,req,name=user" json:"user,omitempty"`
+	Entry            *string  `protobuf:"bytes,3,req,name=entry" json:"entry,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
-func (m *Account_Log) Reset()         { *m = Account_Log{} }
-func (m *Account_Log) String() string { return proto.CompactTextString(m) }
-func (*Account_Log) ProtoMessage()    {}
+func (m *AccountLogs_Log) Reset()         { *m = AccountLogs_Log{} }
+func (m *AccountLogs_Log) String() string { return proto.CompactTextString(m) }
+func (*AccountLogs_Log) ProtoMessage()    {}
 
-func (m *Account_Log) GetTimestamp() float64 {
+func (m *AccountLogs_Log) GetTimestamp() float64 {
 	if m != nil && m.Timestamp != nil {
 		return *m.Timestamp
 	}
 	return 0
 }
 
-func (m *Account_Log) GetEntry() string {
+func (m *AccountLogs_Log) GetUser() string {
+	if m != nil && m.User != nil {
+		return *m.User
+	}
+	return ""
+}
+
+func (m *AccountLogs_Log) GetEntry() string {
 	if m != nil && m.Entry != nil {
 		return *m.Entry
 	}
