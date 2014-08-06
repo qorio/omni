@@ -33,7 +33,7 @@ func getPath(root, country, region, id string) string {
 
 func getLprJob(root, path string) *LprJob {
 	parts := strings.Split(path, "-")
-	if len(parts) != 3 {
+	if len(parts) < 3 {
 		return nil
 	} else {
 		// open the results file .json
@@ -44,7 +44,8 @@ func getLprJob(root, path string) *LprJob {
 
 		defer jsonf.Close()
 
-		country, region, id := parts[0], parts[1], strings.Replace(parts[2], ".json", "", -1)
+		country, region := parts[0], parts[1]
+		id := strings.Replace(strings.Join(parts[2:], "-"), ".json", "", -1)
 
 		j := &LprJob{
 			Country: country,
