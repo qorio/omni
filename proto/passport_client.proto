@@ -12,6 +12,7 @@ message AuthResponse {
 }
 
 message Login {
+
 	optional string id = 1;
 
 	enum Status {
@@ -24,9 +25,12 @@ message Login {
 	optional string phone = 4;
 	required string password = 5;
 
-	// Loccation in GeoJson - ex)  {"location" : [-71.34, 41.12]} -- [lon, lat]
-	// See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-geo-point-type.html
-	repeated double location = 6;
+	message Location {
+    		required double lon = 1;
+    		required double lat = 2;
+    	}
+
+	optional Location location = 6;
 
 	optional string username = 7;
 }

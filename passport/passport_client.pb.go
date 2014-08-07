@@ -116,16 +116,14 @@ func (m *AuthResponse) GetToken() string {
 }
 
 type Login struct {
-	Id       *string       `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
-	Status   *Login_Status `protobuf:"varint,2,opt,name=status,enum=passport.Login_Status,def=1" json:"status,omitempty"`
-	Email    *string       `protobuf:"bytes,3,opt,name=email" json:"email,omitempty"`
-	Phone    *string       `protobuf:"bytes,4,opt,name=phone" json:"phone,omitempty"`
-	Password *string       `protobuf:"bytes,5,req,name=password" json:"password,omitempty"`
-	// Loccation in GeoJson - ex)  {"location" : [-71.34, 41.12]} -- [lon, lat]
-	// See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-geo-point-type.html
-	Location         []float64 `protobuf:"fixed64,6,rep,name=location" json:"location,omitempty"`
-	Username         *string   `protobuf:"bytes,7,opt,name=username" json:"username,omitempty"`
-	XXX_unrecognized []byte    `json:"-"`
+	Id               *string         `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	Status           *Login_Status   `protobuf:"varint,2,opt,name=status,enum=passport.Login_Status,def=1" json:"status,omitempty"`
+	Email            *string         `protobuf:"bytes,3,opt,name=email" json:"email,omitempty"`
+	Phone            *string         `protobuf:"bytes,4,opt,name=phone" json:"phone,omitempty"`
+	Password         *string         `protobuf:"bytes,5,req,name=password" json:"password,omitempty"`
+	Location         *Login_Location `protobuf:"bytes,6,opt,name=location" json:"location,omitempty"`
+	Username         *string         `protobuf:"bytes,7,opt,name=username" json:"username,omitempty"`
+	XXX_unrecognized []byte          `json:"-"`
 }
 
 func (m *Login) Reset()         { *m = Login{} }
@@ -169,7 +167,7 @@ func (m *Login) GetPassword() string {
 	return ""
 }
 
-func (m *Login) GetLocation() []float64 {
+func (m *Login) GetLocation() *Login_Location {
 	if m != nil {
 		return m.Location
 	}
@@ -181,6 +179,30 @@ func (m *Login) GetUsername() string {
 		return *m.Username
 	}
 	return ""
+}
+
+type Login_Location struct {
+	Lon              *float64 `protobuf:"fixed64,1,req,name=lon" json:"lon,omitempty"`
+	Lat              *float64 `protobuf:"fixed64,2,req,name=lat" json:"lat,omitempty"`
+	XXX_unrecognized []byte   `json:"-"`
+}
+
+func (m *Login_Location) Reset()         { *m = Login_Location{} }
+func (m *Login_Location) String() string { return proto.CompactTextString(m) }
+func (*Login_Location) ProtoMessage()    {}
+
+func (m *Login_Location) GetLon() float64 {
+	if m != nil && m.Lon != nil {
+		return *m.Lon
+	}
+	return 0
+}
+
+func (m *Login_Location) GetLat() float64 {
+	if m != nil && m.Lat != nil {
+		return *m.Lat
+	}
+	return 0
 }
 
 func init() {

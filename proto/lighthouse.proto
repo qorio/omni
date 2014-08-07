@@ -1,5 +1,8 @@
 package lighthouse;
 
+import "soapbox.proto";
+
+
 // To be transformed to GeoJson - ex)  {"location" : [-71.34, 41.12]}
 // See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-geo-point-type.html
 message Location {
@@ -10,7 +13,7 @@ message Location {
 message Content {
 
     // Id - not required at creation time; assigned by server
-    optional bytes uuid = 1;
+    optional string id = 1;
 
     // MIME type. e.g. image/jpeg, image/png, video/mp4
     required string type = 2;
@@ -22,27 +25,9 @@ message Content {
     optional string url = 4;
 }
 
-message UserProfile {
-	// Not required at creation time.  Assigned by server.
-	optional bytes uuid = 1;
-
-	required string name = 2;
-
-	optional string status = 3;
-
-	// UI display of user
-	optional Content avatar = 4;
-	optional Content avatar_small = 5;
-}
-
-// Reference handle for user - either by id or by name (@david)
-message UserRef {
-	optional bytes uuid = 1;
-	optional string name = 2;
-}
-
 message BeaconAdvertisement {
 
+	// For IBeacon spec by AAPL
 	message IBeacon {
 		required bytes uuid = 1;
 		optional int32 major = 2;
@@ -51,7 +36,7 @@ message BeaconAdvertisement {
 	optional IBeacon ibeacon = 1;
 
 	// For supporting generic BLE mac address as id
-	optional bytes ble_device = 2;
+	optional string ble_device = 2;
 }
 
 // Hardware profile
@@ -67,22 +52,25 @@ message BeaconDeviceProfile {
 // Summary of a beacon -- this is shared with mobile client.
 message BeaconSummary {
 
-	required bytes id = 1;
+	// Unique identifier from the hardware
+	required string id = 1;
 
 	// How this beacon advertises itself
 	required BeaconAdvertisement advertise_info = 2;
 
 	// Install date, unix time
 	required double installed_timestamp = 3;
+
 	// Where the beacon is installed
 	required Location location = 4;
 
+	// Battery level in percentage
 	optional int32 battery = 5;
 
 	// Owner of the beacon -- first user who provisioned a hardware beacon
 	// Ownership can be transferred by releasing the beacon which will cause
 	// a deletion of this record.
-	required UserRef owner = 6;
+	required soapbox.UserRef owner = 6;
 
 	// At least one label to establish the context of the beacon.  For v1, only 1 label.
 	repeated string labels = 7;
@@ -95,7 +83,7 @@ message BeaconSummary {
 // Detail beacon info -- server side; contains history, device profile, etc.
 message Beacon {
 
-	required bytes id = 1;
+	required string id = 1;
 
 	required BeaconSummary summary = 2;
 
@@ -109,38 +97,28 @@ message Beacon {
 }
 
 message Acl {
-	optional bytes id = 1;
+	optional string id = 1;
 	required string name = 2;
-	repeated UserRef users = 3;
+	repeated soapbox.UserRef users = 3;
 }
 
-message Post {
+message BeaconPost {
 
-	// The message id. Optional at creation time.  To be filled in by the server on commit.
-	optional bytes uuid = 1;
+	// Id - not required at creation time.  Assigned by server
+	optional string id = 1;
 
-	// Fractional seconds since epoch (unix time)
-	required double timestamp = 2;
+	// List of beacon ids to attach the post
+	repeated string beacons = 2;
 
-	repeated bytes targets = 3;
+	// Optional.  If len(audience) is zero, the message is intended
+	// only for the author (as self reminder).  This list is used
+	// to filter and target delivery.  There are corresponding 'public'
+	// or 'group' UserRef to model public or group posts.
+	repeated soapbox.UserRef audience = 4;
 
-	// In reference of another post. Used by comments potentially.
-	optional bytes referencing_post_id = 4;
+	// Actual content / post itself
+	required soapbox.Post post = 5;
 
-	// Users are referenced with the '@' syntax in UI, like twitter
-	// Values here should exclude the '@' character.
-	required UserRef from = 5;
-	repeated UserRef to = 6;
-
-	// The content of this post.
-	// One of the following should exist for a properly formed post.
-	// It can be either actual post or comment to another post. Or an original post
-	// with content and comment entered by user.
-	optional Content body = 7;
-	optional string comment = 8;
-
-	// Hashtags, optional. For message targeting / matching - eg. #sfmuni
-	// This may be populated after extracting from user comment.
-	// Values here should exclude the '#' character.
-	repeated string hashtags = 9;
+	// Short url
+	optional string short_url = 6;
 }
