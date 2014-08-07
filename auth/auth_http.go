@@ -7,27 +7,27 @@ import (
 	"strings"
 )
 
-type Info struct {
+type Context struct {
 	token *Token
 }
 
-func (this *Info) HasKey(key string) bool {
+func (this *Context) HasKey(key string) bool {
 	return this.token.HasKey(key)
 }
 
-func (this *Info) GetString(key string) string {
+func (this *Context) GetString(key string) string {
 	return this.token.GetString(key)
 }
 
-func (this *Info) Get(key string) interface{} {
+func (this *Context) Get(key string) interface{} {
 	return this.token.Get(key)
 }
 
-type HttpHandler func(auth *Info, resp http.ResponseWriter, req *http.Request)
+type HttpHandler func(auth *Context, resp http.ResponseWriter, req *http.Request)
 
 func (service *Service) RequiresAuth(handler HttpHandler) func(http.ResponseWriter, *http.Request) {
 	return func(resp http.ResponseWriter, req *http.Request) {
-		info := &Info{}
+		info := &Context{}
 		if *doAuth {
 			// Get the auth header
 			header := req.Header.Get("Authorization")
