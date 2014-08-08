@@ -17,9 +17,8 @@ import (
 
 type EndPoint struct {
 	settings Settings
-	router   *mux.Router
-	auth     *omni_auth.Service
 	service  Service
+	engine   omni_http.Engine
 }
 
 func defaultResolveApplicationId(req *http.Request) string {
@@ -29,34 +28,29 @@ func defaultResolveApplicationId(req *http.Request) string {
 func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service) (api *EndPoint, err error) {
 	api = &EndPoint{
 		settings: settings,
-		router:   mux.NewRouter(),
-		auth:     auth,
 		service:  service,
+		engine:   omni_http.NewEngine(auth),
 	}
 
-	// Authentication endpoint
-	api.router.HandleFunc("/api/v1/auth", api.ApiAuthenticate).
-		Methods("POST").Name("auth")
+	AuthenticateUser.Handler = api.ApiAuthenticate
 
-	// Account management endpoints
-	api.router.HandleFunc("/api/v1/account", api.ApiSaveAccount).
-		Methods("POST").Name("account-save")
-	api.router.HandleFunc("/api/v1/account/{id}/primary", api.ApiSaveAccountPrimary).
-		Methods("POST").Name("account-login-update")
-	api.router.HandleFunc("/api/v1/account/{id}/services", api.ApiSaveAccountService).
-		Methods("POST").Name("account-services-update")
-	api.router.HandleFunc("/api/v1/account/{id}/service/{applicationId}/attributes", api.ApiSaveAccountServiceAttribute).
-		Methods("POST").Name("account-services-attribute-update")
-	api.router.HandleFunc("/api/v1/account/{id}", api.ApiGetAccount).
-		Methods("GET").Name("account-get")
-	api.router.HandleFunc("/api/v1/account/{id}", api.ApiDeleteAccount).
-		Methods("DELETE").Name("account-delete")
+	FetchAccount.Handler = api.ApiGetAccount
+
+	CreateOrUpdateAccount.Handler = api.ApiSaveAccount
+	UpdateAccountPrimaryLogin.Handler = api.ApiSaveAccountPrimary
+	AddOrUpdateAccountService.Handler = api.ApiSaveAccountService
+	AddOrUpdateServiceAttribute.Handler = api.ApiSaveAccountServiceAttribute
+	DeleteAccount.Handler = api.ApiDeleteAccount
+
+	// engine itself hosts two services
+	api.engine.Bind(UserAuth)
+	api.engine.Bind(ApiService)
 
 	return api, nil
 }
 
 func (this *EndPoint) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
-	this.router.ServeHTTP(resp, request)
+	this.engine.ServeHTTP(resp, request)
 }
 
 // Authenticates and returns a token as the response
@@ -112,7 +106,7 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 	}
 
 	// encode the token
-	token := this.auth.NewToken()
+	token := this.engine.NewAuthToken()
 	token.Add("@id", application.GetId()).
 		Add("@status", application.GetStatus()).
 		Add("@accountId", application.GetAccountId()).
@@ -132,7 +126,7 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 			}
 		}
 	}
-	tokenString, err := this.auth.SignedString(token)
+	tokenString, err := this.engine.SignedString(token)
 	if err != nil {
 		glog.Warningln("error-generating-auth-token", err)
 		renderJsonError(resp, req, "cannot-generate-auth-token", http.StatusInternalServerError)

@@ -1,10 +1,11 @@
 package passport;
 
 message AuthRequest {
-	required string password = 1;
-	optional string email = 2;
-	optional string phone = 3;
-	optional string application = 4;
+	optional string application = 1;
+	required string password = 2;
+	optional string email = 3;
+	optional string phone = 4;
+	optional string usernmae = 5;
 }
 
 message AuthResponse {
