@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/qorio/omni/auth"
+	"io"
 	"io/ioutil"
 	"net/http"
 )
@@ -16,6 +16,57 @@ var (
 	ERROR_MISSING_INPUT        = errors.New("error-missing-input")
 	ERROR_UNKNOWN_CONTENT_TYPE = errors.New("error-no-content-type")
 )
+
+var marshalers = map[string]func(string, http.ResponseWriter, proto.Message) error{
+	"application/json": func(contentType string, resp http.ResponseWriter, typed proto.Message) error {
+		if buff, err := json.Marshal(typed); err == nil {
+			SetCORSHeaders(resp)
+			resp.Header().Add("Content-Type", contentType)
+			resp.Write(buff)
+			return nil
+		} else {
+			return err
+		}
+	},
+	"": func(contentType string, resp http.ResponseWriter, typed proto.Message) error {
+		if buff, err := json.Marshal(typed); err == nil {
+			SetCORSHeaders(resp)
+			resp.Header().Add("Content-Type", contentType)
+			resp.Write(buff)
+			return nil
+		} else {
+			return err
+		}
+	},
+	"application/protobuf": func(contentType string, resp http.ResponseWriter, typed proto.Message) error {
+		if buff, err := proto.Marshal(typed); err == nil {
+			SetCORSHeaders(resp)
+			resp.Header().Add("Content-Type", contentType)
+			resp.Write(buff)
+			return nil
+		} else {
+			return err
+		}
+	},
+}
+
+var unmarshalers = map[string]func(io.ReadCloser, proto.Message) error{
+	"application/json": func(body io.ReadCloser, typed proto.Message) error {
+		dec := json.NewDecoder(body)
+		return dec.Decode(typed)
+	},
+	"": func(body io.ReadCloser, typed proto.Message) error {
+		dec := json.NewDecoder(body)
+		return dec.Decode(typed)
+	},
+	"application/protobuf": func(body io.ReadCloser, typed proto.Message) error {
+		buff, err := ioutil.ReadAll(body)
+		if err != nil {
+			return err
+		}
+		return proto.Unmarshal(buff, typed)
+	},
+}
 
 type ObjectFactory func() interface{}
 type Handler func(http.ResponseWriter, *http.Request)
@@ -74,8 +125,6 @@ func (this *engine) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
 }
 
 func (this *engine) ServiceMethod(key string) *ServiceMethod {
-	glog.Infoln("KEY = ", key)
-
 	if v, has := this.methods[key]; has {
 		return v
 	} else {
@@ -97,46 +146,35 @@ func (this *engine) Bind(endpoints []*ServiceMethod) {
 		case ep.Handler == nil && ep.AuthenticatedHandler == nil:
 			panic(errors.New(fmt.Sprintf("No implementation for REST endpoint[%d]: %s", i, ep)))
 		}
+
+		// check the content type
+		for _, ct := range ep.ContentTypes {
+			if _, has := marshalers[ct]; !has {
+				panic(errors.New(fmt.Sprintf("Bad content type: %s", ct)))
+			}
+			if _, has := unmarshalers[ct]; !has {
+				panic(errors.New(fmt.Sprintf("Bad content type: %s", ct)))
+			}
+		}
 	}
 }
 
 func (this *engine) Unmarshal(req *http.Request, typed proto.Message) (err error) {
 	contentType := req.Header.Get("Content-Type")
-	body := req.Body
-	switch {
-	case contentType == "application/json" || contentType == "":
-		dec := json.NewDecoder(body)
-		return dec.Decode(typed)
-	case contentType == "application/protobuf":
-		buff, err := ioutil.ReadAll(body)
-		if err != nil {
-			return err
-		}
-		return proto.Unmarshal(buff, typed)
-	default:
+	if unmarshaler, has := unmarshalers[contentType]; has {
+		return unmarshaler(req.Body, typed)
+	} else {
 		return ERROR_UNKNOWN_CONTENT_TYPE
 	}
 }
 
 func (this *engine) Marshal(req *http.Request, typed proto.Message, resp http.ResponseWriter) (err error) {
 	contentType := req.Header.Get("Content-Type")
-	var buff []byte
-	switch {
-	case contentType == "application/json" || contentType == "":
-		if buff, err = json.Marshal(typed); err == nil {
-		}
-	case contentType == "application/protobuf":
-		buff, err = proto.Marshal(typed)
-	default:
-		err = ERROR_UNKNOWN_CONTENT_TYPE
+	if marshaler, has := marshalers[contentType]; has {
+		return marshaler(contentType, resp, typed)
+	} else {
+		return ERROR_UNKNOWN_CONTENT_TYPE
 	}
-
-	if err == nil {
-		SetCORSHeaders(resp)
-		resp.Header().Add("Content-Type", contentType)
-		resp.Write(buff)
-	}
-	return
 }
 
 func (this *engine) RenderJsonError(resp http.ResponseWriter, req *http.Request, message string, code int) (err error) {
