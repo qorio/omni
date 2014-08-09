@@ -6,9 +6,10 @@ import (
 
 var (
 	AuthenticateUser = &omni_http.ServiceMethod{
-		Name:       "AuthenticateUser",
-		UrlRoute:   "/api/v1/auth",
-		HttpMethod: "POST",
+		Name:         "AuthenticateUser",
+		UrlRoute:     "/api/v1/auth",
+		HttpMethod:   "POST",
+		ContentTypes: []string{"application/json", "application/protobuf"},
 		RequestBody: func() interface{} {
 			return AuthRequest{}
 		},
@@ -21,10 +22,11 @@ Authentication endpoint.
 	}
 
 	FetchAccount = &omni_http.ServiceMethod{
-		Name:        "FetchAccount",
-		UrlRoute:    "/api/v1/account/{id}",
-		HttpMethod:  "GET",
-		RequestBody: nil,
+		Name:         "FetchAccount",
+		UrlRoute:     "/api/v1/account/{id}",
+		HttpMethod:   "GET",
+		ContentTypes: []string{"application/json", "application/protobuf"},
+		RequestBody:  nil,
 		ResponseBody: func() interface{} {
 			return Account{}
 		},
@@ -45,9 +47,10 @@ Deletes the account.
 	}
 
 	CreateOrUpdateAccount = &omni_http.ServiceMethod{
-		Name:       "CreateOrUpdateAccount",
-		UrlRoute:   "/api/v1/account",
-		HttpMethod: "POST",
+		Name:         "CreateOrUpdateAccount",
+		UrlRoute:     "/api/v1/account",
+		HttpMethod:   "POST",
+		ContentTypes: []string{"application/json", "application/protobuf"},
 		RequestBody: func() interface{} {
 			return Account{}
 		},
@@ -59,9 +62,10 @@ otherwise, an existing record will be overwritten with the POST value.
 	}
 
 	UpdateAccountPrimaryLogin = &omni_http.ServiceMethod{
-		Name:       "UpdateAccountPrimaryLogin",
-		UrlRoute:   "/api/v1/account/{id}/primary",
-		HttpMethod: "POST",
+		Name:         "UpdateAccountPrimaryLogin",
+		UrlRoute:     "/api/v1/account/{id}/primary",
+		HttpMethod:   "POST",
+		ContentTypes: []string{"application/json", "application/protobuf"},
 		RequestBody: func() interface{} {
 			return Login{}
 		},
@@ -72,9 +76,10 @@ Update primary login for account.
 	}
 
 	AddOrUpdateAccountService = &omni_http.ServiceMethod{
-		Name:       "AddOrUpdateUpdateAccountService",
-		UrlRoute:   "/api/v1/account/{id}/services",
-		HttpMethod: "POST",
+		Name:         "AddOrUpdateUpdateAccountService",
+		UrlRoute:     "/api/v1/account/{id}/services",
+		HttpMethod:   "POST",
+		ContentTypes: []string{"application/json", "application/protobuf"},
 		RequestBody: func() interface{} {
 			return Application{}
 		},
@@ -85,9 +90,10 @@ Create or update a service / application in an existing account
 	}
 
 	AddOrUpdateServiceAttribute = &omni_http.ServiceMethod{
-		Name:       "AddOrUpdateUpdateServiceAttribute",
-		UrlRoute:   "/api/v1/account/{id}/service/{applicationId}/attributes",
-		HttpMethod: "POST",
+		Name:         "AddOrUpdateUpdateServiceAttribute",
+		UrlRoute:     "/api/v1/account/{id}/service/{applicationId}/attributes",
+		HttpMethod:   "POST",
+		ContentTypes: []string{"application/json", "application/protobuf"},
 		RequestBody: func() interface{} {
 			return Attribute{}
 		},

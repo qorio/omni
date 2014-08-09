@@ -11,6 +11,5 @@ func SetNoCachingHeaders(w http.ResponseWriter) {
 }
 
 func SetCORSHeaders(w http.ResponseWriter) {
-	w.Header().Add("Content-Type", "application/json")
 	w.Header().Add("Access-Control-Allow-Origin", "*")
 }
