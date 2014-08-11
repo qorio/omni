@@ -93,9 +93,10 @@ type Engine interface {
 	NewAuthToken() *auth.Token
 	SignedString(*auth.Token) (string, error)
 	ServiceMethod(string) *ServiceMethod
+	GetUrlParameter(*http.Request, string) string
 	Unmarshal(*http.Request, proto.Message) error
 	Marshal(*http.Request, proto.Message, http.ResponseWriter) error
-	RenderJsonError(http.ResponseWriter, *http.Request, string, int) error
+	HandleError(http.ResponseWriter, *http.Request, string, int) error
 }
 
 type engine struct {
@@ -130,6 +131,16 @@ func (this *engine) ServiceMethod(key string) *ServiceMethod {
 	} else {
 		panic(errors.New(fmt.Sprintf("Mismatched key: %s", key)))
 	}
+}
+
+func (this *engine) GetUrlParameter(req *http.Request, key string) string {
+	vars := mux.Vars(req)
+	if val, has := vars[key]; has {
+		return val
+	} else if err := req.ParseForm(); err == nil {
+		return req.Form[key][0]
+	}
+	return ""
 }
 
 func (this *engine) Bind(endpoints []*ServiceMethod) {
@@ -177,7 +188,7 @@ func (this *engine) Marshal(req *http.Request, typed proto.Message, resp http.Re
 	}
 }
 
-func (this *engine) RenderJsonError(resp http.ResponseWriter, req *http.Request, message string, code int) (err error) {
+func (this *engine) HandleError(resp http.ResponseWriter, req *http.Request, message string, code int) (err error) {
 	resp.WriteHeader(code)
 	resp.Write([]byte(fmt.Sprintf("{\"error\":\"%s\"}", message)))
 	return

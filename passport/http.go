@@ -2,7 +2,6 @@ package passport
 
 import (
 	"github.com/golang/glog"
-	"github.com/gorilla/mux"
 	omni_auth "github.com/qorio/omni/auth"
 	omni_common "github.com/qorio/omni/common"
 	omni_http "github.com/qorio/omni/http"
@@ -50,12 +49,10 @@ func (this *EndPoint) ServeHTTP(resp http.ResponseWriter, request *http.Request)
 
 // Authenticates and returns a token as the response
 func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Request) {
-	omni_http.SetCORSHeaders(resp)
-
 	request := AuthenticateUser.RequestBody().(AuthRequest)
 	err := this.engine.Unmarshal(req, &request)
 	if err != nil {
-		this.engine.RenderJsonError(resp, req, err.Error(), http.StatusBadRequest)
+		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -64,17 +61,17 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 
 	switch {
 	case err == ERROR_NOT_FOUND:
-		this.engine.RenderJsonError(resp, req, "error-account-not-found", http.StatusUnauthorized)
+		this.engine.HandleError(resp, req, "error-account-not-found", http.StatusUnauthorized)
 		return
 	case err == ERROR_MISSING_INPUT:
-		this.engine.RenderJsonError(resp, req, err.Error(), http.StatusBadRequest)
+		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)
 		return
 
 	case err != nil:
-		this.engine.RenderJsonError(resp, req, "error-lookup-account", http.StatusInternalServerError)
+		this.engine.HandleError(resp, req, "error-lookup-account", http.StatusInternalServerError)
 		return
 	case err == nil && account.Primary.GetPassword() != request.GetPassword():
-		this.engine.RenderJsonError(resp, req, "error-bad-credentials", http.StatusUnauthorized)
+		this.engine.HandleError(resp, req, "error-bad-credentials", http.StatusUnauthorized)
 		return
 	}
 
@@ -96,7 +93,7 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 	}
 
 	if application == nil {
-		this.engine.RenderJsonError(resp, req, "error-not-a-member", http.StatusUnauthorized)
+		this.engine.HandleError(resp, req, "error-not-a-member", http.StatusUnauthorized)
 		return
 	}
 
@@ -124,7 +121,7 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 	tokenString, err := this.engine.SignedString(token)
 	if err != nil {
 		glog.Warningln("error-generating-auth-token", err)
-		this.engine.RenderJsonError(resp, req, "cannot-generate-auth-token", http.StatusInternalServerError)
+		this.engine.HandleError(resp, req, "cannot-generate-auth-token", http.StatusInternalServerError)
 		return
 	}
 
@@ -134,23 +131,21 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 
 	err = this.engine.Marshal(req, &authResponse, resp)
 	if err != nil {
-		this.engine.RenderJsonError(resp, req, "malformed-response", http.StatusInternalServerError)
+		this.engine.HandleError(resp, req, "malformed-response", http.StatusInternalServerError)
 		return
 	}
 }
 
 func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request) {
-	omni_http.SetCORSHeaders(resp)
-
 	account := CreateOrUpdateAccount.RequestBody().(Account)
 	err := this.engine.Unmarshal(req, &account)
 	if err != nil {
-		this.engine.RenderJsonError(resp, req, err.Error(), http.StatusBadRequest)
+		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if account.GetPrimary().GetPhone() == "" && account.GetPrimary().GetEmail() == "" {
-		this.engine.RenderJsonError(resp, req, ERROR_MISSING_INPUT.Error(), http.StatusBadRequest)
+		this.engine.HandleError(resp, req, ERROR_MISSING_INPUT.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -163,7 +158,7 @@ func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request
 
 	case hasLoginId && !hasAccountId:
 		// not allowed -- should not start a new one.
-		this.engine.RenderJsonError(resp, req, "cannot-transfer-login-to-new-account",
+		this.engine.HandleError(resp, req, "cannot-transfer-login-to-new-account",
 			http.StatusBadRequest)
 		return
 
@@ -173,7 +168,7 @@ func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request
 		existing, _ := this.findAccount(account.GetPrimary().GetEmail(),
 			account.GetPrimary().GetPhone())
 		if existing != nil {
-			this.engine.RenderJsonError(resp, req, "error-duplicate", http.StatusConflict)
+			this.engine.HandleError(resp, req, "error-duplicate", http.StatusConflict)
 			return
 		}
 
@@ -187,7 +182,7 @@ func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request
 		existing, _ := this.findAccount(account.GetPrimary().GetEmail(),
 			account.GetPrimary().GetPhone())
 		if existing != nil {
-			this.engine.RenderJsonError(resp, req, "error-duplicate", http.StatusConflict)
+			this.engine.HandleError(resp, req, "error-duplicate", http.StatusConflict)
 			return
 		}
 
@@ -218,25 +213,23 @@ func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request
 	}
 	err = this.service.SaveAccount(&account)
 	if err != nil {
-		this.engine.RenderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
 func (this *EndPoint) ApiSaveAccountPrimary(resp http.ResponseWriter, req *http.Request) {
-	omni_http.SetCORSHeaders(resp)
-	vars := mux.Vars(req)
-	id := vars["id"]
+	id := this.engine.GetUrlParameter(req, "id")
 
 	login := UpdateAccountPrimaryLogin.RequestBody().(Login)
 	err := this.engine.Unmarshal(req, &login)
 	if err != nil {
-		this.engine.RenderJsonError(resp, req, err.Error(), http.StatusBadRequest)
+		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if id == "" {
-		this.engine.RenderJsonError(resp, req, "error-missing-id", http.StatusBadRequest)
+		this.engine.HandleError(resp, req, "error-missing-id", http.StatusBadRequest)
 		return
 	}
 
@@ -244,19 +237,19 @@ func (this *EndPoint) ApiSaveAccountPrimary(resp http.ResponseWriter, req *http.
 
 	switch {
 	case err == ERROR_NOT_FOUND:
-		this.engine.RenderJsonError(resp, req, "error-account-not-found", http.StatusNotFound)
+		this.engine.HandleError(resp, req, "error-account-not-found", http.StatusNotFound)
 		return
 	case err != nil:
-		this.engine.RenderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	switch {
 	case login.GetPhone() == "" && login.GetEmail() == "":
-		this.engine.RenderJsonError(resp, req, "error-missing-email-or-phone", http.StatusBadRequest)
+		this.engine.HandleError(resp, req, "error-missing-email-or-phone", http.StatusBadRequest)
 		return
 	case login.GetPassword() == "":
-		this.engine.RenderJsonError(resp, req, "error-missing-password", http.StatusBadRequest)
+		this.engine.HandleError(resp, req, "error-missing-password", http.StatusBadRequest)
 		return
 	}
 
@@ -270,25 +263,23 @@ func (this *EndPoint) ApiSaveAccountPrimary(resp http.ResponseWriter, req *http.
 
 	err = this.service.SaveAccount(account)
 	if err != nil {
-		this.engine.RenderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
 func (this *EndPoint) ApiSaveAccountService(resp http.ResponseWriter, req *http.Request) {
-	omni_http.SetCORSHeaders(resp)
-	vars := mux.Vars(req)
-	id := vars["id"]
+	id := this.engine.GetUrlParameter(req, "id")
 
 	application := AddOrUpdateAccountService.RequestBody().(Application)
 	err := this.engine.Unmarshal(req, &application)
 	if err != nil {
-		this.engine.RenderJsonError(resp, req, err.Error(), http.StatusBadRequest)
+		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if id == "" {
-		this.engine.RenderJsonError(resp, req, "error-missing-id", http.StatusBadRequest)
+		this.engine.HandleError(resp, req, "error-missing-id", http.StatusBadRequest)
 		return
 	}
 
@@ -296,10 +287,10 @@ func (this *EndPoint) ApiSaveAccountService(resp http.ResponseWriter, req *http.
 
 	switch {
 	case err == ERROR_NOT_FOUND:
-		this.engine.RenderJsonError(resp, req, "error-account-not-found", http.StatusNotFound)
+		this.engine.HandleError(resp, req, "error-account-not-found", http.StatusNotFound)
 		return
 	case err != nil:
-		this.engine.RenderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -324,26 +315,24 @@ func (this *EndPoint) ApiSaveAccountService(resp http.ResponseWriter, req *http.
 
 	err = this.service.SaveAccount(account)
 	if err != nil {
-		this.engine.RenderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
 func (this *EndPoint) ApiSaveAccountServiceAttribute(resp http.ResponseWriter, req *http.Request) {
-	omni_http.SetCORSHeaders(resp)
-	vars := mux.Vars(req)
-	id := vars["id"]
-	applicationId := vars["applicationId"]
+	id := this.engine.GetUrlParameter(req, "id")
+	applicationId := this.engine.GetUrlParameter(req, "applicationId")
 
 	attribute := AddOrUpdateServiceAttribute.RequestBody().(Attribute)
 	err := this.engine.Unmarshal(req, &attribute)
 	if err != nil {
-		this.engine.RenderJsonError(resp, req, err.Error(), http.StatusBadRequest)
+		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if id == "" {
-		this.engine.RenderJsonError(resp, req, "error-missing-id", http.StatusBadRequest)
+		this.engine.HandleError(resp, req, "error-missing-id", http.StatusBadRequest)
 		return
 	}
 
@@ -351,10 +340,10 @@ func (this *EndPoint) ApiSaveAccountServiceAttribute(resp http.ResponseWriter, r
 
 	switch {
 	case err == ERROR_NOT_FOUND:
-		this.engine.RenderJsonError(resp, req, "error-account-not-found", http.StatusNotFound)
+		this.engine.HandleError(resp, req, "error-account-not-found", http.StatusNotFound)
 		return
 	case err != nil:
-		this.engine.RenderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -368,7 +357,7 @@ func (this *EndPoint) ApiSaveAccountServiceAttribute(resp http.ResponseWriter, r
 	}
 
 	if application == nil {
-		this.engine.RenderJsonError(resp, req, "error-application-id-not-found", http.StatusBadRequest)
+		this.engine.HandleError(resp, req, "error-application-id-not-found", http.StatusBadRequest)
 		return
 	}
 
@@ -392,18 +381,16 @@ func (this *EndPoint) ApiSaveAccountServiceAttribute(resp http.ResponseWriter, r
 
 	err = this.service.SaveAccount(account)
 	if err != nil {
-		this.engine.RenderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
 func (this *EndPoint) ApiGetAccount(resp http.ResponseWriter, req *http.Request) {
-	omni_http.SetCORSHeaders(resp)
-	vars := mux.Vars(req)
-	id := vars["id"]
+	id := this.engine.GetUrlParameter(req, "id")
 
 	if id == "" {
-		this.engine.RenderJsonError(resp, req, "error-missing-id", http.StatusBadRequest)
+		this.engine.HandleError(resp, req, "error-missing-id", http.StatusBadRequest)
 		return
 	}
 
@@ -411,27 +398,25 @@ func (this *EndPoint) ApiGetAccount(resp http.ResponseWriter, req *http.Request)
 
 	switch {
 	case err == ERROR_NOT_FOUND:
-		this.engine.RenderJsonError(resp, req, "error-account-not-found", http.StatusNotFound)
+		this.engine.HandleError(resp, req, "error-account-not-found", http.StatusNotFound)
 		return
 	case err != nil:
-		this.engine.RenderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = this.engine.Marshal(req, account, resp)
 	if err != nil {
-		this.engine.RenderJsonError(resp, req, "malformed-account", http.StatusInternalServerError)
+		this.engine.HandleError(resp, req, "malformed-account", http.StatusInternalServerError)
 		return
 	}
 }
 
 func (this *EndPoint) ApiDeleteAccount(resp http.ResponseWriter, req *http.Request) {
-	omni_http.SetCORSHeaders(resp)
-	vars := mux.Vars(req)
-	id := vars["id"]
+	id := this.engine.GetUrlParameter(req, "id")
 
 	if id == "" {
-		this.engine.RenderJsonError(resp, req, "error-missing-id", http.StatusBadRequest)
+		this.engine.HandleError(resp, req, "error-missing-id", http.StatusBadRequest)
 		return
 	}
 
@@ -439,10 +424,10 @@ func (this *EndPoint) ApiDeleteAccount(resp http.ResponseWriter, req *http.Reque
 
 	switch {
 	case err == ERROR_NOT_FOUND:
-		this.engine.RenderJsonError(resp, req, "error-account-not-found", http.StatusNotFound)
+		this.engine.HandleError(resp, req, "error-account-not-found", http.StatusNotFound)
 		return
 	case err != nil:
-		this.engine.RenderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
