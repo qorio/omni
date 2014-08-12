@@ -39,7 +39,7 @@ echo "Cleaning build directory $BUILD"
 rm -rf $BUILD
 mkdir -p $BUILD/target
 
-GOPATH=$WORKING/third_party:$BUILD:$GOPATH
+GOPATH=$WORKING/imports:$WORKING/third_party:$BUILD:$GOPATH
 
 # build the embedfs utility
 #echo "Building embedfs utility"
