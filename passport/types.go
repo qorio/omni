@@ -2,6 +2,7 @@ package passport
 
 import (
 	"errors"
+	api "github.com/qorio/api/passport"
 	"net/http"
 )
 
@@ -29,10 +30,10 @@ type Settings struct {
 }
 
 type Service interface {
-	FindAccountByEmail(email string) (account *Account, err error)
-	FindAccountByPhone(phone string) (account *Account, err error)
-	SaveAccount(account *Account) (err error)
-	GetAccount(id string) (account *Account, err error)
+	FindAccountByEmail(email string) (account *api.Account, err error)
+	FindAccountByPhone(phone string) (account *api.Account, err error)
+	SaveAccount(account *api.Account) (err error)
+	GetAccount(id string) (account *api.Account, err error)
 	DeleteAccount(id string) (err error)
 	Close()
 }

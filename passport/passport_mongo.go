@@ -2,6 +2,7 @@ package passport
 
 import (
 	"github.com/golang/glog"
+	api "github.com/qorio/api/passport"
 	omni_common "github.com/qorio/omni/common"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -57,8 +58,8 @@ func NewService(settings Settings) (Service, error) {
 	return impl, nil
 }
 
-func (this *serviceImpl) FindAccountByEmail(email string) (account *Account, err error) {
-	result := Account{}
+func (this *serviceImpl) FindAccountByEmail(email string) (account *api.Account, err error) {
+	result := api.Account{}
 	err = this.collection.Find(bson.M{"primary.email": email}).One(&result)
 	switch {
 	case err == mgo.ErrNotFound:
@@ -69,8 +70,8 @@ func (this *serviceImpl) FindAccountByEmail(email string) (account *Account, err
 	return &result, nil
 }
 
-func (this *serviceImpl) FindAccountByPhone(phone string) (account *Account, err error) {
-	result := Account{}
+func (this *serviceImpl) FindAccountByPhone(phone string) (account *api.Account, err error) {
+	result := api.Account{}
 	err = this.collection.Find(bson.M{"primary.phone": phone}).One(&result)
 	switch {
 	case err == mgo.ErrNotFound:
@@ -81,7 +82,7 @@ func (this *serviceImpl) FindAccountByPhone(phone string) (account *Account, err
 	return &result, nil
 }
 
-func (this *serviceImpl) SaveAccount(account *Account) (err error) {
+func (this *serviceImpl) SaveAccount(account *api.Account) (err error) {
 	uuid, _ := omni_common.NewUUID()
 	if account.GetId() == "" {
 		account.Id = &uuid
@@ -109,8 +110,8 @@ func (this *serviceImpl) SaveAccount(account *Account) (err error) {
 	return err
 }
 
-func (this *serviceImpl) GetAccount(id string) (account *Account, err error) {
-	result := Account{}
+func (this *serviceImpl) GetAccount(id string) (account *api.Account, err error) {
+	result := api.Account{}
 	err = this.collection.Find(bson.M{"id": id}).One(&result)
 	switch {
 	case err == mgo.ErrNotFound:

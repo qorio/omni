@@ -6,6 +6,7 @@ import (
 	"flag"
 	"github.com/bmizerany/assert"
 	"github.com/drewolson/testflight"
+	api "github.com/qorio/api/passport"
 	omni_auth "github.com/qorio/omni/auth"
 	"net/http"
 	"strings"
@@ -17,26 +18,26 @@ var (
 )
 
 type mock struct {
-	findByEmail   func(email string) (account *Account, err error)
-	findByPhone   func(phone string) (account *Account, err error)
-	saveAccount   func(account *Account) (err error)
-	getAccount    func(id string) (account *Account, err error)
+	findByEmail   func(email string) (account *api.Account, err error)
+	findByPhone   func(phone string) (account *api.Account, err error)
+	saveAccount   func(account *api.Account) (err error)
+	getAccount    func(id string) (account *api.Account, err error)
 	deleteAccount func(id string) (err error)
 }
 
-func (this *mock) FindAccountByEmail(email string) (account *Account, err error) {
+func (this *mock) FindAccountByEmail(email string) (account *api.Account, err error) {
 	return this.findByEmail(email)
 }
 
-func (this *mock) FindAccountByPhone(email string) (account *Account, err error) {
+func (this *mock) FindAccountByPhone(email string) (account *api.Account, err error) {
 	return this.findByPhone(email)
 }
 
-func (this *mock) SaveAccount(account *Account) (err error) {
+func (this *mock) SaveAccount(account *api.Account) (err error) {
 	return this.saveAccount(account)
 }
 
-func (this *mock) GetAccount(id string) (account *Account, err error) {
+func (this *mock) GetAccount(id string) (account *api.Account, err error) {
 	return this.getAccount(id)
 }
 
@@ -72,10 +73,10 @@ func TestAuthNotFound(t *testing.T) {
 
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
 	service := &mock{
-		findByEmail: func(email string) (account *Account, err error) {
+		findByEmail: func(email string) (account *api.Account, err error) {
 			return nil, ERROR_NOT_FOUND
 		},
-		findByPhone: func(phone string) (account *Account, err error) {
+		findByPhone: func(phone string) (account *api.Account, err error) {
 			t.Error("testing look up by email; this shouldn't be called")
 			return nil, nil
 		},
@@ -87,7 +88,7 @@ func TestAuthNotFound(t *testing.T) {
 		t.Error(err)
 	}
 
-	authRequest := &AuthRequest{
+	authRequest := &api.AuthRequest{
 		Email:    ptr("foo@bar.com"),
 		Password: ptr("test"),
 	}
@@ -107,9 +108,9 @@ func TestAuthNotFound(t *testing.T) {
 	})
 
 	// Password does not match
-	service.findByEmail = func(email string) (account *Account, err error) {
+	service.findByEmail = func(email string) (account *api.Account, err error) {
 		password := "not-a-match"
-		return &Account{Primary: &Login{Password: &password}}, nil
+		return &api.Account{Primary: &api.Login{Password: &password}}, nil
 	}
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
 		response := r.Post("/api/v1/auth", "application/json", string(data))
@@ -126,13 +127,13 @@ func TestAuthNotFound(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	service.findByEmail = func(email string) (account *Account, err error) {
+	service.findByEmail = func(email string) (account *api.Account, err error) {
 		t.Error("should not call this function")
 		return nil, nil
 	}
-	service.findByPhone = func(email string) (account *Account, err error) {
+	service.findByPhone = func(email string) (account *api.Account, err error) {
 		password := "no-match"
-		return &Account{Primary: &Login{Password: &password}}, nil
+		return &api.Account{Primary: &api.Login{Password: &password}}, nil
 	}
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
 		response := r.Post("/api/v1/auth", "application/json", string(data))
@@ -158,85 +159,93 @@ func TestAuthNotFound(t *testing.T) {
 	})
 }
 
-func (authRequest *AuthRequest) to_json(t *testing.T) []byte {
-	data, err := json.Marshal(authRequest)
+func to_json(o interface{}, t *testing.T) []byte {
+	data, err := json.Marshal(o)
 	if err != nil {
 		t.Error(err)
 	}
 	return data
 }
 
-func (message *AuthRequest) to_protobuf(t *testing.T) []byte {
-	data, err := proto.Marshal(message)
+func to_protobuf(o proto.Message, t *testing.T) []byte {
+	data, err := proto.Marshal(o)
 	if err != nil {
 		t.Error(err)
 	}
 	return data
 }
 
-func (account *Account) to_json(t *testing.T) []byte {
-	data, err := json.Marshal(account)
-	if err != nil {
-		t.Error(err)
-	}
-	return data
-}
+// func to_json(authRequest *api.AuthRequest, t *testing.T) []byte {
+// 	data, err := json.Marshal(authRequest)
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+// 	return data
+// }
 
-func (account *Account) to_protobuf(t *testing.T) []byte {
-	data, err := proto.Marshal(account)
-	if err != nil {
-		t.Error(err)
-	}
-	return data
-}
+// func to_protobuf(message *api.AuthRequest, t *testing.T) []byte {
+// 	data, err := proto.Marshal(message)
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+// 	return data
+// }
 
-func (message *Login) to_json(t *testing.T) []byte {
-	data, err := json.Marshal(message)
-	if err != nil {
-		t.Error(err)
-	}
-	return data
-}
+// func to_protobuf(message *api.Login, t *testing.T) []byte {
+// 	data, err := proto.Marshal(message)
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+// 	return data
+// }
 
-func (message *Login) to_protobuf(t *testing.T) []byte {
-	data, err := proto.Marshal(message)
-	if err != nil {
-		t.Error(err)
-	}
-	return data
-}
+// func to_protobuf(message *api.Application, t *testing.T) []byte {
+// 	data, err := proto.Marshal(message)
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+// 	return data
+// }
 
-func (message *Application) to_json(t *testing.T) []byte {
-	data, err := json.Marshal(message)
-	if err != nil {
-		t.Error(err)
-	}
-	return data
-}
+// func to_protobuf(message *api.Attribute, t *testing.T) []byte {
+// 	data, err := proto.Marshal(message)
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+// 	return data
+// }
 
-func (message *Application) to_protobuf(t *testing.T) []byte {
-	data, err := proto.Marshal(message)
-	if err != nil {
-		t.Error(err)
-	}
-	return data
-}
+// func to_json(account *api.Account, t *testing.T) []byte {
+// 	data, err := json.Marshal(account)
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+// 	return data
+// }
 
-func (message *Attribute) to_json(t *testing.T) []byte {
-	data, err := json.Marshal(message)
-	if err != nil {
-		t.Error(err)
-	}
-	return data
-}
+// func to_json(message *api.Login, t *testing.T) []byte {
+// 	data, err := json.Marshal(message)
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+// 	return data
+// }
 
-func (message *Attribute) to_protobuf(t *testing.T) []byte {
-	data, err := proto.Marshal(message)
-	if err != nil {
-		t.Error(err)
-	}
-	return data
-}
+// func to_json(message *api.Application, t *testing.T) []byte {
+// 	data, err := json.Marshal(message)
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+// 	return data
+// }
+
+// func to_json(message *api.Attribute, t *testing.T) []byte {
+// 	data, err := json.Marshal(message)
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+// 	return data
+// }
 
 func TestNotAMember(t *testing.T) {
 
@@ -251,18 +260,18 @@ func TestNotAMember(t *testing.T) {
 		t.Error(err)
 	}
 
-	ar := AuthRequest{
+	ar := api.AuthRequest{
 		Email:    ptr("foo@bar.com"),
 		Password: ptr("test"),
 	}
 
-	service.findByEmail = func(email string) (account *Account, err error) {
+	service.findByEmail = func(email string) (account *api.Account, err error) {
 		password := "test"
-		return &Account{Primary: &Login{Password: &password}}, nil
+		return &api.Account{Primary: &api.Login{Password: &password}}, nil
 	}
 
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/auth", "application/json", string(ar.to_json(t)))
+		response := r.Post("/api/v1/auth", "application/json", string(to_json(ar, t)))
 
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 401, response.StatusCode)
@@ -287,7 +296,7 @@ func TestFoundAccountAndApplication(t *testing.T) {
 		t.Error(err)
 	}
 
-	ar := &AuthRequest{
+	ar := &api.AuthRequest{
 		Email:    ptr("foo@bar.com"),
 		Password: ptr("test"),
 	}
@@ -296,17 +305,17 @@ func TestFoundAccountAndApplication(t *testing.T) {
 	applicationStatus := "verified"
 	applicationAccountId := "12345"
 
-	attributeType1 := Attribute_STRING
+	attributeType1 := api.Attribute_STRING
 	embed := true
 	attribute1, value1 := "attribute1", "value1"
 
 	t.Log("test finding by email")
-	service.findByEmail = func(email string) (account *Account, err error) {
+	service.findByEmail = func(email string) (account *api.Account, err error) {
 		password := "test"
-		return &Account{
-			Primary: &Login{Password: &password},
-			Services: []*Application{
-				&Application{
+		return &api.Account{
+			Primary: &api.Login{Password: &password},
+			Services: []*api.Application{
+				&api.Application{
 					Id:        &applicationId,
 					Status:    &applicationStatus,
 					AccountId: &applicationAccountId,
@@ -314,8 +323,8 @@ func TestFoundAccountAndApplication(t *testing.T) {
 						"admin",
 						"readwrite",
 					},
-					Attributes: []*Attribute{
-						&Attribute{
+					Attributes: []*api.Attribute{
+						&api.Attribute{
 							Type:             &attributeType1,
 							Key:              &attribute1,
 							EmbedSigninToken: &embed,
@@ -329,13 +338,13 @@ func TestFoundAccountAndApplication(t *testing.T) {
 
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
 		t.Log("Testing authRequest in json")
-		response := r.Post("/api/v1/auth", "application/json", string(ar.to_json(t)))
+		response := r.Post("/api/v1/auth", "application/json", string(to_json(ar, t)))
 
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 200, response.StatusCode)
 
 		dec := json.NewDecoder(strings.NewReader(response.Body))
-		authResponse := AuthResponse{}
+		authResponse := api.AuthResponse{}
 
 		if err := dec.Decode(&authResponse); err != nil {
 			t.Error(err)
@@ -356,12 +365,12 @@ func TestFoundAccountAndApplication(t *testing.T) {
 
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
 		t.Log("Testing authRequest in protobuf")
-		response := r.Post("/api/v1/auth", "application/protobuf", string(ar.to_protobuf(t)))
+		response := r.Post("/api/v1/auth", "application/protobuf", string(to_protobuf(ar, t)))
 
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 200, response.StatusCode)
 
-		authResponse := AuthResponse{}
+		authResponse := api.AuthResponse{}
 		if err := proto.Unmarshal(response.RawBody, &authResponse); err != nil {
 			t.Error(err)
 		}
@@ -384,18 +393,18 @@ func TestFoundAccountAndApplication(t *testing.T) {
 	service.findByPhone = service.findByEmail
 	service.findByEmail = nil
 
-	ar = &AuthRequest{
+	ar = &api.AuthRequest{
 		Phone:    ptr("123-222-3333"),
 		Password: ptr("test"),
 	}
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/auth", "application/json", string(ar.to_json(t)))
+		response := r.Post("/api/v1/auth", "application/json", string(to_json(ar, t)))
 
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 200, response.StatusCode)
 
 		dec := json.NewDecoder(strings.NewReader(response.Body))
-		authResponse := AuthResponse{}
+		authResponse := api.AuthResponse{}
 
 		if err := dec.Decode(&authResponse); err != nil {
 			t.Error(err)
@@ -432,7 +441,7 @@ func TestFoundAccountButNotMatchApplication(t *testing.T) {
 		t.Error(err)
 	}
 
-	ar := &AuthRequest{
+	ar := &api.AuthRequest{
 		Email:    ptr("foo@bar.com"),
 		Password: ptr("test"),
 	}
@@ -441,21 +450,21 @@ func TestFoundAccountButNotMatchApplication(t *testing.T) {
 	applicationStatus := "verified"
 	applicationAccountId := "12345"
 
-	attributeType1 := Attribute_STRING
+	attributeType1 := api.Attribute_STRING
 	embed := true
 	attribute1, value1 := "attribute1", "value1"
 
-	service.findByEmail = func(email string) (account *Account, err error) {
+	service.findByEmail = func(email string) (account *api.Account, err error) {
 		password := "test"
-		return &Account{
-			Primary: &Login{Password: &password},
-			Services: []*Application{
-				&Application{
+		return &api.Account{
+			Primary: &api.Login{Password: &password},
+			Services: []*api.Application{
+				&api.Application{
 					Id:        &applicationId,
 					Status:    &applicationStatus,
 					AccountId: &applicationAccountId,
-					Attributes: []*Attribute{
-						&Attribute{
+					Attributes: []*api.Attribute{
+						&api.Attribute{
 							Type:             &attributeType1,
 							Key:              &attribute1,
 							EmbedSigninToken: &embed,
@@ -468,7 +477,7 @@ func TestFoundAccountButNotMatchApplication(t *testing.T) {
 	}
 
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/auth", "application/json", string(ar.to_json(t)))
+		response := r.Post("/api/v1/auth", "application/json", string(to_json(ar, t)))
 
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 401, response.StatusCode)
@@ -499,21 +508,21 @@ func TestGetAccount(t *testing.T) {
 	applicationStatus := "verified"
 	applicationAccountId := "12345"
 
-	attributeType1 := Attribute_STRING
+	attributeType1 := api.Attribute_STRING
 	embed := true
 	attribute1, value1 := "attribute1", "value1"
 
-	service.getAccount = func(id string) (account *Account, err error) {
+	service.getAccount = func(id string) (account *api.Account, err error) {
 		assert.Equal(t, "1234", id)
-		return &Account{
-			Primary: &Login{Password: &password},
-			Services: []*Application{
-				&Application{
+		return &api.Account{
+			Primary: &api.Login{Password: &password},
+			Services: []*api.Application{
+				&api.Application{
 					Id:        &applicationId,
 					Status:    &applicationStatus,
 					AccountId: &applicationAccountId,
-					Attributes: []*Attribute{
-						&Attribute{
+					Attributes: []*api.Attribute{
+						&api.Attribute{
 							Type:             &attributeType1,
 							Key:              &attribute1,
 							EmbedSigninToken: &embed,
@@ -530,7 +539,7 @@ func TestGetAccount(t *testing.T) {
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 200, response.StatusCode)
 
-		account := &Account{}
+		account := &api.Account{}
 		dec := json.NewDecoder(strings.NewReader(response.Body))
 		if err := dec.Decode(account); err != nil {
 			t.Error(err)
@@ -589,21 +598,21 @@ func TestSaveAccount(t *testing.T) {
 	applicationStatus := "verified"
 	applicationAccountId := "12345"
 
-	attributeType1 := Attribute_STRING
+	attributeType1 := api.Attribute_STRING
 	embed := true
 	attribute1, value1 := "attribute1", "value1"
 
-	input := &Account{
-		Primary: &Login{
+	input := &api.Account{
+		Primary: &api.Login{
 			Email:    ptr("test@foo.com"),
 			Password: &password},
-		Services: []*Application{
-			&Application{
+		Services: []*api.Application{
+			&api.Application{
 				Id:        &applicationId,
 				Status:    &applicationStatus,
 				AccountId: &applicationAccountId,
-				Attributes: []*Attribute{
-					&Attribute{
+				Attributes: []*api.Attribute{
+					&api.Attribute{
 						Type:             &attributeType1,
 						Key:              &attribute1,
 						EmbedSigninToken: &embed,
@@ -614,10 +623,10 @@ func TestSaveAccount(t *testing.T) {
 		},
 	}
 
-	service.findByEmail = func(email string) (*Account, error) {
+	service.findByEmail = func(email string) (*api.Account, error) {
 		return nil, ERROR_NOT_FOUND
 	}
-	service.saveAccount = func(account *Account) (err error) {
+	service.saveAccount = func(account *api.Account) (err error) {
 		assert.NotEqual(t, "", account.GetId())
 		t.Log("account id", account.GetId())
 		return nil
@@ -625,14 +634,14 @@ func TestSaveAccount(t *testing.T) {
 
 	t.Log("using application/json serialization")
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/account", "application/json", string(input.to_json(t)))
+		response := r.Post("/api/v1/account", "application/json", string(to_json(input, t)))
 		t.Log("Got response", response)
 		assert.Equal(t, 200, response.StatusCode)
 	})
 
 	t.Log("using application/protobuf serialization")
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/account", "application/protobuf", string(input.to_protobuf(t)))
+		response := r.Post("/api/v1/account", "application/protobuf", string(to_protobuf(input, t)))
 		assert.Equal(t, 200, response.StatusCode)
 	})
 
@@ -651,8 +660,8 @@ func TestNewAccount(t *testing.T) {
 		t.Error(err)
 	}
 
-	input := &Account{
-		Primary: &Login{
+	input := &api.Account{
+		Primary: &api.Login{
 			Password: ptr("password"),
 			Phone:    ptr("111-222-9999"),
 		},
@@ -662,11 +671,11 @@ func TestNewAccount(t *testing.T) {
 		CalledFindByPhone bool
 		CalledSaveAccount bool
 	}
-	service.findByPhone = func(phone string) (account *Account, err error) {
+	service.findByPhone = func(phone string) (account *api.Account, err error) {
 		(&state).CalledFindByPhone = true
 		return nil, ERROR_NOT_FOUND
 	}
-	service.saveAccount = func(account *Account) (err error) {
+	service.saveAccount = func(account *api.Account) (err error) {
 		(&state).CalledSaveAccount = true
 		assert.NotEqual(t, "", account.GetId())
 		t.Log("account id", account.GetId())
@@ -675,13 +684,13 @@ func TestNewAccount(t *testing.T) {
 
 	t.Log("using application/json serialization")
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/account", "application/json", string(input.to_json(t)))
+		response := r.Post("/api/v1/account", "application/json", string(to_json(input, t)))
 		assert.Equal(t, 200, response.StatusCode)
 	})
 
 	t.Log("using application/protobuf serialization")
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/account", "application/protobuf", string(input.to_protobuf(t)))
+		response := r.Post("/api/v1/account", "application/protobuf", string(to_protobuf(input, t)))
 		assert.Equal(t, 200, response.StatusCode)
 	})
 
@@ -702,19 +711,19 @@ func TestNewAccountMissingInput(t *testing.T) {
 		t.Error(err)
 	}
 
-	input := &Account{
-		Primary: &Login{Password: ptr("foo")},
+	input := &api.Account{
+		Primary: &api.Login{Password: ptr("foo")},
 	}
 
 	var state struct {
 		CalledFindByPhone bool
 		CalledSaveAccount bool
 	}
-	service.findByPhone = func(phone string) (account *Account, err error) {
+	service.findByPhone = func(phone string) (account *api.Account, err error) {
 		(&state).CalledFindByPhone = true
 		return nil, ERROR_NOT_FOUND
 	}
-	service.saveAccount = func(account *Account) (err error) {
+	service.saveAccount = func(account *api.Account) (err error) {
 		(&state).CalledSaveAccount = true
 		assert.NotEqual(t, "", account.GetId())
 		t.Log("account id", account.GetId())
@@ -723,7 +732,7 @@ func TestNewAccountMissingInput(t *testing.T) {
 
 	t.Log("using application/protobuf serialization")
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/account", "application/protobuf", string(input.to_protobuf(t)))
+		response := r.Post("/api/v1/account", "application/protobuf", string(to_protobuf(input, t)))
 		assert.Equal(t, 400, response.StatusCode)
 	})
 
@@ -744,8 +753,8 @@ func TestNewAccountConflict(t *testing.T) {
 		t.Error(err)
 	}
 
-	input := &Account{
-		Primary: &Login{
+	input := &api.Account{
+		Primary: &api.Login{
 			Password: ptr("password"),
 			Phone:    ptr("111-222-9999"),
 		},
@@ -756,11 +765,11 @@ func TestNewAccountConflict(t *testing.T) {
 		CalledSaveAccount bool
 	}
 
-	service.findByPhone = func(phone string) (account *Account, err error) {
+	service.findByPhone = func(phone string) (account *api.Account, err error) {
 		(&state).CalledFindByPhone = true
 		return input, nil
 	}
-	service.saveAccount = func(account *Account) (err error) {
+	service.saveAccount = func(account *api.Account) (err error) {
 		assert.NotEqual(t, "", account.GetId())
 		assert.NotEqual(t, "", account.GetPrimary().GetId())
 		t.Log("account id", account.GetId())
@@ -770,7 +779,7 @@ func TestNewAccountConflict(t *testing.T) {
 
 	t.Log("using application/protobuf serialization")
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/account", "application/protobuf", string(input.to_protobuf(t)))
+		response := r.Post("/api/v1/account", "application/protobuf", string(to_protobuf(input, t)))
 		assert.Equal(t, 409, response.StatusCode)
 		check_error_response_reason(t, response.Body, "error-duplicate")
 	})
@@ -792,19 +801,19 @@ func TestSaveAccountPrimay(t *testing.T) {
 		t.Error(err)
 	}
 
-	input := &Account{
-		Primary: &Login{},
-		Services: []*Application{
-			&Application{
-				Attributes: []*Attribute{
-					&Attribute{},
+	input := &api.Account{
+		Primary: &api.Login{},
+		Services: []*api.Application{
+			&api.Application{
+				Attributes: []*api.Attribute{
+					&api.Attribute{},
 				},
 			},
 		},
 	}
 
 	embed := true
-	attribute_type := Attribute_STRING
+	attribute_type := api.Attribute_STRING
 
 	input.Id = ptr("account-1")
 	input.Primary.Password = ptr("password-1")
@@ -816,17 +825,17 @@ func TestSaveAccountPrimay(t *testing.T) {
 	input.Services[0].Attributes[0].EmbedSigninToken = &embed
 	input.Services[0].Attributes[0].StringValue = ptr("value-1")
 
-	service.getAccount = func(id string) (account *Account, err error) {
+	service.getAccount = func(id string) (account *api.Account, err error) {
 		assert.Equal(t, input.GetId(), id)
 		t.Log("account id", id)
 		return input, nil
 	}
 
-	login := &Login{}
+	login := &api.Login{}
 	login.Password = ptr("new-password")
 	login.Phone = ptr("111-222-3333")
 
-	service.saveAccount = func(account *Account) (err error) {
+	service.saveAccount = func(account *api.Account) (err error) {
 		assert.Equal(t, input.GetId(), account.GetId())
 		t.Log("account id", account.GetId(), "primary", account.GetPrimary())
 		assert.Equal(t, login.GetPhone(), account.GetPrimary().GetPhone())
@@ -836,14 +845,14 @@ func TestSaveAccountPrimay(t *testing.T) {
 
 	t.Log("using application/json serialization")
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/account/"+input.GetId()+"/primary", "application/json", string(login.to_json(t)))
+		response := r.Post("/api/v1/account/"+input.GetId()+"/primary", "application/json", string(to_json(login, t)))
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 200, response.StatusCode)
 	})
 
 	t.Log("using application/protobuf serialization")
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/account/"+input.GetId()+"/primary", "application/protobuf", string(login.to_protobuf(t)))
+		response := r.Post("/api/v1/account/"+input.GetId()+"/primary", "application/protobuf", string(to_protobuf(login, t)))
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 200, response.StatusCode)
 	})
@@ -863,17 +872,17 @@ func TestSaveAccountService(t *testing.T) {
 	}
 
 	// initially no services
-	input := &Account{
-		Primary: &Login{},
+	input := &api.Account{
+		Primary: &api.Login{},
 	}
 
 	embed := true
-	attribute_type := Attribute_STRING
+	attribute_type := api.Attribute_STRING
 
 	input.Id = ptr("account-1")
 	input.Primary.Password = ptr("password-1")
 
-	application := &Application{Attributes: []*Attribute{&Attribute{}}}
+	application := &api.Application{Attributes: []*api.Attribute{&api.Attribute{}}}
 	application.Id = ptr("app-1")
 	application.Status = ptr("verified")
 	application.AccountId = ptr("app-account-1")
@@ -882,13 +891,13 @@ func TestSaveAccountService(t *testing.T) {
 	application.Attributes[0].EmbedSigninToken = &embed
 	application.Attributes[0].StringValue = ptr("value-1")
 
-	service.getAccount = func(id string) (account *Account, err error) {
+	service.getAccount = func(id string) (account *api.Account, err error) {
 		assert.Equal(t, input.GetId(), id)
 		t.Log("account id", id)
 		return input, nil
 	}
 
-	service.saveAccount = func(account *Account) (err error) {
+	service.saveAccount = func(account *api.Account) (err error) {
 		assert.Equal(t, input.GetId(), account.GetId())
 		assert.Equal(t, 1, len(account.GetServices()))
 		assert.Equal(t, application, account.GetServices()[0])
@@ -897,7 +906,7 @@ func TestSaveAccountService(t *testing.T) {
 
 	t.Log("using application/json serialization")
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/account/"+input.GetId()+"/services", "application/json", string(application.to_json(t)))
+		response := r.Post("/api/v1/account/"+input.GetId()+"/services", "application/json", string(to_json(application, t)))
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 200, response.StatusCode)
 	})
@@ -905,7 +914,7 @@ func TestSaveAccountService(t *testing.T) {
 	t.Log("using application/protobuf serialization")
 	// now we change an app's attribute
 	application.Attributes[0].StringValue = ptr("value-1-changed")
-	service.saveAccount = func(account *Account) (err error) {
+	service.saveAccount = func(account *api.Account) (err error) {
 		assert.Equal(t, input.GetId(), account.GetId())
 		assert.Equal(t, 1, len(account.GetServices()))
 		assert.Equal(t, application, account.GetServices()[0])
@@ -913,7 +922,7 @@ func TestSaveAccountService(t *testing.T) {
 	}
 
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/account/"+input.GetId()+"/services", "application/protobuf", string(application.to_protobuf(t)))
+		response := r.Post("/api/v1/account/"+input.GetId()+"/services", "application/protobuf", string(to_protobuf(application, t)))
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 200, response.StatusCode)
 	})
@@ -925,7 +934,7 @@ func TestSaveAccountService(t *testing.T) {
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 200, response.StatusCode)
 
-		account := &Account{}
+		account := &api.Account{}
 		dec := json.NewDecoder(strings.NewReader(response.Body))
 		if err := dec.Decode(account); err != nil {
 			t.Error(err)
@@ -950,17 +959,17 @@ func TestSaveAccountServiceAttribute(t *testing.T) {
 	}
 
 	// initially no services
-	input := &Account{
-		Primary: &Login{},
+	input := &api.Account{
+		Primary: &api.Login{},
 	}
 
 	embed := true
-	attribute_type := Attribute_STRING
+	attribute_type := api.Attribute_STRING
 
 	input.Id = ptr("account-1")
 	input.Primary.Password = ptr("password-1")
 
-	application := &Application{Attributes: []*Attribute{&Attribute{}}}
+	application := &api.Application{Attributes: []*api.Attribute{&api.Attribute{}}}
 	application.Id = ptr("app-1")
 	application.Status = ptr("verified")
 	application.AccountId = ptr("app-account-1")
@@ -969,13 +978,13 @@ func TestSaveAccountServiceAttribute(t *testing.T) {
 	application.Attributes[0].EmbedSigninToken = &embed
 	application.Attributes[0].StringValue = ptr("value-1")
 
-	service.getAccount = func(id string) (account *Account, err error) {
+	service.getAccount = func(id string) (account *api.Account, err error) {
 		assert.Equal(t, input.GetId(), id)
 		t.Log("account id", id)
 		return input, nil
 	}
 
-	service.saveAccount = func(account *Account) (err error) {
+	service.saveAccount = func(account *api.Account) (err error) {
 		assert.Equal(t, input.GetId(), account.GetId())
 		assert.Equal(t, 1, len(account.GetServices()))
 		assert.Equal(t, application, account.GetServices()[0])
@@ -984,7 +993,7 @@ func TestSaveAccountServiceAttribute(t *testing.T) {
 
 	t.Log("using application/json serialization")
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/account/"+input.GetId()+"/services", "application/json", string(application.to_json(t)))
+		response := r.Post("/api/v1/account/"+input.GetId()+"/services", "application/json", string(to_json(application, t)))
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 200, response.StatusCode)
 	})
@@ -992,7 +1001,7 @@ func TestSaveAccountServiceAttribute(t *testing.T) {
 	t.Log("using application/protobuf serialization")
 	attribute := application.Attributes[0]
 	attribute.StringValue = ptr("value-1-changed")
-	service.saveAccount = func(account *Account) (err error) {
+	service.saveAccount = func(account *api.Account) (err error) {
 		assert.Equal(t, input.GetId(), account.GetId())
 		assert.Equal(t, 1, len(account.GetServices()))
 		assert.Equal(t, attribute.GetStringValue(), account.GetServices()[0].GetAttributes()[0].GetStringValue())
@@ -1001,19 +1010,22 @@ func TestSaveAccountServiceAttribute(t *testing.T) {
 
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
 		response := r.Post("/api/v1/account/"+input.GetId()+"/service/"+application.GetId()+"/attributes", "application/protobuf",
-			string(attribute.to_protobuf(t)))
+			string(to_protobuf(attribute, t)))
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 200, response.StatusCode)
 	})
 
 	// add a new attribute
-	attribute2 := *attribute
-	attribute2.Key = ptr("new-key")
-	attribute2.StringValue = ptr("new-value")
+	attribute2_t := api.Attribute_STRING
+	attribute2 := &api.Attribute{
+		Type:        &attribute2_t,
+		Key:         ptr("new-key"),
+		StringValue: ptr("new-value"),
+	}
 
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
 		response := r.Post("/api/v1/account/"+input.GetId()+"/service/"+application.GetId()+"/attributes", "application/protobuf",
-			string(attribute2.to_protobuf(t)))
+			string(to_protobuf(attribute2, t)))
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 200, response.StatusCode)
 	})
@@ -1025,7 +1037,7 @@ func TestSaveAccountServiceAttribute(t *testing.T) {
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 200, response.StatusCode)
 
-		account := &Account{}
+		account := &api.Account{}
 		dec := json.NewDecoder(strings.NewReader(response.Body))
 		if err := dec.Decode(account); err != nil {
 			t.Error(err)

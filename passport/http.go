@@ -2,6 +2,7 @@ package passport
 
 import (
 	"github.com/golang/glog"
+	api "github.com/qorio/api/passport"
 	omni_auth "github.com/qorio/omni/auth"
 	omni_common "github.com/qorio/omni/common"
 	omni_http "github.com/qorio/omni/http"
@@ -19,27 +20,27 @@ func defaultResolveApplicationId(req *http.Request) string {
 	return req.URL.Host
 }
 
-func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service) (api *EndPoint, err error) {
-	api = &EndPoint{
+func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service) (ep *EndPoint, err error) {
+	ep = &EndPoint{
 		settings: settings,
 		service:  service,
 		engine:   omni_http.NewEngine(auth),
 	}
 
-	api.engine.Bind(
-		omni_http.SetHandler(Methods[AuthUser], api.ApiAuthenticate),
+	ep.engine.Bind(
+		omni_http.SetHandler(api.Methods[api.AuthUser], ep.ApiAuthenticate),
 	)
 
-	api.engine.Bind(
-		omni_http.SetHandler(Methods[FetchAccount], api.ApiGetAccount),
-		omni_http.SetHandler(Methods[CreateOrUpdateAccount], api.ApiSaveAccount),
-		omni_http.SetHandler(Methods[UpdateAccountPrimaryLogin], api.ApiSaveAccountPrimary),
-		omni_http.SetHandler(Methods[AddOrUpdateAccountService], api.ApiSaveAccountService),
-		omni_http.SetHandler(Methods[AddOrUpdateServiceAttribute], api.ApiSaveAccountServiceAttribute),
-		omni_http.SetHandler(Methods[DeleteAccount], api.ApiDeleteAccount),
+	ep.engine.Bind(
+		omni_http.SetHandler(api.Methods[api.FetchAccount], ep.ApiGetAccount),
+		omni_http.SetHandler(api.Methods[api.CreateOrUpdateAccount], ep.ApiSaveAccount),
+		omni_http.SetHandler(api.Methods[api.UpdateAccountPrimaryLogin], ep.ApiSaveAccountPrimary),
+		omni_http.SetHandler(api.Methods[api.AddOrUpdateAccountService], ep.ApiSaveAccountService),
+		omni_http.SetHandler(api.Methods[api.AddOrUpdateServiceAttribute], ep.ApiSaveAccountServiceAttribute),
+		omni_http.SetHandler(api.Methods[api.DeleteAccount], ep.ApiDeleteAccount),
 	)
 
-	return api, nil
+	return ep, nil
 }
 
 func (this *EndPoint) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
@@ -48,7 +49,7 @@ func (this *EndPoint) ServeHTTP(resp http.ResponseWriter, request *http.Request)
 
 // Authenticates and returns a token as the response
 func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Request) {
-	request := Methods[AuthUser].RequestBody().(AuthRequest)
+	request := api.Methods[api.AuthUser].RequestBody().(api.AuthRequest)
 	err := this.engine.Unmarshal(req, &request)
 	if err != nil {
 		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)
@@ -83,7 +84,7 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 			requestedApplicationId = defaultResolveApplicationId(req)
 		}
 	}
-	var application *Application
+	var application *api.Application
 	for _, test := range account.GetServices() {
 		if test.GetId() == requestedApplicationId {
 			application = test
@@ -106,13 +107,13 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 	for _, attribute := range application.GetAttributes() {
 		if attribute.GetEmbedSigninToken() {
 			switch attribute.GetType() {
-			case Attribute_STRING:
+			case api.Attribute_STRING:
 				token.Add(attribute.GetKey(), attribute.GetStringValue())
-			case Attribute_NUMBER:
+			case api.Attribute_NUMBER:
 				token.Add(attribute.GetKey(), attribute.GetNumberValue())
-			case Attribute_BOOL:
+			case api.Attribute_BOOL:
 				token.Add(attribute.GetKey(), attribute.GetBoolValue())
-			case Attribute_BLOB:
+			case api.Attribute_BLOB:
 				token.Add(attribute.GetKey(), attribute.GetBlobValue())
 			}
 		}
@@ -125,7 +126,7 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 	}
 
 	// Response
-	authResponse := Methods[AuthUser].ResponseBody().(AuthResponse)
+	authResponse := api.Methods[api.AuthUser].ResponseBody().(api.AuthResponse)
 	authResponse.Token = &tokenString
 
 	err = this.engine.Marshal(req, &authResponse, resp)
@@ -136,7 +137,7 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 }
 
 func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request) {
-	account := Methods[CreateOrUpdateAccount].RequestBody().(Account)
+	account := api.Methods[api.CreateOrUpdateAccount].RequestBody().(api.Account)
 	err := this.engine.Unmarshal(req, &account)
 	if err != nil {
 		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)
@@ -220,7 +221,7 @@ func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request
 func (this *EndPoint) ApiSaveAccountPrimary(resp http.ResponseWriter, req *http.Request) {
 	id := this.engine.GetUrlParameter(req, "id")
 
-	login := Methods[UpdateAccountPrimaryLogin].RequestBody().(Login)
+	login := api.Methods[api.UpdateAccountPrimaryLogin].RequestBody().(api.Login)
 	err := this.engine.Unmarshal(req, &login)
 	if err != nil {
 		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)
@@ -270,7 +271,7 @@ func (this *EndPoint) ApiSaveAccountPrimary(resp http.ResponseWriter, req *http.
 func (this *EndPoint) ApiSaveAccountService(resp http.ResponseWriter, req *http.Request) {
 	id := this.engine.GetUrlParameter(req, "id")
 
-	application := Methods[AddOrUpdateAccountService].RequestBody().(Application)
+	application := api.Methods[api.AddOrUpdateAccountService].RequestBody().(api.Application)
 	err := this.engine.Unmarshal(req, &application)
 	if err != nil {
 		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)
@@ -295,7 +296,7 @@ func (this *EndPoint) ApiSaveAccountService(resp http.ResponseWriter, req *http.
 
 	// find the application by id and replace it
 	if len(account.GetServices()) == 0 {
-		account.Services = []*Application{
+		account.Services = []*api.Application{
 			&application,
 		}
 	} else {
@@ -323,7 +324,7 @@ func (this *EndPoint) ApiSaveAccountServiceAttribute(resp http.ResponseWriter, r
 	id := this.engine.GetUrlParameter(req, "id")
 	applicationId := this.engine.GetUrlParameter(req, "applicationId")
 
-	attribute := Methods[AddOrUpdateServiceAttribute].RequestBody().(Attribute)
+	attribute := api.Methods[api.AddOrUpdateServiceAttribute].RequestBody().(api.Attribute)
 	err := this.engine.Unmarshal(req, &attribute)
 	if err != nil {
 		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)
@@ -347,7 +348,7 @@ func (this *EndPoint) ApiSaveAccountServiceAttribute(resp http.ResponseWriter, r
 	}
 
 	// find the application by id and update its attributes
-	var application *Application
+	var application *api.Application
 	for _, app := range account.GetServices() {
 		if app.GetId() == applicationId {
 			application = app
@@ -361,7 +362,7 @@ func (this *EndPoint) ApiSaveAccountServiceAttribute(resp http.ResponseWriter, r
 	}
 
 	if len(application.GetAttributes()) == 0 {
-		application.Attributes = []*Attribute{
+		application.Attributes = []*api.Attribute{
 			&attribute,
 		}
 	} else {
@@ -431,7 +432,7 @@ func (this *EndPoint) ApiDeleteAccount(resp http.ResponseWriter, req *http.Reque
 	}
 }
 
-func (this *EndPoint) findAccount(email, phone string) (account *Account, err error) {
+func (this *EndPoint) findAccount(email, phone string) (account *api.Account, err error) {
 	switch {
 	case email != "":
 		account, err = this.service.FindAccountByEmail(email)

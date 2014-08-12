@@ -2,6 +2,7 @@ package passport
 
 import (
 	"github.com/bmizerany/assert"
+	api "github.com/qorio/api/passport"
 	"testing"
 )
 
@@ -14,16 +15,16 @@ func default_settings() Settings {
 	}
 }
 
-func test_account() *Account {
+func test_account() *api.Account {
 	embed := true
-	attr_type := Attribute_STRING
+	attr_type := api.Attribute_STRING
 
-	return &Account{
-		Primary: &Login{},
-		Services: []*Application{
-			&Application{
-				Attributes: []*Attribute{
-					&Attribute{
+	return &api.Account{
+		Primary: &api.Login{},
+		Services: []*api.Application{
+			&api.Application{
+				Attributes: []*api.Attribute{
+					&api.Attribute{
 						Type:             &attr_type,
 						EmbedSigninToken: &embed,
 					},
@@ -103,7 +104,7 @@ func TestFindByPhone(t *testing.T) {
 	assert.Equal(t, account.String(), account2.String()) // compare the string representation
 
 	account3, err3 := service.FindAccountByPhone("222-111-2222")
-	assert.Equal(t, (*Account)(nil), account3)
+	assert.Equal(t, (*api.Account)(nil), account3)
 	assert.Equal(t, ERROR_NOT_FOUND, err3)
 }
 
@@ -135,7 +136,7 @@ func TestFindByEmail(t *testing.T) {
 	assert.Equal(t, account.String(), account2.String()) // compare the string representation
 
 	account3, err3 := service.FindAccountByEmail("notfound@gone.com")
-	assert.Equal(t, (*Account)(nil), account3)
+	assert.Equal(t, (*api.Account)(nil), account3)
 	assert.Equal(t, ERROR_NOT_FOUND, err3)
 }
 
