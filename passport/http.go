@@ -26,19 +26,18 @@ func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service)
 		engine:   omni_http.NewEngine(auth),
 	}
 
-	AuthenticateUser.Handler = api.ApiAuthenticate
+	api.engine.Bind(
+		omni_http.SetHandler(Methods[AuthUser], api.ApiAuthenticate),
+	)
 
-	FetchAccount.Handler = api.ApiGetAccount
-
-	CreateOrUpdateAccount.Handler = api.ApiSaveAccount
-	UpdateAccountPrimaryLogin.Handler = api.ApiSaveAccountPrimary
-	AddOrUpdateAccountService.Handler = api.ApiSaveAccountService
-	AddOrUpdateServiceAttribute.Handler = api.ApiSaveAccountServiceAttribute
-	DeleteAccount.Handler = api.ApiDeleteAccount
-
-	// engine itself hosts two services
-	api.engine.Bind(UserAuth)
-	api.engine.Bind(ApiService)
+	api.engine.Bind(
+		omni_http.SetHandler(Methods[FetchAccount], api.ApiGetAccount),
+		omni_http.SetHandler(Methods[CreateOrUpdateAccount], api.ApiSaveAccount),
+		omni_http.SetHandler(Methods[UpdateAccountPrimaryLogin], api.ApiSaveAccountPrimary),
+		omni_http.SetHandler(Methods[AddOrUpdateAccountService], api.ApiSaveAccountService),
+		omni_http.SetHandler(Methods[AddOrUpdateServiceAttribute], api.ApiSaveAccountServiceAttribute),
+		omni_http.SetHandler(Methods[DeleteAccount], api.ApiDeleteAccount),
+	)
 
 	return api, nil
 }
@@ -49,7 +48,7 @@ func (this *EndPoint) ServeHTTP(resp http.ResponseWriter, request *http.Request)
 
 // Authenticates and returns a token as the response
 func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Request) {
-	request := AuthenticateUser.RequestBody().(AuthRequest)
+	request := Methods[AuthUser].RequestBody().(AuthRequest)
 	err := this.engine.Unmarshal(req, &request)
 	if err != nil {
 		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)
@@ -126,7 +125,7 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 	}
 
 	// Response
-	authResponse := AuthenticateUser.ResponseBody().(AuthResponse)
+	authResponse := Methods[AuthUser].ResponseBody().(AuthResponse)
 	authResponse.Token = &tokenString
 
 	err = this.engine.Marshal(req, &authResponse, resp)
@@ -137,7 +136,7 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 }
 
 func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request) {
-	account := CreateOrUpdateAccount.RequestBody().(Account)
+	account := Methods[CreateOrUpdateAccount].RequestBody().(Account)
 	err := this.engine.Unmarshal(req, &account)
 	if err != nil {
 		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)
@@ -221,7 +220,7 @@ func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request
 func (this *EndPoint) ApiSaveAccountPrimary(resp http.ResponseWriter, req *http.Request) {
 	id := this.engine.GetUrlParameter(req, "id")
 
-	login := UpdateAccountPrimaryLogin.RequestBody().(Login)
+	login := Methods[UpdateAccountPrimaryLogin].RequestBody().(Login)
 	err := this.engine.Unmarshal(req, &login)
 	if err != nil {
 		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)
@@ -271,7 +270,7 @@ func (this *EndPoint) ApiSaveAccountPrimary(resp http.ResponseWriter, req *http.
 func (this *EndPoint) ApiSaveAccountService(resp http.ResponseWriter, req *http.Request) {
 	id := this.engine.GetUrlParameter(req, "id")
 
-	application := AddOrUpdateAccountService.RequestBody().(Application)
+	application := Methods[AddOrUpdateAccountService].RequestBody().(Application)
 	err := this.engine.Unmarshal(req, &application)
 	if err != nil {
 		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)
@@ -324,7 +323,7 @@ func (this *EndPoint) ApiSaveAccountServiceAttribute(resp http.ResponseWriter, r
 	id := this.engine.GetUrlParameter(req, "id")
 	applicationId := this.engine.GetUrlParameter(req, "applicationId")
 
-	attribute := AddOrUpdateServiceAttribute.RequestBody().(Attribute)
+	attribute := Methods[AddOrUpdateServiceAttribute].RequestBody().(Attribute)
 	err := this.engine.Unmarshal(req, &attribute)
 	if err != nil {
 		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)

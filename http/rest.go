@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/qorio/api"
 	"github.com/qorio/omni/auth"
 	"io"
 	"io/ioutil"
@@ -68,31 +69,40 @@ var unmarshalers = map[string]func(io.ReadCloser, proto.Message) error{
 	},
 }
 
-type ObjectFactory func() interface{}
 type Handler func(http.ResponseWriter, *http.Request)
 
-type ServiceMethod struct {
-	Doc                  string
-	Name                 string
-	UrlRoute             string
-	HttpMethod           string
-	ContentTypes         []string
-	RequestBody          ObjectFactory
-	ResponseBody         ObjectFactory
+type ServiceMethodImpl struct {
+	Api                  *api.MethodSpec
 	Handler              Handler
 	AuthenticatedHandler auth.HttpHandler
 }
 
-func Publish(endpoints ...*ServiceMethod) []*ServiceMethod {
-	return endpoints
+func SetHandler(m *api.MethodSpec, h Handler) *ServiceMethodImpl {
+	if m.RequiresAuth {
+		panic(errors.New("Method " + m.Name + " requires auth; binding to unauthed handler."))
+	}
+	return &ServiceMethodImpl{
+		Api:     m,
+		Handler: h,
+	}
+}
+
+func SetAuthenticatedHandler(m *api.MethodSpec, h auth.HttpHandler) *ServiceMethodImpl {
+	if !m.RequiresAuth {
+		panic(errors.New("Method " + m.Name + " requires no auth; binding to authed handler."))
+	}
+	return &ServiceMethodImpl{
+		Api:                  m,
+		AuthenticatedHandler: h,
+	}
 }
 
 type Engine interface {
-	Bind([]*ServiceMethod)
+	Bind(...*ServiceMethodImpl)
 	ServeHTTP(http.ResponseWriter, *http.Request)
 	NewAuthToken() *auth.Token
 	SignedString(*auth.Token) (string, error)
-	ServiceMethod(string) *ServiceMethod
+	ServiceMethod(string) *ServiceMethodImpl
 	GetUrlParameter(*http.Request, string) string
 	Unmarshal(*http.Request, proto.Message) error
 	Marshal(*http.Request, proto.Message, http.ResponseWriter) error
@@ -102,14 +112,14 @@ type Engine interface {
 type engine struct {
 	router  *mux.Router
 	auth    *auth.Service
-	methods map[string]*ServiceMethod
+	methods map[string]*ServiceMethodImpl
 }
 
 func NewEngine(auth *auth.Service) Engine {
 	return &engine{
 		router:  mux.NewRouter(),
 		auth:    auth,
-		methods: make(map[string]*ServiceMethod),
+		methods: make(map[string]*ServiceMethodImpl),
 	}
 }
 
@@ -125,7 +135,7 @@ func (this *engine) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
 	this.router.ServeHTTP(resp, request)
 }
 
-func (this *engine) ServiceMethod(key string) *ServiceMethod {
+func (this *engine) ServiceMethod(key string) *ServiceMethodImpl {
 	if v, has := this.methods[key]; has {
 		return v
 	} else {
@@ -143,23 +153,23 @@ func (this *engine) GetUrlParameter(req *http.Request, key string) string {
 	return ""
 }
 
-func (this *engine) Bind(endpoints []*ServiceMethod) {
+func (this *engine) Bind(endpoints ...*ServiceMethodImpl) {
 	for i, ep := range endpoints {
 		switch {
 		case ep.Handler != nil:
-			this.router.HandleFunc(ep.UrlRoute, ep.Handler).Methods(ep.HttpMethod).Name(ep.Name)
-			this.methods[ep.Name] = ep
+			this.router.HandleFunc(ep.Api.UrlRoute, ep.Handler).Methods(ep.Api.HttpMethod).Name(ep.Api.Name)
+			this.methods[ep.Api.Name] = ep
 
 		case ep.AuthenticatedHandler != nil:
-			this.router.HandleFunc(ep.UrlRoute, this.auth.RequiresAuth(ep.AuthenticatedHandler)).Methods(ep.HttpMethod).Name(ep.Name)
-			this.methods[ep.Name] = ep
+			this.router.HandleFunc(ep.Api.UrlRoute, this.auth.RequiresAuth(ep.AuthenticatedHandler)).Methods(ep.Api.HttpMethod).Name(ep.Api.Name)
+			this.methods[ep.Api.Name] = ep
 
 		case ep.Handler == nil && ep.AuthenticatedHandler == nil:
 			panic(errors.New(fmt.Sprintf("No implementation for REST endpoint[%d]: %s", i, ep)))
 		}
 
 		// check the content type
-		for _, ct := range ep.ContentTypes {
+		for _, ct := range ep.Api.ContentTypes {
 			if _, has := marshalers[ct]; !has {
 				panic(errors.New(fmt.Sprintf("Bad content type: %s", ct)))
 			}

@@ -1,11 +1,26 @@
 package passport
 
 import (
-	omni_http "github.com/qorio/omni/http"
+	"github.com/qorio/api"
 )
 
-var (
-	AuthenticateUser = &omni_http.ServiceMethod{
+const (
+	AuthUser api.ServiceMethod = iota
+	FetchAccount
+	DeleteAccount
+	CreateOrUpdateAccount
+	UpdateAccountPrimaryLogin
+	AddOrUpdateAccountService
+	AddOrUpdateServiceAttribute
+)
+
+var Methods = map[api.ServiceMethod]*api.MethodSpec{
+
+	AuthUser: &api.MethodSpec{
+		RequiresAuth: false,
+		Doc: `
+Authentication endpoint.
+`,
 		Name:         "AuthenticateUser",
 		UrlRoute:     "/api/v1/auth",
 		HttpMethod:   "POST",
@@ -16,12 +31,13 @@ var (
 		ResponseBody: func() interface{} {
 			return AuthResponse{}
 		},
-		Doc: `
-Authentication endpoint.
-`,
-	}
+	},
 
-	FetchAccount = &omni_http.ServiceMethod{
+	FetchAccount: &api.MethodSpec{
+		RequiresAuth: false,
+		Doc: `
+Returns the account object.
+`,
 		Name:         "FetchAccount",
 		UrlRoute:     "/api/v1/account/{id}",
 		HttpMethod:   "GET",
@@ -30,23 +46,26 @@ Authentication endpoint.
 		ResponseBody: func() interface{} {
 			return Account{}
 		},
-		Doc: `
-Returns the account object.
-`,
-	}
+	},
 
-	DeleteAccount = &omni_http.ServiceMethod{
+	DeleteAccount: &api.MethodSpec{
+		RequiresAuth: false,
+		Doc: `
+Deletes the account.
+`,
 		Name:         "DeleteAccount",
 		UrlRoute:     "/api/v1/account/{id}",
 		HttpMethod:   "DELETE",
 		RequestBody:  nil,
 		ResponseBody: nil,
-		Doc: `
-Deletes the account.
-`,
-	}
+	},
 
-	CreateOrUpdateAccount = &omni_http.ServiceMethod{
+	CreateOrUpdateAccount: &api.MethodSpec{
+		RequiresAuth: false,
+		Doc: `
+Create or update account. If id is missing, a new record will be created;
+otherwise, an existing record will be overwritten with the POST value.
+`,
 		Name:         "CreateOrUpdateAccount",
 		UrlRoute:     "/api/v1/account",
 		HttpMethod:   "POST",
@@ -55,13 +74,13 @@ Deletes the account.
 			return Account{}
 		},
 		ResponseBody: nil,
-		Doc: `
-Create or update account. If id is missing, a new record will be created;
-otherwise, an existing record will be overwritten with the POST value.
-`,
-	}
+	},
 
-	UpdateAccountPrimaryLogin = &omni_http.ServiceMethod{
+	UpdateAccountPrimaryLogin: &api.MethodSpec{
+		RequiresAuth: false,
+		Doc: `
+Update primary login for account.
+`,
 		Name:         "UpdateAccountPrimaryLogin",
 		UrlRoute:     "/api/v1/account/{id}/primary",
 		HttpMethod:   "POST",
@@ -70,12 +89,13 @@ otherwise, an existing record will be overwritten with the POST value.
 			return Login{}
 		},
 		ResponseBody: nil,
-		Doc: `
-Update primary login for account.
-`,
-	}
+	},
 
-	AddOrUpdateAccountService = &omni_http.ServiceMethod{
+	AddOrUpdateAccountService: &api.MethodSpec{
+		RequiresAuth: false,
+		Doc: `
+Create or update a service / application in an existing account
+`,
 		Name:         "AddOrUpdateUpdateAccountService",
 		UrlRoute:     "/api/v1/account/{id}/services",
 		HttpMethod:   "POST",
@@ -84,12 +104,13 @@ Update primary login for account.
 			return Application{}
 		},
 		ResponseBody: nil,
-		Doc: `
-Create or update a service / application in an existing account
-`,
-	}
+	},
 
-	AddOrUpdateServiceAttribute = &omni_http.ServiceMethod{
+	AddOrUpdateServiceAttribute: &api.MethodSpec{
+		RequiresAuth: false,
+		Doc: `
+Create or update a service / application attribute in an existing account and application.
+`,
 		Name:         "AddOrUpdateUpdateServiceAttribute",
 		UrlRoute:     "/api/v1/account/{id}/service/{applicationId}/attributes",
 		HttpMethod:   "POST",
@@ -98,21 +119,5 @@ Create or update a service / application in an existing account
 			return Attribute{}
 		},
 		ResponseBody: nil,
-		Doc: `
-Create or update a service / application attribute in an existing account and application.
-`,
-	}
-
-	UserAuth = omni_http.Publish(
-		AuthenticateUser,
-	)
-
-	ApiService = omni_http.Publish(
-		FetchAccount,
-		DeleteAccount,
-		CreateOrUpdateAccount,
-		UpdateAccountPrimaryLogin,
-		AddOrUpdateAccountService,
-		AddOrUpdateServiceAttribute,
-	)
-)
+	},
+}

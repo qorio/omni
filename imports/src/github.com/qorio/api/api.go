@@ -1,12 +1,10 @@
 package api
 
-import (
-	"net/http"
-)
+type ServiceMethod int
 
 type ObjectFactory func() interface{}
 
-type ServiceMethod struct {
+type MethodSpec struct {
 	Doc          string
 	Name         string
 	UrlRoute     string
@@ -14,4 +12,5 @@ type ServiceMethod struct {
 	ContentTypes []string
 	RequestBody  ObjectFactory
 	ResponseBody ObjectFactory
+	RequiresAuth bool
 }
