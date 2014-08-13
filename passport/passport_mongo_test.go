@@ -3,6 +3,7 @@ package passport
 import (
 	"github.com/bmizerany/assert"
 	api "github.com/qorio/api/passport"
+	"github.com/qorio/omni/common"
 	"testing"
 )
 
@@ -40,6 +41,9 @@ func TestNewService(t *testing.T) {
 
 	defer service.Close()
 	t.Log("Started db client", service)
+
+	impl := service.(*serviceImpl)
+	impl.dropDatabase()
 }
 
 func TestInsertGetAndDelete(t *testing.T) {
@@ -49,13 +53,13 @@ func TestInsertGetAndDelete(t *testing.T) {
 	defer service.Close()
 	t.Log("Started db client", service)
 
-	err4 := service.DeleteAccount("account-1")
-	assert.Equal(t, nil, err4)
+	impl := service.(*serviceImpl)
+	impl.dropDatabase()
 
 	account := test_account()
-	account.Id = ptr("account-1")
+	account.Id = ptr(common.NewUUID().String())
 	account.Primary.Phone = ptr("111-222-3333")
-	account.Services[0].Id = ptr("app-1")
+	account.Services[0].Id = ptr(common.NewUUID().String())
 	account.Services[0].Status = ptr("verified")
 	account.Services[0].AccountId = ptr("app-1-account-1")
 	account.Services[0].Attributes[0].Key = ptr("key-1")
@@ -64,15 +68,15 @@ func TestInsertGetAndDelete(t *testing.T) {
 	err = service.SaveAccount(account)
 	assert.Equal(t, nil, err)
 
-	account2, err2 := service.GetAccount("account-1")
+	account2, err2 := service.GetAccount(common.UUIDFromString(*account.Id))
 	assert.Equal(t, nil, err2)
 	t.Log("account2", account2)
 	assert.Equal(t, account.String(), account2.String()) // compare the string representation
 
-	err5 := service.DeleteAccount("account-1")
+	err5 := service.DeleteAccount(common.UUIDFromString(*account.Id))
 	assert.Equal(t, nil, err5)
 
-	_, err6 := service.GetAccount("account-1")
+	_, err6 := service.GetAccount(common.UUIDFromString(*account.Id))
 	assert.Equal(t, ERROR_NOT_FOUND, err6)
 }
 
@@ -83,11 +87,12 @@ func TestFindByPhone(t *testing.T) {
 	defer service.Close()
 	t.Log("Started db client", service)
 
-	err4 := service.DeleteAccount("account-by-phone-1")
+	uuid := common.NewUUID()
+	err4 := service.DeleteAccount(uuid)
 	assert.Equal(t, nil, err4)
 
 	account := test_account()
-	account.Id = ptr("account-by-phone-1")
+	account.Id = ptr(uuid.String())
 	account.Primary.Phone = ptr("111-222-4444")
 	account.Services[0].Id = ptr("app-1")
 	account.Services[0].Status = ptr("verified")
@@ -115,11 +120,12 @@ func TestFindByEmail(t *testing.T) {
 	defer service.Close()
 	t.Log("Started db client", service)
 
-	err4 := service.DeleteAccount("account-by-email-1")
+	uuid := common.NewUUID()
+	err4 := service.DeleteAccount(uuid)
 	assert.Equal(t, nil, err4)
 
 	account := test_account()
-	account.Id = ptr("account-by-email-1")
+	account.Id = ptr(uuid.String())
 	account.Primary.Email = ptr("foo@bar.com")
 	account.Services[0].Id = ptr("app-1")
 	account.Services[0].Status = ptr("verified")
@@ -147,11 +153,12 @@ func TestFindByPhoneAndUpdate(t *testing.T) {
 	defer service.Close()
 	t.Log("Started db client", service)
 
-	err4 := service.DeleteAccount("account-by-phone-2")
+	uuid := common.NewUUID()
+	err4 := service.DeleteAccount(uuid)
 	assert.Equal(t, nil, err4)
 
 	account := test_account()
-	account.Id = ptr("account-by-phone-2")
+	account.Id = ptr(uuid.String())
 	account.Primary.Phone = ptr("111-222-5555")
 	account.Services[0].Id = ptr("app-1")
 	account.Services[0].Status = ptr("verified")

@@ -173,7 +173,7 @@ func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request
 		}
 
 		// Ok - assign login id
-		uuid, _ := omni_common.NewUUID()
+		uuid := omni_common.NewUUID().String()
 		account.GetPrimary().Id = &uuid
 
 	case !hasLoginId && !hasAccountId:
@@ -187,10 +187,10 @@ func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request
 		}
 
 		// Ok - assign new login id
-		uuid, _ := omni_common.NewUUID()
+		uuid := omni_common.NewUUID().String()
 		account.GetPrimary().Id = &uuid
 		// Ok - assign new account id
-		uuid, _ = omni_common.NewUUID()
+		uuid = omni_common.NewUUID().String()
 		account.Id = &uuid
 
 	}
@@ -208,7 +208,7 @@ func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request
 
 	if account.GetId() == "" {
 
-		uuid, _ := omni_common.NewUUID()
+		uuid := omni_common.NewUUID().String()
 		account.Id = &uuid
 	}
 	err = this.service.SaveAccount(&account)
@@ -233,7 +233,7 @@ func (this *EndPoint) ApiSaveAccountPrimary(resp http.ResponseWriter, req *http.
 		return
 	}
 
-	account, err := this.service.GetAccount(id)
+	account, err := this.service.GetAccount(omni_common.UUIDFromString(id))
 
 	switch {
 	case err == ERROR_NOT_FOUND:
@@ -254,7 +254,7 @@ func (this *EndPoint) ApiSaveAccountPrimary(resp http.ResponseWriter, req *http.
 	}
 
 	if login.GetId() == "" {
-		uuid, _ := omni_common.NewUUID()
+		uuid := omni_common.NewUUID().String()
 		login.Id = &uuid
 	}
 
@@ -283,7 +283,7 @@ func (this *EndPoint) ApiSaveAccountService(resp http.ResponseWriter, req *http.
 		return
 	}
 
-	account, err := this.service.GetAccount(id)
+	account, err := this.service.GetAccount(omni_common.UUIDFromString(id))
 
 	switch {
 	case err == ERROR_NOT_FOUND:
@@ -336,7 +336,7 @@ func (this *EndPoint) ApiSaveAccountServiceAttribute(resp http.ResponseWriter, r
 		return
 	}
 
-	account, err := this.service.GetAccount(id)
+	account, err := this.service.GetAccount(omni_common.UUIDFromString(id))
 
 	switch {
 	case err == ERROR_NOT_FOUND:
@@ -394,7 +394,7 @@ func (this *EndPoint) ApiGetAccount(resp http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	account, err := this.service.GetAccount(id)
+	account, err := this.service.GetAccount(omni_common.UUIDFromString(id))
 
 	switch {
 	case err == ERROR_NOT_FOUND:
@@ -420,7 +420,7 @@ func (this *EndPoint) ApiDeleteAccount(resp http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	err := this.service.DeleteAccount(id)
+	err := this.service.DeleteAccount(omni_common.UUIDFromString(id))
 
 	switch {
 	case err == ERROR_NOT_FOUND:

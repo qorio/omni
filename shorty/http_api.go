@@ -31,11 +31,7 @@ func (this *ShortyEndPoint) ApiAddCampaignHandler(credential *omni_auth.Context,
 	}
 
 	if campaign.Id == "" {
-		uuidStr, err := omni_common.NewUUID()
-		if err != nil {
-			renderJsonError(resp, req, err.Error(), http.StatusInternalServerError)
-			return
-		}
+		uuidStr := omni_common.NewUUID().String()
 		campaign.Id = UUID(uuidStr)
 	}
 

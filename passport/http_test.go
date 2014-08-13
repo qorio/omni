@@ -1,6 +1,7 @@
 package passport
 
 import (
+	"code.google.com/p/go-uuid/uuid"
 	"code.google.com/p/goprotobuf/proto"
 	"encoding/json"
 	"flag"
@@ -8,6 +9,7 @@ import (
 	"github.com/drewolson/testflight"
 	api "github.com/qorio/api/passport"
 	omni_auth "github.com/qorio/omni/auth"
+	omni_common "github.com/qorio/omni/common"
 	"net/http"
 	"strings"
 	"testing"
@@ -21,8 +23,8 @@ type mock struct {
 	findByEmail   func(email string) (account *api.Account, err error)
 	findByPhone   func(phone string) (account *api.Account, err error)
 	saveAccount   func(account *api.Account) (err error)
-	getAccount    func(id string) (account *api.Account, err error)
-	deleteAccount func(id string) (err error)
+	getAccount    func(id uuid.UUID) (account *api.Account, err error)
+	deleteAccount func(id uuid.UUID) (err error)
 }
 
 func (this *mock) FindAccountByEmail(email string) (account *api.Account, err error) {
@@ -37,11 +39,11 @@ func (this *mock) SaveAccount(account *api.Account) (err error) {
 	return this.saveAccount(account)
 }
 
-func (this *mock) GetAccount(id string) (account *api.Account, err error) {
+func (this *mock) GetAccount(id uuid.UUID) (account *api.Account, err error) {
 	return this.getAccount(id)
 }
 
-func (this *mock) DeleteAccount(id string) (err error) {
+func (this *mock) DeleteAccount(id uuid.UUID) (err error) {
 	return this.deleteAccount(id)
 }
 
@@ -174,78 +176,6 @@ func to_protobuf(o proto.Message, t *testing.T) []byte {
 	}
 	return data
 }
-
-// func to_json(authRequest *api.AuthRequest, t *testing.T) []byte {
-// 	data, err := json.Marshal(authRequest)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	return data
-// }
-
-// func to_protobuf(message *api.AuthRequest, t *testing.T) []byte {
-// 	data, err := proto.Marshal(message)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	return data
-// }
-
-// func to_protobuf(message *api.Login, t *testing.T) []byte {
-// 	data, err := proto.Marshal(message)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	return data
-// }
-
-// func to_protobuf(message *api.Application, t *testing.T) []byte {
-// 	data, err := proto.Marshal(message)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	return data
-// }
-
-// func to_protobuf(message *api.Attribute, t *testing.T) []byte {
-// 	data, err := proto.Marshal(message)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	return data
-// }
-
-// func to_json(account *api.Account, t *testing.T) []byte {
-// 	data, err := json.Marshal(account)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	return data
-// }
-
-// func to_json(message *api.Login, t *testing.T) []byte {
-// 	data, err := json.Marshal(message)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	return data
-// }
-
-// func to_json(message *api.Application, t *testing.T) []byte {
-// 	data, err := json.Marshal(message)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	return data
-// }
-
-// func to_json(message *api.Attribute, t *testing.T) []byte {
-// 	data, err := json.Marshal(message)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	return data
-// }
 
 func TestNotAMember(t *testing.T) {
 
@@ -512,8 +442,7 @@ func TestGetAccount(t *testing.T) {
 	embed := true
 	attribute1, value1 := "attribute1", "value1"
 
-	service.getAccount = func(id string) (account *api.Account, err error) {
-		assert.Equal(t, "1234", id)
+	service.getAccount = func(id uuid.UUID) (account *api.Account, err error) {
 		return &api.Account{
 			Primary: &api.Login{Password: &password},
 			Services: []*api.Application{
@@ -569,8 +498,7 @@ func TestDeleteAccount(t *testing.T) {
 		t.Error(err)
 	}
 
-	service.deleteAccount = func(id string) (err error) {
-		assert.Equal(t, "1234", id)
+	service.deleteAccount = func(id uuid.UUID) (err error) {
 		return nil
 	}
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
@@ -815,7 +743,8 @@ func TestSaveAccountPrimay(t *testing.T) {
 	embed := true
 	attribute_type := api.Attribute_STRING
 
-	input.Id = ptr("account-1")
+	uid := omni_common.NewUUID()
+	input.Id = ptr(uid.String())
 	input.Primary.Password = ptr("password-1")
 	input.Services[0].Id = ptr("app-1")
 	input.Services[0].Status = ptr("verified")
@@ -825,8 +754,8 @@ func TestSaveAccountPrimay(t *testing.T) {
 	input.Services[0].Attributes[0].EmbedSigninToken = &embed
 	input.Services[0].Attributes[0].StringValue = ptr("value-1")
 
-	service.getAccount = func(id string) (account *api.Account, err error) {
-		assert.Equal(t, input.GetId(), id)
+	service.getAccount = func(id uuid.UUID) (account *api.Account, err error) {
+		assert.Equal(t, input.GetId(), id.String())
 		t.Log("account id", id)
 		return input, nil
 	}
@@ -879,11 +808,12 @@ func TestSaveAccountService(t *testing.T) {
 	embed := true
 	attribute_type := api.Attribute_STRING
 
-	input.Id = ptr("account-1")
+	uid := omni_common.NewUUID()
+	input.Id = ptr(uid.String())
 	input.Primary.Password = ptr("password-1")
 
 	application := &api.Application{Attributes: []*api.Attribute{&api.Attribute{}}}
-	application.Id = ptr("app-1")
+	application.Id = ptr(omni_common.NewUUID().String())
 	application.Status = ptr("verified")
 	application.AccountId = ptr("app-account-1")
 	application.Attributes[0].Key = ptr("key-1")
@@ -891,8 +821,8 @@ func TestSaveAccountService(t *testing.T) {
 	application.Attributes[0].EmbedSigninToken = &embed
 	application.Attributes[0].StringValue = ptr("value-1")
 
-	service.getAccount = func(id string) (account *api.Account, err error) {
-		assert.Equal(t, input.GetId(), id)
+	service.getAccount = func(id uuid.UUID) (account *api.Account, err error) {
+		assert.Equal(t, input.GetId(), id.String())
 		t.Log("account id", id)
 		return input, nil
 	}
@@ -966,11 +896,11 @@ func TestSaveAccountServiceAttribute(t *testing.T) {
 	embed := true
 	attribute_type := api.Attribute_STRING
 
-	input.Id = ptr("account-1")
+	input.Id = ptr(omni_common.NewUUID().String())
 	input.Primary.Password = ptr("password-1")
 
 	application := &api.Application{Attributes: []*api.Attribute{&api.Attribute{}}}
-	application.Id = ptr("app-1")
+	application.Id = ptr(omni_common.NewUUID().String())
 	application.Status = ptr("verified")
 	application.AccountId = ptr("app-account-1")
 	application.Attributes[0].Key = ptr("key-1")
@@ -978,8 +908,8 @@ func TestSaveAccountServiceAttribute(t *testing.T) {
 	application.Attributes[0].EmbedSigninToken = &embed
 	application.Attributes[0].StringValue = ptr("value-1")
 
-	service.getAccount = func(id string) (account *api.Account, err error) {
-		assert.Equal(t, input.GetId(), id)
+	service.getAccount = func(id uuid.UUID) (account *api.Account, err error) {
+		assert.Equal(t, input.GetId(), id.String())
 		t.Log("account id", id)
 		return input, nil
 	}

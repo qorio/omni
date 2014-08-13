@@ -2,14 +2,36 @@ package lighthouse
 
 import (
 	"github.com/qorio/api"
+	"github.com/qorio/api/passport"
 )
 
 const (
-	AddOrUpdateBeacon api.ServiceMethod = iota
+	RegisterUser api.ServiceMethod = iota
+	GetUserProfile
+	AuthenticateUser
+
+	AddOrUpdateBeacon
 	ListAllBeacons
 )
 
 var Methods = map[api.ServiceMethod]*api.MethodSpec{
+
+	RegisterUser: &api.MethodSpec{
+		RequiresAuth: true,
+		Doc: `
+Registers a user
+`,
+		Name:         "RegisterUser",
+		UrlRoute:     "/api/v1/register",
+		HttpMethod:   "POST",
+		ContentTypes: []string{"application/protobuf", "application/json"},
+		RequestBody: func() interface{} {
+			return passport.Login{}
+		},
+		ResponseBody: func() interface{} {
+			return passport.Login{} // will include assigned id.
+		},
+	},
 
 	AddOrUpdateBeacon: &api.MethodSpec{
 		RequiresAuth: true,

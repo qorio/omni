@@ -332,10 +332,9 @@ func processCookies(cookies omni_http.Cookies, shortCode string) (visits int, co
 
 	uuid, _ = cookies.GetPlainString(uuidCookieKey)
 	if uuid == "" {
-		if uuid, _ = omni_common.NewUUID(); uuid != "" {
-			cookieError = cookies.SetPlainString(uuidCookieKey, uuid)
-			cookied = cookieError == nil
-		}
+		uuid = omni_common.NewUUID().String()
+		cookieError = cookies.SetPlainString(uuidCookieKey, uuid)
+		cookied = cookieError == nil
 	}
 
 	visits++

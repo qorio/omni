@@ -16,22 +16,16 @@ message Login {
 
 	optional string id = 1;
 
-	enum Status {
-	     CREATED = 1;
-	     VERIFIED = 2;
-	     BLOCKED = 3;
-	}
-	optional Status status = 2 [default = CREATED];
-	optional string email = 3;
-	optional string phone = 4;
-	required string password = 5;
+	optional string email = 2;
+	optional string phone = 3;
+	required string password = 4;
 
 	message Location {
     		required double lon = 1;
     		required double lat = 2;
     	}
 
-	optional Location location = 6;
+	optional Location location = 5;
 
-	optional string username = 7;
+	optional string username = 6;
 }

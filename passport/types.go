@@ -1,6 +1,7 @@
 package passport
 
 import (
+	"code.google.com/p/go-uuid/uuid"
 	"errors"
 	api "github.com/qorio/api/passport"
 	"net/http"
@@ -33,7 +34,7 @@ type Service interface {
 	FindAccountByEmail(email string) (account *api.Account, err error)
 	FindAccountByPhone(phone string) (account *api.Account, err error)
 	SaveAccount(account *api.Account) (err error)
-	GetAccount(id string) (account *api.Account, err error)
-	DeleteAccount(id string) (err error)
+	GetAccount(id uuid.UUID) (account *api.Account, err error)
+	DeleteAccount(id uuid.UUID) (err error)
 	Close()
 }
