@@ -33,17 +33,17 @@ func NewService(settings Settings) (Service, error) {
 	impl.collection = impl.db.C("beacons")
 	// 2d spatial index on beacon's location
 	impl.collection.EnsureIndex(mgo.Index{
-		Key:      []string{"summary.location"},
+		Key:      []string{"beacon.location"},
 		Unique:   false,
 		DropDups: false,
 		Name:     "2dsphere",
 	})
 
 	impl.collection.EnsureIndex(mgo.Index{
-		Key:      []string{"summary.advertise_info.uuid, summary.advertise_info.major, summary.advertise_info.minor"},
+		Key:      []string{"beacon.advertise_info.uuid, beacon.advertise_info.major, beacon.advertise_info.minor"},
 		Unique:   true,
 		DropDups: true,
-		Name:     "advertise_info",
+		Name:     "ibeacon_advertise_info",
 	})
 
 	glog.Infoln("Lighthouse MongoDb backend initialized:", impl)
@@ -54,7 +54,7 @@ func (this *serviceImpl) dropDatabase() (err error) {
 	return this.db.DropDatabase()
 }
 
-func (this *serviceImpl) SaveBeacon(beacon *BeaconProfile) (err error) {
+func (this *serviceImpl) SaveBeaconProfile(beacon *BeaconProfile) (err error) {
 	uuid, _ := omni_common.NewUUID()
 	if beacon.Id == "" {
 		beacon.Id = uuid
@@ -67,7 +67,7 @@ func (this *serviceImpl) SaveBeacon(beacon *BeaconProfile) (err error) {
 	return err
 }
 
-func (this *serviceImpl) GetBeacon(id string) (beacon *BeaconProfile, err error) {
+func (this *serviceImpl) GetBeaconProfile(id string) (beacon *BeaconProfile, err error) {
 	result := BeaconProfile{}
 	err = this.collection.Find(bson.M{"id": id}).One(&result)
 	switch {
@@ -79,7 +79,7 @@ func (this *serviceImpl) GetBeacon(id string) (beacon *BeaconProfile, err error)
 	return &result, nil
 }
 
-func (this *serviceImpl) DeleteBeacon(id string) (err error) {
+func (this *serviceImpl) DeleteBeaconProfile(id string) (err error) {
 	err = this.collection.Remove(bson.M{"id": id})
 	switch {
 	case err == mgo.ErrNotFound:
@@ -90,7 +90,7 @@ func (this *serviceImpl) DeleteBeacon(id string) (err error) {
 	return nil
 }
 
-func (this *serviceImpl) FindBeaconByUUIDMajorMinor(uuid []byte, major, minor int) (beacon *BeaconProfile, err error) {
+func (this *serviceImpl) FindBeaconProfileByUUIDMajorMinor(uuid []byte, major, minor int) (beacon *BeaconProfile, err error) {
 	result := BeaconProfile{}
 	err = this.collection.Find(bson.M{"uuid": uuid, "major": major, "minor": minor}).One(&result)
 	switch {

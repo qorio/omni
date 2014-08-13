@@ -76,20 +76,20 @@ func TestInsertGetAndDelete(t *testing.T) {
 	defer service.Close()
 	t.Log("Started db client", service)
 
-	err4 := service.DeleteBeacon(beacon.Id)
+	err4 := service.DeleteBeaconProfile(beacon.Id)
 	assert.Equal(t, nil, err4)
 
 	b := test_beacon()
-	err = service.SaveBeacon(b)
+	err = service.SaveBeaconProfile(b)
 	assert.Equal(t, nil, err)
 
-	b2, err2 := service.GetBeacon(b.Id)
+	b2, err2 := service.GetBeaconProfile(b.Id)
 	assert.Equal(t, nil, err2)
 	t.Log("b2", b2)
 
-	err5 := service.DeleteBeacon(b2.Id)
+	err5 := service.DeleteBeaconProfile(b2.Id)
 	assert.Equal(t, nil, err5)
 
-	_, err6 := service.GetBeacon(b2.Id)
+	_, err6 := service.GetBeaconProfile(b2.Id)
 	assert.Equal(t, ERROR_NOT_FOUND, err6)
 }

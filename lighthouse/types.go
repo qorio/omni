@@ -34,10 +34,10 @@ type BeaconProfile struct {
 }
 
 type Service interface {
-	SaveBeacon(*BeaconProfile) error
-	GetBeacon(string) (*BeaconProfile, error)
-	DeleteBeacon(string) error
-	FindBeaconByUUIDMajorMinor([]byte, int, int) (*BeaconProfile, error)
+	SaveBeaconProfile(*BeaconProfile) error
+	GetBeaconProfile(string) (*BeaconProfile, error)
+	DeleteBeaconProfile(string) error
+	FindBeaconProfileByUUIDMajorMinor([]byte, int, int) (*BeaconProfile, error)
 	Close()
 }
 
