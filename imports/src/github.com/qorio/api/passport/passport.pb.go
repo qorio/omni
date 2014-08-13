@@ -2,6 +2,20 @@
 // source: passport.proto
 // DO NOT EDIT!
 
+/*
+Package passport is a generated protocol buffer package.
+
+It is generated from these files:
+	passport.proto
+	passport_client.proto
+
+It has these top-level messages:
+	Blob
+	Attribute
+	Application
+	Account
+	AccountLogs
+*/
 package passport
 
 import proto "code.google.com/p/goprotobuf/proto"

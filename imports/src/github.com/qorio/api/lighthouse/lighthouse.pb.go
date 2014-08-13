@@ -11,18 +11,15 @@ It is generated from these files:
 It has these top-level messages:
 	Location
 	Content
+	IBeacon
 	BeaconAdvertisement
-	BeaconDeviceProfile
-	BeaconSummary
+	DeviceProfile
 	Beacon
-	Acl
-	BeaconPost
 */
 package lighthouse
 
 import proto "code.google.com/p/goprotobuf/proto"
 import math "math"
-import soapbox "soapbox.pb"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -98,8 +95,41 @@ func (m *Content) GetUrl() string {
 	return ""
 }
 
+type IBeacon struct {
+	Uuid             []byte `protobuf:"bytes,1,req,name=uuid" json:"uuid,omitempty"`
+	Major            *int32 `protobuf:"varint,2,opt,name=major" json:"major,omitempty"`
+	Minor            *int32 `protobuf:"varint,3,opt,name=minor" json:"minor,omitempty"`
+	XXX_unrecognized []byte `json:"-"`
+}
+
+func (m *IBeacon) Reset()         { *m = IBeacon{} }
+func (m *IBeacon) String() string { return proto.CompactTextString(m) }
+func (*IBeacon) ProtoMessage()    {}
+
+func (m *IBeacon) GetUuid() []byte {
+	if m != nil {
+		return m.Uuid
+	}
+	return nil
+}
+
+func (m *IBeacon) GetMajor() int32 {
+	if m != nil && m.Major != nil {
+		return *m.Major
+	}
+	return 0
+}
+
+func (m *IBeacon) GetMinor() int32 {
+	if m != nil && m.Minor != nil {
+		return *m.Minor
+	}
+	return 0
+}
+
 type BeaconAdvertisement struct {
-	Ibeacon *BeaconAdvertisement_IBeacon `protobuf:"bytes,1,opt,name=ibeacon" json:"ibeacon,omitempty"`
+	// For IBeacon spec by AAPL
+	Ibeacon *IBeacon `protobuf:"bytes,1,opt,name=ibeacon" json:"ibeacon,omitempty"`
 	// For supporting generic BLE mac address as id
 	BleDevice        *string `protobuf:"bytes,2,opt,name=ble_device" json:"ble_device,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
@@ -109,7 +139,7 @@ func (m *BeaconAdvertisement) Reset()         { *m = BeaconAdvertisement{} }
 func (m *BeaconAdvertisement) String() string { return proto.CompactTextString(m) }
 func (*BeaconAdvertisement) ProtoMessage()    {}
 
-func (m *BeaconAdvertisement) GetIbeacon() *BeaconAdvertisement_IBeacon {
+func (m *BeaconAdvertisement) GetIbeacon() *IBeacon {
 	if m != nil {
 		return m.Ibeacon
 	}
@@ -123,90 +153,65 @@ func (m *BeaconAdvertisement) GetBleDevice() string {
 	return ""
 }
 
-// For IBeacon spec by AAPL
-type BeaconAdvertisement_IBeacon struct {
-	Uuid             []byte `protobuf:"bytes,1,req,name=uuid" json:"uuid,omitempty"`
-	Major            *int32 `protobuf:"varint,2,opt,name=major" json:"major,omitempty"`
-	Minor            *int32 `protobuf:"varint,3,opt,name=minor" json:"minor,omitempty"`
-	XXX_unrecognized []byte `json:"-"`
-}
-
-func (m *BeaconAdvertisement_IBeacon) Reset()         { *m = BeaconAdvertisement_IBeacon{} }
-func (m *BeaconAdvertisement_IBeacon) String() string { return proto.CompactTextString(m) }
-func (*BeaconAdvertisement_IBeacon) ProtoMessage()    {}
-
-func (m *BeaconAdvertisement_IBeacon) GetUuid() []byte {
-	if m != nil {
-		return m.Uuid
-	}
-	return nil
-}
-
-func (m *BeaconAdvertisement_IBeacon) GetMajor() int32 {
-	if m != nil && m.Major != nil {
-		return *m.Major
-	}
-	return 0
-}
-
-func (m *BeaconAdvertisement_IBeacon) GetMinor() int32 {
-	if m != nil && m.Minor != nil {
-		return *m.Minor
-	}
-	return 0
-}
-
 // Hardware profile
-type BeaconDeviceProfile struct {
-	HardwareId       []byte               `protobuf:"bytes,1,req,name=hardware_id" json:"hardware_id,omitempty"`
-	LocalName        *string              `protobuf:"bytes,2,req,name=local_name" json:"local_name,omitempty"`
-	Password         []byte               `protobuf:"bytes,3,req,name=password" json:"password,omitempty"`
-	AdvertiseInfo    *BeaconAdvertisement `protobuf:"bytes,4,req,name=advertise_info" json:"advertise_info,omitempty"`
-	TxPower          *int32               `protobuf:"varint,5,opt,name=tx_power" json:"tx_power,omitempty"`
-	TxFrequency      *int32               `protobuf:"varint,6,opt,name=tx_frequency" json:"tx_frequency,omitempty"`
+type DeviceProfile struct {
+	Timestamp        *float64             `protobuf:"fixed64,1,req,name=timestamp" json:"timestamp,omitempty"`
+	HardwareId       []byte               `protobuf:"bytes,2,req,name=hardware_id" json:"hardware_id,omitempty"`
+	LocalName        *string              `protobuf:"bytes,3,req,name=local_name" json:"local_name,omitempty"`
+	Password         []byte               `protobuf:"bytes,4,req,name=password" json:"password,omitempty"`
+	AdvertiseInfo    *BeaconAdvertisement `protobuf:"bytes,5,req,name=advertise_info" json:"advertise_info,omitempty"`
+	TxPower          *int32               `protobuf:"varint,6,opt,name=tx_power" json:"tx_power,omitempty"`
+	TxFrequency      *int32               `protobuf:"varint,7,opt,name=tx_frequency" json:"tx_frequency,omitempty"`
 	XXX_unrecognized []byte               `json:"-"`
 }
 
-func (m *BeaconDeviceProfile) Reset()         { *m = BeaconDeviceProfile{} }
-func (m *BeaconDeviceProfile) String() string { return proto.CompactTextString(m) }
-func (*BeaconDeviceProfile) ProtoMessage()    {}
+func (m *DeviceProfile) Reset()         { *m = DeviceProfile{} }
+func (m *DeviceProfile) String() string { return proto.CompactTextString(m) }
+func (*DeviceProfile) ProtoMessage()    {}
 
-func (m *BeaconDeviceProfile) GetHardwareId() []byte {
+func (m *DeviceProfile) GetTimestamp() float64 {
+	if m != nil && m.Timestamp != nil {
+		return *m.Timestamp
+	}
+	return 0
+}
+
+func (m *DeviceProfile) GetHardwareId() []byte {
 	if m != nil {
 		return m.HardwareId
 	}
 	return nil
 }
 
-func (m *BeaconDeviceProfile) GetLocalName() string {
+func (m *DeviceProfile) GetLocalName() string {
 	if m != nil && m.LocalName != nil {
 		return *m.LocalName
 	}
 	return ""
 }
 
-func (m *BeaconDeviceProfile) GetPassword() []byte {
+func (m *DeviceProfile) GetPassword() []byte {
 	if m != nil {
 		return m.Password
 	}
 	return nil
 }
 
-func (m *BeaconDeviceProfile) GetAdvertiseInfo() *BeaconAdvertisement {
+func (m *DeviceProfile) GetAdvertiseInfo() *BeaconAdvertisement {
 	if m != nil {
 		return m.AdvertiseInfo
 	}
 	return nil
 }
 
-func (m *BeaconDeviceProfile) GetTxPower() int32 {
+func (m *DeviceProfile) GetTxPower() int32 {
 	if m != nil && m.TxPower != nil {
 		return *m.TxPower
 	}
 	return 0
 }
 
-func (m *BeaconDeviceProfile) GetTxFrequency() int32 {
+func (m *DeviceProfile) GetTxFrequency() int32 {
 	if m != nil && m.TxFrequency != nil {
 		return *m.TxFrequency
 	}
@@ -214,9 +219,9 @@ func (m *BeaconDeviceProfile) GetTxFrequency() int32 {
 }
 
 // Summary of a beacon -- this is shared with mobile client.
-type BeaconSummary struct {
+type Beacon struct {
 	// Unique identifier from the hardware
-	Id *string `protobuf:"bytes,1,req,name=id" json:"id,omitempty"`
+	HardwareId *string `protobuf:"bytes,1,req,name=hardware_id" json:"hardware_id,omitempty"`
 	// How this beacon advertises itself
 	AdvertiseInfo *BeaconAdvertisement `protobuf:"bytes,2,req,name=advertise_info" json:"advertise_info,omitempty"`
 	// Install date, unix time
@@ -228,7 +233,7 @@ type BeaconSummary struct {
 	// Owner of the beacon -- first user who provisioned a hardware beacon
 	// Ownership can be transferred by releasing the beacon which will cause
 	// a deletion of this record.
-	Owner *soapbox.UserRef `protobuf:"bytes,6,req,name=owner" json:"owner,omitempty"`
+	Owner *string `protobuf:"bytes,6,req,name=owner" json:"owner,omitempty"`
 	// At least one label to establish the context of the beacon.  For v1, only 1 label.
 	Labels []string `protobuf:"bytes,7,rep,name=labels" json:"labels,omitempty"`
 	// For displaying the beacon icon/ logo etc.
@@ -237,204 +242,71 @@ type BeaconSummary struct {
 	XXX_unrecognized []byte   `json:"-"`
 }
 
-func (m *BeaconSummary) Reset()         { *m = BeaconSummary{} }
-func (m *BeaconSummary) String() string { return proto.CompactTextString(m) }
-func (*BeaconSummary) ProtoMessage()    {}
+func (m *Beacon) Reset()         { *m = Beacon{} }
+func (m *Beacon) String() string { return proto.CompactTextString(m) }
+func (*Beacon) ProtoMessage()    {}
 
-func (m *BeaconSummary) GetId() string {
-	if m != nil && m.Id != nil {
-		return *m.Id
+func (m *Beacon) GetHardwareId() string {
+	if m != nil && m.HardwareId != nil {
+		return *m.HardwareId
 	}
 	return ""
 }
 
-func (m *BeaconSummary) GetAdvertiseInfo() *BeaconAdvertisement {
+func (m *Beacon) GetAdvertiseInfo() *BeaconAdvertisement {
 	if m != nil {
 		return m.AdvertiseInfo
 	}
 	return nil
 }
 
-func (m *BeaconSummary) GetInstalledTimestamp() float64 {
+func (m *Beacon) GetInstalledTimestamp() float64 {
 	if m != nil && m.InstalledTimestamp != nil {
 		return *m.InstalledTimestamp
 	}
 	return 0
 }
 
-func (m *BeaconSummary) GetLocation() *Location {
+func (m *Beacon) GetLocation() *Location {
 	if m != nil {
 		return m.Location
 	}
 	return nil
 }
 
-func (m *BeaconSummary) GetBattery() int32 {
+func (m *Beacon) GetBattery() int32 {
 	if m != nil && m.Battery != nil {
 		return *m.Battery
 	}
 	return 0
 }
 
-func (m *BeaconSummary) GetOwner() *soapbox.UserRef {
-	if m != nil {
-		return m.Owner
+func (m *Beacon) GetOwner() string {
+	if m != nil && m.Owner != nil {
+		return *m.Owner
 	}
-	return nil
+	return ""
 }
 
-func (m *BeaconSummary) GetLabels() []string {
+func (m *Beacon) GetLabels() []string {
 	if m != nil {
 		return m.Labels
 	}
 	return nil
 }
 
-func (m *BeaconSummary) GetAvatar() *Content {
+func (m *Beacon) GetAvatar() *Content {
 	if m != nil {
 		return m.Avatar
 	}
 	return nil
 }
 
-func (m *BeaconSummary) GetAvatarSmall() *Content {
+func (m *Beacon) GetAvatarSmall() *Content {
 	if m != nil {
 		return m.AvatarSmall
 	}
 	return nil
-}
-
-// Detail beacon info -- server side; contains history, device profile, etc.
-type Beacon struct {
-	Id      *string        `protobuf:"bytes,1,req,name=id" json:"id,omitempty"`
-	Summary *BeaconSummary `protobuf:"bytes,2,req,name=summary" json:"summary,omitempty"`
-	// Device programming history to support reseting of beacons on release or rollbacks.
-	// Assumption: this doesn't happen often so a linear history can be stored in-place.
-	// This may not be sent to a viewing mobile client.
-	History []*BeaconDeviceProfile `protobuf:"bytes,3,rep,name=history" json:"history,omitempty"`
-	// Access control list
-	Acl              *string `protobuf:"bytes,4,req,name=acl" json:"acl,omitempty"`
-	XXX_unrecognized []byte  `json:"-"`
-}
-
-func (m *Beacon) Reset()         { *m = Beacon{} }
-func (m *Beacon) String() string { return proto.CompactTextString(m) }
-func (*Beacon) ProtoMessage()    {}
-
-func (m *Beacon) GetId() string {
-	if m != nil && m.Id != nil {
-		return *m.Id
-	}
-	return ""
-}
-
-func (m *Beacon) GetSummary() *BeaconSummary {
-	if m != nil {
-		return m.Summary
-	}
-	return nil
-}
-
-func (m *Beacon) GetHistory() []*BeaconDeviceProfile {
-	if m != nil {
-		return m.History
-	}
-	return nil
-}
-
-func (m *Beacon) GetAcl() string {
-	if m != nil && m.Acl != nil {
-		return *m.Acl
-	}
-	return ""
-}
-
-type Acl struct {
-	Id               *string            `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
-	Name             *string            `protobuf:"bytes,2,req,name=name" json:"name,omitempty"`
-	Users            []*soapbox.UserRef `protobuf:"bytes,3,rep,name=users" json:"users,omitempty"`
-	XXX_unrecognized []byte             `json:"-"`
-}
-
-func (m *Acl) Reset()         { *m = Acl{} }
-func (m *Acl) String() string { return proto.CompactTextString(m) }
-func (*Acl) ProtoMessage()    {}
-
-func (m *Acl) GetId() string {
-	if m != nil && m.Id != nil {
-		return *m.Id
-	}
-	return ""
-}
-
-func (m *Acl) GetName() string {
-	if m != nil && m.Name != nil {
-		return *m.Name
-	}
-	return ""
-}
-
-func (m *Acl) GetUsers() []*soapbox.UserRef {
-	if m != nil {
-		return m.Users
-	}
-	return nil
-}
-
-type BeaconPost struct {
-	// Id - not required at creation time.  Assigned by server
-	Id *string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
-	// List of beacon ids to attach the post
-	Beacons []string `protobuf:"bytes,2,rep,name=beacons" json:"beacons,omitempty"`
-	// Optional.  If len(audience) is zero, the message is intended
-	// only for the author (as self reminder).  This list is used
-	// to filter and target delivery.  There are corresponding 'public'
-	// or 'group' UserRef to model public or group posts.
-	Audience []*soapbox.UserRef `protobuf:"bytes,4,rep,name=audience" json:"audience,omitempty"`
-	// Actual content / post itself
-	Post *soapbox.Post `protobuf:"bytes,5,req,name=post" json:"post,omitempty"`
-	// Short url
-	ShortUrl         *string `protobuf:"bytes,6,opt,name=short_url" json:"short_url,omitempty"`
-	XXX_unrecognized []byte  `json:"-"`
-}
-
-func (m *BeaconPost) Reset()         { *m = BeaconPost{} }
-func (m *BeaconPost) String() string { return proto.CompactTextString(m) }
-func (*BeaconPost) ProtoMessage()    {}
-
-func (m *BeaconPost) GetId() string {
-	if m != nil && m.Id != nil {
-		return *m.Id
-	}
-	return ""
-}
-
-func (m *BeaconPost) GetBeacons() []string {
-	if m != nil {
-		return m.Beacons
-	}
-	return nil
-}
-
-func (m *BeaconPost) GetAudience() []*soapbox.UserRef {
-	if m != nil {
-		return m.Audience
-	}
-	return nil
-}
-
-func (m *BeaconPost) GetPost() *soapbox.Post {
-	if m != nil {
-		return m.Post
-	}
-	return nil
-}
-
-func (m *BeaconPost) GetShortUrl() string {
-	if m != nil && m.ShortUrl != nil {
-		return *m.ShortUrl
-	}
-	return ""
 }
 
 func init() {

@@ -1,7 +1,5 @@
 package lighthouse;
 
-import "soapbox.proto";
-
 
 // To be transformed to GeoJson - ex)  {"location" : [-71.34, 41.12]}
 // See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-geo-point-type.html
@@ -25,14 +23,16 @@ message Content {
     optional string url = 4;
 }
 
+
+message IBeacon {
+	required bytes uuid = 1;
+	optional int32 major = 2;
+	optional int32 minor = 3;
+}
+
 message BeaconAdvertisement {
 
 	// For IBeacon spec by AAPL
-	message IBeacon {
-		required bytes uuid = 1;
-		optional int32 major = 2;
-		optional int32 minor = 3;
-	}
 	optional IBeacon ibeacon = 1;
 
 	// For supporting generic BLE mac address as id
@@ -40,20 +40,21 @@ message BeaconAdvertisement {
 }
 
 // Hardware profile
-message BeaconDeviceProfile {
-	required bytes hardware_id = 1;
-	required string local_name = 2;
-	required bytes password = 3;
-	required BeaconAdvertisement advertise_info = 4;
-	optional int32 tx_power = 5;
-	optional int32 tx_frequency = 6;
+message DeviceProfile {
+	required double timestamp = 1;
+	required bytes hardware_id = 2;
+	required string local_name = 3;
+	required bytes password = 4;
+	required BeaconAdvertisement advertise_info = 5;
+	optional int32 tx_power = 6;
+	optional int32 tx_frequency = 7;
 }
 
 // Summary of a beacon -- this is shared with mobile client.
-message BeaconSummary {
+message Beacon {
 
 	// Unique identifier from the hardware
-	required string id = 1;
+	required string hardware_id = 1;
 
 	// How this beacon advertises itself
 	required BeaconAdvertisement advertise_info = 2;
@@ -70,7 +71,7 @@ message BeaconSummary {
 	// Owner of the beacon -- first user who provisioned a hardware beacon
 	// Ownership can be transferred by releasing the beacon which will cause
 	// a deletion of this record.
-	required soapbox.UserRef owner = 6;
+	required string owner = 6;
 
 	// At least one label to establish the context of the beacon.  For v1, only 1 label.
 	repeated string labels = 7;
@@ -78,47 +79,4 @@ message BeaconSummary {
 	// For displaying the beacon icon/ logo etc.
 	optional Content avatar = 8;
 	optional Content avatar_small = 9;
-}
-
-// Detail beacon info -- server side; contains history, device profile, etc.
-message Beacon {
-
-	required string id = 1;
-
-	required BeaconSummary summary = 2;
-
-	// Device programming history to support reseting of beacons on release or rollbacks.
-	// Assumption: this doesn't happen often so a linear history can be stored in-place.
-	// This may not be sent to a viewing mobile client.
-	repeated BeaconDeviceProfile history = 3;
-
-	// Access control list
-	required string acl = 4;
-}
-
-message Acl {
-	optional string id = 1;
-	required string name = 2;
-	repeated soapbox.UserRef users = 3;
-}
-
-message BeaconPost {
-
-	// Id - not required at creation time.  Assigned by server
-	optional string id = 1;
-
-	// List of beacon ids to attach the post
-	repeated string beacons = 2;
-
-	// Optional.  If len(audience) is zero, the message is intended
-	// only for the author (as self reminder).  This list is used
-	// to filter and target delivery.  There are corresponding 'public'
-	// or 'group' UserRef to model public or group posts.
-	repeated soapbox.UserRef audience = 4;
-
-	// Actual content / post itself
-	required soapbox.Post post = 5;
-
-	// Short url
-	optional string short_url = 6;
 }

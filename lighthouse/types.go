@@ -2,19 +2,12 @@ package lighthouse
 
 import (
 	"errors"
+	api "github.com/qorio/api/lighthouse"
 )
-
-// see passport.proto
 
 var (
-	ERROR_MISSING_INPUT        = errors.New("error-missing-input")
-	ERROR_NOT_FOUND            = errors.New("account-not-found")
-	ERROR_UNKNOWN_CONTENT_TYPE = errors.New("error-no-content-type")
+	ERROR_NOT_FOUND = errors.New("beacon-not-found")
 )
-
-type FsSettings struct {
-	RootDir string
-}
 
 type DbSettings struct {
 	Hosts []string
@@ -22,9 +15,36 @@ type DbSettings struct {
 }
 
 type Settings struct {
-	FsSettings FsSettings
+	Mongo DbSettings
+}
+
+type UserUrl string
+
+type Acl struct {
+	Id    string    `json:"id"`
+	Name  string    `json:"name"`
+	Users []UserUrl `json:"users"`
+}
+
+type BeaconProfile struct {
+	Id            string               `json:"id"`
+	Beacon        *api.Beacon          `json:"beacon"`
+	ChangeHistory []*api.DeviceProfile `json:"change_history"`
+	Acl           []*Acl               `json:"acl"`
 }
 
 type Service interface {
+	SaveBeacon(*BeaconProfile) error
+	GetBeacon(string) (*BeaconProfile, error)
+	DeleteBeacon(string) error
+	FindBeaconByUUIDMajorMinor([]byte, int, int) (*BeaconProfile, error)
 	Close()
+}
+
+type BeaconPost struct {
+	Id       string
+	Beacons  []string
+	Audience []UserUrl
+	// post
+	// short url
 }
