@@ -3,6 +3,8 @@ package lighthouse
 import (
 	"code.google.com/p/go-uuid/uuid"
 	"github.com/golang/glog"
+	"github.com/qorio/api/passport"
+	"github.com/qorio/omni/common"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"strings"
@@ -57,22 +59,43 @@ func (this *serviceImpl) dropDatabase() (err error) {
 	return this.db.DropDatabase()
 }
 
-func (this *serviceImpl) RegisterUser(*UserProfile) error {
-	return nil
+func (this *serviceImpl) RegisterUser(l *passport.Login) (u *UserProfile, err error) {
+	return this.registerUser(l, false)
 }
 
-func (this *serviceImpl) GetUserProfile(uuid.UUID) (*UserProfile, error) {
-	return nil, nil
+func (this *serviceImpl) RegisterAdminUser(l *passport.Login) (u *UserProfile, err error) {
+	return this.registerUser(l, true)
+}
+
+func (this *serviceImpl) registerUser(l *passport.Login, admin bool) (u *UserProfile, err error) {
+	userProfile := &UserProfile{
+		Id:      common.NewUUID(),
+		Login:   l,
+		IsAdmin: admin,
+	}
+
+	changeInfo, err := this.users_collection.Upsert(bson.M{"id": userProfile.Id}, userProfile)
+	if changeInfo != nil && changeInfo.Updated >= 0 {
+		return userProfile, err
+	}
+	return nil, err
+}
+
+func (this *serviceImpl) GetUserProfile(id uuid.UUID) (*UserProfile, error) {
+	result := UserProfile{}
+	err := this.users_collection.Find(bson.M{"id": id}).One(&result)
+	switch {
+	case err == mgo.ErrNotFound:
+		return nil, ERROR_NOT_FOUND
+	case err != nil:
+		return nil, err
+	}
+	return &result, nil
 }
 
 func (this *serviceImpl) SaveBeaconProfile(beacon *BeaconProfile) (err error) {
-	// if beacon.Id == "" {
-	// 	uuid, _ := common.NewUUID()
-	// 	beacon.Id = uuid
-	// }
-
 	if beacon.Id == nil {
-		beacon.Id = uuid.NewUUID()
+		beacon.Id = common.NewUUID()
 	}
 	changeInfo, err := this.beacons_collection.Upsert(bson.M{"id": beacon.Id}, beacon)
 	glog.Infoln("upsert beacon", beacon, changeInfo, err)
@@ -94,7 +117,7 @@ func (this *serviceImpl) GetBeaconProfile(id uuid.UUID) (beacon *BeaconProfile, 
 	return &result, nil
 }
 
-func (this *serviceImpl) DeleteBeaconProfile(id string) (err error) {
+func (this *serviceImpl) DeleteBeaconProfile(id uuid.UUID) (err error) {
 	err = this.beacons_collection.Remove(bson.M{"id": id})
 	switch {
 	case err == mgo.ErrNotFound:

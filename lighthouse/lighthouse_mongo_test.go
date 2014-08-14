@@ -3,7 +3,8 @@ package lighthouse
 import (
 	"github.com/bmizerany/assert"
 	api "github.com/qorio/api/lighthouse"
-	common "github.com/qorio/omni/common"
+	"github.com/qorio/api/passport"
+	"github.com/qorio/omni/common"
 	"testing"
 	"time"
 )
@@ -64,7 +65,40 @@ func TestNewService(t *testing.T) {
 	t.Log("Started db client", service)
 }
 
-func TestInsertGetAndDelete(t *testing.T) {
+func TestRegisterUserAndGetUser(t *testing.T) {
+
+	// Actual workflow of registering a user:
+	// 1. Mobile client posts Login to passport
+	// 2. Passport create new account if necessary
+	// 3. On success, a callback URL is posted.  This calls lighthouse
+	// 4. Lighthouse creates new UserProfile object
+	// 5. Lighthouse updates passport with service information, e.g. adds a service
+
+	// Consider adding new endpoint to passport like /v1/{service}/register where {service}
+	// will map to lighthouse, and a specific callback url (webhook) on successful registration
+
+	service, err := NewService(default_settings())
+	assert.Equal(t, nil, err)
+
+	defer service.Close()
+	t.Log("Started db client", service)
+
+	up, err := service.RegisterUser(&passport.Login{
+		Email:    ptr("foo@bar.com"),
+		Password: ptr("password"),
+		Username: ptr("foo"),
+	})
+	assert.Equal(t, nil, err)
+	assert.NotEqual(t, nil, up)
+	assert.NotEqual(t, nil, up.Id)
+
+	up2, err := service.GetUserProfile(up.Id)
+	assert.Equal(t, nil, err)
+	assert.Equal(t, up.Login.String(), up2.Login.String())
+	assert.Equal(t, up.toJSON(), up2.toJSON())
+}
+
+func TestInsertGetAndDeleteBeaconProfile(t *testing.T) {
 	service, err := NewService(default_settings())
 	assert.Equal(t, nil, err)
 
@@ -84,11 +118,9 @@ func TestInsertGetAndDelete(t *testing.T) {
 	assert.Equal(t, nil, err2)
 	t.Log("b2", b2)
 
-	/*
-		err5 := service.DeleteBeaconProfile(b2.Id)
-		assert.Equal(t, nil, err5)
+	err5 := service.DeleteBeaconProfile(b2.Id)
+	assert.Equal(t, nil, err5)
 
-		_, err6 := service.GetBeaconProfile(b2.Id)
-		assert.Equal(t, ERROR_NOT_FOUND, err6)
-	*/
+	_, err6 := service.GetBeaconProfile(b2.Id)
+	assert.Equal(t, ERROR_NOT_FOUND, err6)
 }

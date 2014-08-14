@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	ERROR_NOT_FOUND = errors.New("beacon-not-found")
+	ERROR_NOT_FOUND = errors.New("not-found")
 )
 
 type DbSettings struct {
@@ -42,11 +42,12 @@ type UserProfile struct {
 }
 
 type Service interface {
-	RegisterUser(*UserProfile) error
+	RegisterUser(*passport.Login) (*UserProfile, error)
+	RegisterAdminUser(*passport.Login) (*UserProfile, error)
 	GetUserProfile(uuid.UUID) (*UserProfile, error)
 	SaveBeaconProfile(*BeaconProfile) error
 	GetBeaconProfile(uuid.UUID) (*BeaconProfile, error)
-	DeleteBeaconProfile(string) error
+	DeleteBeaconProfile(uuid.UUID) error
 	FindBeaconProfileByUUIDMajorMinor([]byte, int, int) (*BeaconProfile, error)
 	Close()
 }
