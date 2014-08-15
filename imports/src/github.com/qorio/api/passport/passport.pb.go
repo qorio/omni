@@ -12,7 +12,7 @@ It is generated from these files:
 It has these top-level messages:
 	Blob
 	Attribute
-	Application
+	Service
 	Account
 	AccountLogs
 */
@@ -154,7 +154,7 @@ func (m *Attribute) GetBlobValue() *Blob {
 	return nil
 }
 
-type Application struct {
+type Service struct {
 	Id               *string      `protobuf:"bytes,1,req,name=id" json:"id,omitempty"`
 	Status           *string      `protobuf:"bytes,2,req,name=status" json:"status,omitempty"`
 	AccountId        *string      `protobuf:"bytes,3,req,name=accountId" json:"accountId,omitempty"`
@@ -164,46 +164,46 @@ type Application struct {
 	XXX_unrecognized []byte       `json:"-"`
 }
 
-func (m *Application) Reset()         { *m = Application{} }
-func (m *Application) String() string { return proto.CompactTextString(m) }
-func (*Application) ProtoMessage()    {}
+func (m *Service) Reset()         { *m = Service{} }
+func (m *Service) String() string { return proto.CompactTextString(m) }
+func (*Service) ProtoMessage()    {}
 
-func (m *Application) GetId() string {
+func (m *Service) GetId() string {
 	if m != nil && m.Id != nil {
 		return *m.Id
 	}
 	return ""
 }
 
-func (m *Application) GetStatus() string {
+func (m *Service) GetStatus() string {
 	if m != nil && m.Status != nil {
 		return *m.Status
 	}
 	return ""
 }
 
-func (m *Application) GetAccountId() string {
+func (m *Service) GetAccountId() string {
 	if m != nil && m.AccountId != nil {
 		return *m.AccountId
 	}
 	return ""
 }
 
-func (m *Application) GetPermissions() []string {
+func (m *Service) GetPermissions() []string {
 	if m != nil {
 		return m.Permissions
 	}
 	return nil
 }
 
-func (m *Application) GetStartTimestamp() float64 {
+func (m *Service) GetStartTimestamp() float64 {
 	if m != nil && m.StartTimestamp != nil {
 		return *m.StartTimestamp
 	}
 	return 0
 }
 
-func (m *Application) GetAttributes() []*Attribute {
+func (m *Service) GetAttributes() []*Attribute {
 	if m != nil {
 		return m.Attributes
 	}
@@ -211,12 +211,12 @@ func (m *Application) GetAttributes() []*Attribute {
 }
 
 type Account struct {
-	Id               *string        `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
-	Status           *string        `protobuf:"bytes,2,opt,name=status" json:"status,omitempty"`
-	Primary          *Login         `protobuf:"bytes,3,req,name=primary" json:"primary,omitempty"`
-	CreatedTimestamp *float64       `protobuf:"fixed64,4,opt,name=createdTimestamp" json:"createdTimestamp,omitempty"`
-	Services         []*Application `protobuf:"bytes,5,rep,name=services" json:"services,omitempty"`
-	XXX_unrecognized []byte         `json:"-"`
+	Id               *string    `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	Status           *string    `protobuf:"bytes,2,opt,name=status" json:"status,omitempty"`
+	Primary          *Login     `protobuf:"bytes,3,req,name=primary" json:"primary,omitempty"`
+	CreatedTimestamp *float64   `protobuf:"fixed64,4,opt,name=createdTimestamp" json:"createdTimestamp,omitempty"`
+	Services         []*Service `protobuf:"bytes,5,rep,name=services" json:"services,omitempty"`
+	XXX_unrecognized []byte     `json:"-"`
 }
 
 func (m *Account) Reset()         { *m = Account{} }
@@ -251,7 +251,7 @@ func (m *Account) GetCreatedTimestamp() float64 {
 	return 0
 }
 
-func (m *Account) GetServices() []*Application {
+func (m *Account) GetServices() []*Service {
 	if m != nil {
 		return m.Services
 	}

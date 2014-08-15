@@ -22,8 +22,8 @@ func test_account() *api.Account {
 
 	return &api.Account{
 		Primary: &api.Login{},
-		Services: []*api.Application{
-			&api.Application{
+		Services: []*api.Service{
+			&api.Service{
 				Attributes: []*api.Attribute{
 					&api.Attribute{
 						Type:             &attr_type,

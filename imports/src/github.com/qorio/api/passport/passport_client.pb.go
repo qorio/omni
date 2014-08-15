@@ -12,7 +12,7 @@ var _ = proto.Marshal
 var _ = math.Inf
 
 type AuthRequest struct {
-	Application      *string `protobuf:"bytes,1,opt,name=application" json:"application,omitempty"`
+	Service          *string `protobuf:"bytes,1,opt,name=service" json:"service,omitempty"`
 	Password         *string `protobuf:"bytes,2,req,name=password" json:"password,omitempty"`
 	Email            *string `protobuf:"bytes,3,opt,name=email" json:"email,omitempty"`
 	Phone            *string `protobuf:"bytes,4,opt,name=phone" json:"phone,omitempty"`
@@ -24,9 +24,9 @@ func (m *AuthRequest) Reset()         { *m = AuthRequest{} }
 func (m *AuthRequest) String() string { return proto.CompactTextString(m) }
 func (*AuthRequest) ProtoMessage()    {}
 
-func (m *AuthRequest) GetApplication() string {
-	if m != nil && m.Application != nil {
-		return *m.Application
+func (m *AuthRequest) GetService() string {
+	if m != nil && m.Service != nil {
+		return *m.Service
 	}
 	return ""
 }

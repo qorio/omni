@@ -27,7 +27,7 @@ type Settings struct {
 
 	// Function that takes the http request and determine the application id
 	// The default is to take the request's URL host, e.g. qor.io or shorty.qor.io
-	ResolveApplicationId func(req *http.Request) string
+	ResolveServiceId func(req *http.Request) string
 }
 
 type Service interface {

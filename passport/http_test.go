@@ -79,7 +79,7 @@ func TestAuthNotFound(t *testing.T) {
 	settings := Settings{}
 
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
-	service := &mock{
+	svc := &mock{
 		findByEmail: func(email string) (account *api.Account, err error) {
 			return nil, ERROR_NOT_FOUND
 		},
@@ -89,7 +89,7 @@ func TestAuthNotFound(t *testing.T) {
 		},
 	}
 
-	endpoint, err := NewApiEndPoint(settings, auth, service)
+	endpoint, err := NewApiEndPoint(settings, auth, svc)
 
 	if err != nil {
 		t.Error(err)
@@ -115,7 +115,7 @@ func TestAuthNotFound(t *testing.T) {
 	})
 
 	// Password does not match
-	service.findByEmail = func(email string) (account *api.Account, err error) {
+	svc.findByEmail = func(email string) (account *api.Account, err error) {
 		password := "not-a-match"
 		return &api.Account{Primary: &api.Login{Password: &password}}, nil
 	}
@@ -134,11 +134,11 @@ func TestAuthNotFound(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	service.findByEmail = func(email string) (account *api.Account, err error) {
+	svc.findByEmail = func(email string) (account *api.Account, err error) {
 		t.Error("should not call this function")
 		return nil, nil
 	}
-	service.findByPhone = func(email string) (account *api.Account, err error) {
+	svc.findByPhone = func(email string) (account *api.Account, err error) {
 		password := "no-match"
 		return &api.Account{Primary: &api.Login{Password: &password}}, nil
 	}
@@ -188,9 +188,9 @@ func TestNotAMember(t *testing.T) {
 	settings := Settings{}
 
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
-	service := &mock{}
+	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, service)
+	endpoint, err := NewApiEndPoint(settings, auth, svc)
 	if err != nil {
 		t.Error(err)
 	}
@@ -200,7 +200,7 @@ func TestNotAMember(t *testing.T) {
 		Password: ptr("test"),
 	}
 
-	service.findByEmail = func(email string) (account *api.Account, err error) {
+	svc.findByEmail = func(email string) (account *api.Account, err error) {
 		password := "test"
 		return &api.Account{Primary: &api.Login{Password: &password}}, nil
 	}
@@ -214,19 +214,19 @@ func TestNotAMember(t *testing.T) {
 	})
 }
 
-func TestFoundAccountAndApplication(t *testing.T) {
+func TestFoundAccountAndService(t *testing.T) {
 
 	signKey := []byte("test")
 	settings := Settings{
-		ResolveApplicationId: func(req *http.Request) string {
+		ResolveServiceId: func(req *http.Request) string {
 			return "test-app"
 		},
 	}
 
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
-	service := &mock{}
+	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, service)
+	endpoint, err := NewApiEndPoint(settings, auth, svc)
 	if err != nil {
 		t.Error(err)
 	}
@@ -236,24 +236,24 @@ func TestFoundAccountAndApplication(t *testing.T) {
 		Password: ptr("test"),
 	}
 
-	applicationId := "test-app"
-	applicationStatus := "verified"
-	applicationAccountId := "12345"
+	serviceId := "test-app"
+	serviceStatus := "verified"
+	serviceAccountId := "12345"
 
 	attributeType1 := api.Attribute_STRING
 	embed := true
 	attribute1, value1 := "attribute1", "value1"
 
 	t.Log("test finding by email")
-	service.findByEmail = func(email string) (account *api.Account, err error) {
+	svc.findByEmail = func(email string) (account *api.Account, err error) {
 		password := "test"
 		return &api.Account{
 			Primary: &api.Login{Password: &password},
-			Services: []*api.Application{
-				&api.Application{
-					Id:        &applicationId,
-					Status:    &applicationStatus,
-					AccountId: &applicationAccountId,
+			Services: []*api.Service{
+				&api.Service{
+					Id:        &serviceId,
+					Status:    &serviceStatus,
+					AccountId: &serviceAccountId,
 					Permissions: []string{
 						"admin",
 						"readwrite",
@@ -292,8 +292,8 @@ func TestFoundAccountAndApplication(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		assert.Equal(t, applicationStatus, token.GetString("@status"))
-		assert.Equal(t, applicationAccountId, token.GetString("@accountId"))
+		assert.Equal(t, serviceStatus, token.GetString("@status"))
+		assert.Equal(t, serviceAccountId, token.GetString("@accountId"))
 		assert.Equal(t, "admin,readwrite", token.GetString("@permissions"))
 		assert.Equal(t, value1, token.GetString(attribute1))
 	})
@@ -317,16 +317,16 @@ func TestFoundAccountAndApplication(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		assert.Equal(t, applicationStatus, token.GetString("@status"))
-		assert.Equal(t, applicationAccountId, token.GetString("@accountId"))
+		assert.Equal(t, serviceStatus, token.GetString("@status"))
+		assert.Equal(t, serviceAccountId, token.GetString("@accountId"))
 		assert.Equal(t, "admin,readwrite", token.GetString("@permissions"))
 		assert.Equal(t, value1, token.GetString(attribute1))
 	})
 
 	// test finding by phone
 	t.Log("test finding by phone")
-	service.findByPhone = service.findByEmail
-	service.findByEmail = nil
+	svc.findByPhone = svc.findByEmail
+	svc.findByEmail = nil
 
 	ar = &api.AuthRequest{
 		Phone:    ptr("123-222-3333"),
@@ -352,26 +352,26 @@ func TestFoundAccountAndApplication(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		assert.Equal(t, applicationStatus, token.GetString("@status"))
-		assert.Equal(t, applicationAccountId, token.GetString("@accountId"))
+		assert.Equal(t, serviceStatus, token.GetString("@status"))
+		assert.Equal(t, serviceAccountId, token.GetString("@accountId"))
 		assert.Equal(t, value1, token.GetString(attribute1))
 	})
 }
 
-func TestFoundAccountButNotMatchApplication(t *testing.T) {
+func TestFoundAccountButNotMatchService(t *testing.T) {
 
 	signKey := []byte("test")
 	settings := Settings{
-		ResolveApplicationId: func(req *http.Request) string {
-			t.Log("Calling resolve application")
+		ResolveServiceId: func(req *http.Request) string {
+			t.Log("Calling resolve service")
 			return "test-app-not-match"
 		},
 	}
 
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
-	service := &mock{}
+	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, service)
+	endpoint, err := NewApiEndPoint(settings, auth, svc)
 	if err != nil {
 		t.Error(err)
 	}
@@ -381,23 +381,23 @@ func TestFoundAccountButNotMatchApplication(t *testing.T) {
 		Password: ptr("test"),
 	}
 
-	applicationId := "test-app"
-	applicationStatus := "verified"
-	applicationAccountId := "12345"
+	serviceId := "test-app"
+	serviceStatus := "verified"
+	serviceAccountId := "12345"
 
 	attributeType1 := api.Attribute_STRING
 	embed := true
 	attribute1, value1 := "attribute1", "value1"
 
-	service.findByEmail = func(email string) (account *api.Account, err error) {
+	svc.findByEmail = func(email string) (account *api.Account, err error) {
 		password := "test"
 		return &api.Account{
 			Primary: &api.Login{Password: &password},
-			Services: []*api.Application{
-				&api.Application{
-					Id:        &applicationId,
-					Status:    &applicationStatus,
-					AccountId: &applicationAccountId,
+			Services: []*api.Service{
+				&api.Service{
+					Id:        &serviceId,
+					Status:    &serviceStatus,
+					AccountId: &serviceAccountId,
 					Attributes: []*api.Attribute{
 						&api.Attribute{
 							Type:             &attributeType1,
@@ -424,37 +424,37 @@ func TestGetAccount(t *testing.T) {
 
 	signKey := []byte("test")
 	settings := Settings{
-		ResolveApplicationId: func(req *http.Request) string {
-			t.Log("Calling resolve application")
+		ResolveServiceId: func(req *http.Request) string {
+			t.Log("Calling resolve service")
 			return "test-app-not-match"
 		},
 	}
 
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
-	service := &mock{}
+	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, service)
+	endpoint, err := NewApiEndPoint(settings, auth, svc)
 	if err != nil {
 		t.Error(err)
 	}
 
 	password := "test"
-	applicationId := "test-app"
-	applicationStatus := "verified"
-	applicationAccountId := "12345"
+	serviceId := "test-app"
+	serviceStatus := "verified"
+	serviceAccountId := "12345"
 
 	attributeType1 := api.Attribute_STRING
 	embed := true
 	attribute1, value1 := "attribute1", "value1"
 
-	service.getAccount = func(id uuid.UUID) (account *api.Account, err error) {
+	svc.getAccount = func(id uuid.UUID) (account *api.Account, err error) {
 		return &api.Account{
 			Primary: &api.Login{Password: &password},
-			Services: []*api.Application{
-				&api.Application{
-					Id:        &applicationId,
-					Status:    &applicationStatus,
-					AccountId: &applicationAccountId,
+			Services: []*api.Service{
+				&api.Service{
+					Id:        &serviceId,
+					Status:    &serviceStatus,
+					AccountId: &serviceAccountId,
 					Attributes: []*api.Attribute{
 						&api.Attribute{
 							Type:             &attributeType1,
@@ -479,8 +479,8 @@ func TestGetAccount(t *testing.T) {
 			t.Error(err)
 		}
 
-		assert.Equal(t, applicationId, account.GetServices()[0].GetId())
-		assert.Equal(t, applicationStatus, account.GetServices()[0].GetStatus())
+		assert.Equal(t, serviceId, account.GetServices()[0].GetId())
+		assert.Equal(t, serviceStatus, account.GetServices()[0].GetStatus())
 		assert.Equal(t, embed, account.GetServices()[0].GetAttributes()[0].GetEmbedSigninToken())
 	})
 }
@@ -489,21 +489,21 @@ func TestDeleteAccount(t *testing.T) {
 
 	signKey := []byte("test")
 	settings := Settings{
-		ResolveApplicationId: func(req *http.Request) string {
-			t.Log("Calling resolve application")
+		ResolveServiceId: func(req *http.Request) string {
+			t.Log("Calling resolve service")
 			return "test-app-not-match"
 		},
 	}
 
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
-	service := &mock{}
+	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, service)
+	endpoint, err := NewApiEndPoint(settings, auth, svc)
 	if err != nil {
 		t.Error(err)
 	}
 
-	service.deleteAccount = func(id uuid.UUID) (err error) {
+	svc.deleteAccount = func(id uuid.UUID) (err error) {
 		return nil
 	}
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
@@ -519,17 +519,17 @@ func TestSaveAccount(t *testing.T) {
 	settings := Settings{}
 
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
-	service := &mock{}
+	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, service)
+	endpoint, err := NewApiEndPoint(settings, auth, svc)
 	if err != nil {
 		t.Error(err)
 	}
 
 	password := "test"
-	applicationId := "test-app"
-	applicationStatus := "verified"
-	applicationAccountId := "12345"
+	serviceId := "test-app"
+	serviceStatus := "verified"
+	serviceAccountId := "12345"
 
 	attributeType1 := api.Attribute_STRING
 	embed := true
@@ -539,11 +539,11 @@ func TestSaveAccount(t *testing.T) {
 		Primary: &api.Login{
 			Email:    ptr("test@foo.com"),
 			Password: &password},
-		Services: []*api.Application{
-			&api.Application{
-				Id:        &applicationId,
-				Status:    &applicationStatus,
-				AccountId: &applicationAccountId,
+		Services: []*api.Service{
+			&api.Service{
+				Id:        &serviceId,
+				Status:    &serviceStatus,
+				AccountId: &serviceAccountId,
 				Attributes: []*api.Attribute{
 					&api.Attribute{
 						Type:             &attributeType1,
@@ -556,10 +556,10 @@ func TestSaveAccount(t *testing.T) {
 		},
 	}
 
-	service.findByEmail = func(email string) (*api.Account, error) {
+	svc.findByEmail = func(email string) (*api.Account, error) {
 		return nil, ERROR_NOT_FOUND
 	}
-	service.saveAccount = func(account *api.Account) (err error) {
+	svc.saveAccount = func(account *api.Account) (err error) {
 		assert.NotEqual(t, "", account.GetId())
 		t.Log("account id", account.GetId())
 		return nil
@@ -586,9 +586,9 @@ func TestNewAccount(t *testing.T) {
 	settings := Settings{}
 
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
-	service := &mock{}
+	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, service)
+	endpoint, err := NewApiEndPoint(settings, auth, svc)
 	if err != nil {
 		t.Error(err)
 	}
@@ -604,11 +604,11 @@ func TestNewAccount(t *testing.T) {
 		CalledFindByPhone bool
 		CalledSaveAccount bool
 	}
-	service.findByPhone = func(phone string) (account *api.Account, err error) {
+	svc.findByPhone = func(phone string) (account *api.Account, err error) {
 		(&state).CalledFindByPhone = true
 		return nil, ERROR_NOT_FOUND
 	}
-	service.saveAccount = func(account *api.Account) (err error) {
+	svc.saveAccount = func(account *api.Account) (err error) {
 		(&state).CalledSaveAccount = true
 		assert.NotEqual(t, "", account.GetId())
 		t.Log("account id", account.GetId())
@@ -637,9 +637,9 @@ func TestNewAccountMissingInput(t *testing.T) {
 	settings := Settings{}
 
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
-	service := &mock{}
+	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, service)
+	endpoint, err := NewApiEndPoint(settings, auth, svc)
 	if err != nil {
 		t.Error(err)
 	}
@@ -652,11 +652,11 @@ func TestNewAccountMissingInput(t *testing.T) {
 		CalledFindByPhone bool
 		CalledSaveAccount bool
 	}
-	service.findByPhone = func(phone string) (account *api.Account, err error) {
+	svc.findByPhone = func(phone string) (account *api.Account, err error) {
 		(&state).CalledFindByPhone = true
 		return nil, ERROR_NOT_FOUND
 	}
-	service.saveAccount = func(account *api.Account) (err error) {
+	svc.saveAccount = func(account *api.Account) (err error) {
 		(&state).CalledSaveAccount = true
 		assert.NotEqual(t, "", account.GetId())
 		t.Log("account id", account.GetId())
@@ -679,9 +679,9 @@ func TestNewAccountConflict(t *testing.T) {
 	settings := Settings{}
 
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
-	service := &mock{}
+	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, service)
+	endpoint, err := NewApiEndPoint(settings, auth, svc)
 	if err != nil {
 		t.Error(err)
 	}
@@ -698,11 +698,11 @@ func TestNewAccountConflict(t *testing.T) {
 		CalledSaveAccount bool
 	}
 
-	service.findByPhone = func(phone string) (account *api.Account, err error) {
+	svc.findByPhone = func(phone string) (account *api.Account, err error) {
 		(&state).CalledFindByPhone = true
 		return input, nil
 	}
-	service.saveAccount = func(account *api.Account) (err error) {
+	svc.saveAccount = func(account *api.Account) (err error) {
 		assert.NotEqual(t, "", account.GetId())
 		assert.NotEqual(t, "", account.GetPrimary().GetId())
 		t.Log("account id", account.GetId())
@@ -727,17 +727,17 @@ func TestSaveAccountPrimay(t *testing.T) {
 	settings := Settings{}
 
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
-	service := &mock{}
+	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, service)
+	endpoint, err := NewApiEndPoint(settings, auth, svc)
 	if err != nil {
 		t.Error(err)
 	}
 
 	input := &api.Account{
 		Primary: &api.Login{},
-		Services: []*api.Application{
-			&api.Application{
+		Services: []*api.Service{
+			&api.Service{
 				Attributes: []*api.Attribute{
 					&api.Attribute{},
 				},
@@ -759,7 +759,7 @@ func TestSaveAccountPrimay(t *testing.T) {
 	input.Services[0].Attributes[0].EmbedSigninToken = &embed
 	input.Services[0].Attributes[0].StringValue = ptr("value-1")
 
-	service.getAccount = func(id uuid.UUID) (account *api.Account, err error) {
+	svc.getAccount = func(id uuid.UUID) (account *api.Account, err error) {
 		assert.Equal(t, input.GetId(), id.String())
 		t.Log("account id", id)
 		return input, nil
@@ -769,7 +769,7 @@ func TestSaveAccountPrimay(t *testing.T) {
 	login.Password = ptr("new-password")
 	login.Phone = ptr("111-222-3333")
 
-	service.saveAccount = func(account *api.Account) (err error) {
+	svc.saveAccount = func(account *api.Account) (err error) {
 		assert.Equal(t, input.GetId(), account.GetId())
 		t.Log("account id", account.GetId(), "primary", account.GetPrimary())
 		assert.Equal(t, login.GetPhone(), account.GetPrimary().GetPhone())
@@ -798,9 +798,9 @@ func TestSaveAccountService(t *testing.T) {
 	settings := Settings{}
 
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
-	service := &mock{}
+	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, service)
+	endpoint, err := NewApiEndPoint(settings, auth, svc)
 	if err != nil {
 		t.Error(err)
 	}
@@ -817,47 +817,47 @@ func TestSaveAccountService(t *testing.T) {
 	input.Id = ptr(uid.String())
 	input.Primary.Password = ptr("password-1")
 
-	application := &api.Application{Attributes: []*api.Attribute{&api.Attribute{}}}
-	application.Id = ptr(omni_common.NewUUID().String())
-	application.Status = ptr("verified")
-	application.AccountId = ptr("app-account-1")
-	application.Attributes[0].Key = ptr("key-1")
-	application.Attributes[0].Type = &attribute_type
-	application.Attributes[0].EmbedSigninToken = &embed
-	application.Attributes[0].StringValue = ptr("value-1")
+	service := &api.Service{Attributes: []*api.Attribute{&api.Attribute{}}}
+	service.Id = ptr(omni_common.NewUUID().String())
+	service.Status = ptr("verified")
+	service.AccountId = ptr("app-account-1")
+	service.Attributes[0].Key = ptr("key-1")
+	service.Attributes[0].Type = &attribute_type
+	service.Attributes[0].EmbedSigninToken = &embed
+	service.Attributes[0].StringValue = ptr("value-1")
 
-	service.getAccount = func(id uuid.UUID) (account *api.Account, err error) {
+	svc.getAccount = func(id uuid.UUID) (account *api.Account, err error) {
 		assert.Equal(t, input.GetId(), id.String())
 		t.Log("account id", id)
 		return input, nil
 	}
 
-	service.saveAccount = func(account *api.Account) (err error) {
+	svc.saveAccount = func(account *api.Account) (err error) {
 		assert.Equal(t, input.GetId(), account.GetId())
 		assert.Equal(t, 1, len(account.GetServices()))
-		assert.Equal(t, application, account.GetServices()[0])
+		assert.Equal(t, service, account.GetServices()[0])
 		return nil
 	}
 
 	t.Log("using application/json serialization")
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/account/"+input.GetId()+"/services", "application/json", string(to_json(application, t)))
+		response := r.Post("/api/v1/account/"+input.GetId()+"/services", "application/json", string(to_json(service, t)))
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 200, response.StatusCode)
 	})
 
 	t.Log("using application/protobuf serialization")
 	// now we change an app's attribute
-	application.Attributes[0].StringValue = ptr("value-1-changed")
-	service.saveAccount = func(account *api.Account) (err error) {
+	service.Attributes[0].StringValue = ptr("value-1-changed")
+	svc.saveAccount = func(account *api.Account) (err error) {
 		assert.Equal(t, input.GetId(), account.GetId())
 		assert.Equal(t, 1, len(account.GetServices()))
-		assert.Equal(t, application, account.GetServices()[0])
+		assert.Equal(t, service, account.GetServices()[0])
 		return nil
 	}
 
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/account/"+input.GetId()+"/services", "application/protobuf", string(to_protobuf(application, t)))
+		response := r.Post("/api/v1/account/"+input.GetId()+"/services", "application/protobuf", string(to_protobuf(service, t)))
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 200, response.StatusCode)
 	})
@@ -886,9 +886,9 @@ func TestSaveAccountServiceAttribute(t *testing.T) {
 	settings := Settings{}
 
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
-	service := &mock{}
+	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, service)
+	endpoint, err := NewApiEndPoint(settings, auth, svc)
 	if err != nil {
 		t.Error(err)
 	}
@@ -904,39 +904,39 @@ func TestSaveAccountServiceAttribute(t *testing.T) {
 	input.Id = ptr(omni_common.NewUUID().String())
 	input.Primary.Password = ptr("password-1")
 
-	application := &api.Application{Attributes: []*api.Attribute{&api.Attribute{}}}
-	application.Id = ptr(omni_common.NewUUID().String())
-	application.Status = ptr("verified")
-	application.AccountId = ptr("app-account-1")
-	application.Attributes[0].Key = ptr("key-1")
-	application.Attributes[0].Type = &attribute_type
-	application.Attributes[0].EmbedSigninToken = &embed
-	application.Attributes[0].StringValue = ptr("value-1")
+	service := &api.Service{Attributes: []*api.Attribute{&api.Attribute{}}}
+	service.Id = ptr(omni_common.NewUUID().String())
+	service.Status = ptr("verified")
+	service.AccountId = ptr("app-account-1")
+	service.Attributes[0].Key = ptr("key-1")
+	service.Attributes[0].Type = &attribute_type
+	service.Attributes[0].EmbedSigninToken = &embed
+	service.Attributes[0].StringValue = ptr("value-1")
 
-	service.getAccount = func(id uuid.UUID) (account *api.Account, err error) {
+	svc.getAccount = func(id uuid.UUID) (account *api.Account, err error) {
 		assert.Equal(t, input.GetId(), id.String())
 		t.Log("account id", id)
 		return input, nil
 	}
 
-	service.saveAccount = func(account *api.Account) (err error) {
+	svc.saveAccount = func(account *api.Account) (err error) {
 		assert.Equal(t, input.GetId(), account.GetId())
 		assert.Equal(t, 1, len(account.GetServices()))
-		assert.Equal(t, application, account.GetServices()[0])
+		assert.Equal(t, service, account.GetServices()[0])
 		return nil
 	}
 
 	t.Log("using application/json serialization")
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/account/"+input.GetId()+"/services", "application/json", string(to_json(application, t)))
+		response := r.Post("/api/v1/account/"+input.GetId()+"/services", "application/json", string(to_json(service, t)))
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 200, response.StatusCode)
 	})
 
 	t.Log("using application/protobuf serialization")
-	attribute := application.Attributes[0]
+	attribute := service.Attributes[0]
 	attribute.StringValue = ptr("value-1-changed")
-	service.saveAccount = func(account *api.Account) (err error) {
+	svc.saveAccount = func(account *api.Account) (err error) {
 		assert.Equal(t, input.GetId(), account.GetId())
 		assert.Equal(t, 1, len(account.GetServices()))
 		assert.Equal(t, attribute.GetStringValue(), account.GetServices()[0].GetAttributes()[0].GetStringValue())
@@ -944,7 +944,7 @@ func TestSaveAccountServiceAttribute(t *testing.T) {
 	}
 
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/account/"+input.GetId()+"/service/"+application.GetId()+"/attributes", "application/protobuf",
+		response := r.Post("/api/v1/account/"+input.GetId()+"/service/"+service.GetId()+"/attributes", "application/protobuf",
 			string(to_protobuf(attribute, t)))
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 200, response.StatusCode)
@@ -959,7 +959,7 @@ func TestSaveAccountServiceAttribute(t *testing.T) {
 	}
 
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/account/"+input.GetId()+"/service/"+application.GetId()+"/attributes", "application/protobuf",
+		response := r.Post("/api/v1/account/"+input.GetId()+"/service/"+service.GetId()+"/attributes", "application/protobuf",
 			string(to_protobuf(attribute2, t)))
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 200, response.StatusCode)

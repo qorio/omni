@@ -214,7 +214,9 @@ func (this *engine) GetUrlParameter(req *http.Request, key string) string {
 	if val, has := vars[key]; has {
 		return val
 	} else if err := req.ParseForm(); err == nil {
-		return req.Form[key][0]
+		if _, has := req.Form[key]; has {
+			return req.Form[key][0]
+		}
 	}
 	return ""
 }

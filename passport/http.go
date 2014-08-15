@@ -46,25 +46,25 @@ func (this *EndPoint) ServeHTTP(resp http.ResponseWriter, request *http.Request)
 	this.engine.ServeHTTP(resp, request)
 }
 
-func defaultResolveApplicationId(req *http.Request) string {
+func defaultResolveServiceId(req *http.Request) string {
 	return req.URL.Host
 }
 
-func (this *EndPoint) resolve_application_id(requestedApplicationId string, req *http.Request) string {
-	if requestedApplicationId == "" {
-		if this.settings.ResolveApplicationId != nil {
-			return this.settings.ResolveApplicationId(req)
+func (this *EndPoint) resolve_service_id(requestedServiceId string, req *http.Request) string {
+	if requestedServiceId == "" {
+		if this.settings.ResolveServiceId != nil {
+			return this.settings.ResolveServiceId(req)
 		} else {
-			return defaultResolveApplicationId(req)
+			return defaultResolveServiceId(req)
 		}
 	}
-	return requestedApplicationId
+	return requestedServiceId
 }
 
 // Authenticates and returns a token as the response
 func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Request) {
 	this.auth(resp, req, func(ep *EndPoint, authRequest *api.AuthRequest) string {
-		return authRequest.GetApplication()
+		return authRequest.GetService()
 	})
 }
 
@@ -104,28 +104,28 @@ func (this *EndPoint) auth(resp http.ResponseWriter, req *http.Request, get_serv
 		return
 	}
 
-	requestedApplicationId := this.resolve_application_id(get_service(this, &request), req)
-	var application *api.Application
+	requestedServiceId := this.resolve_service_id(get_service(this, &request), req)
+	var service *api.Service
 	for _, test := range account.GetServices() {
-		if test.GetId() == requestedApplicationId {
-			application = test
+		if test.GetId() == requestedServiceId {
+			service = test
 			break
 		}
 	}
 
-	if application == nil {
+	if service == nil {
 		this.engine.HandleError(resp, req, "error-not-a-member", http.StatusUnauthorized)
 		return
 	}
 
 	// encode the token
 	token := this.engine.NewAuthToken()
-	token.Add("@id", application.GetId()).
-		Add("@status", application.GetStatus()).
-		Add("@accountId", application.GetAccountId()).
-		Add("@permissions", strings.Join(application.GetPermissions(), ","))
+	token.Add("@id", service.GetId()).
+		Add("@status", service.GetStatus()).
+		Add("@accountId", service.GetAccountId()).
+		Add("@permissions", strings.Join(service.GetPermissions(), ","))
 
-	for _, attribute := range application.GetAttributes() {
+	for _, attribute := range service.GetAttributes() {
 		if attribute.GetEmbedSigninToken() {
 			switch attribute.GetType() {
 			case api.Attribute_STRING:
@@ -158,8 +158,8 @@ func (this *EndPoint) auth(resp http.ResponseWriter, req *http.Request, get_serv
 }
 
 func (this *EndPoint) ApiRegisterUser(resp http.ResponseWriter, req *http.Request) {
-	requestedApplicationId := this.resolve_application_id(this.engine.GetUrlParameter(req, "service"), req)
-	if requestedApplicationId == "" {
+	requestedServiceId := this.resolve_service_id(this.engine.GetUrlParameter(req, "service"), req)
+	if requestedServiceId == "" {
 		this.engine.HandleError(resp, req, "cannot-determine-service", http.StatusBadRequest)
 		return
 	}
@@ -201,7 +201,7 @@ func (this *EndPoint) ApiRegisterUser(resp http.ResponseWriter, req *http.Reques
 	// Clear the password before we send it on to other systems
 	account.Primary.Password = nil
 
-	// Use the application id to determine the necessary callback / webhook after account record has been created.
+	// Use the service id to determine the necessary callback / webhook after account record has been created.
 	this.engine.EventChannel() <- &omni_http.EngineEvent{
 		ServiceMethod: api.RegisterUser,
 		Body:          struct{ Account *api.Account }{account},
@@ -344,8 +344,8 @@ func (this *EndPoint) ApiSaveAccountPrimary(resp http.ResponseWriter, req *http.
 func (this *EndPoint) ApiSaveAccountService(resp http.ResponseWriter, req *http.Request) {
 	id := this.engine.GetUrlParameter(req, "id")
 
-	application := api.Methods[api.AddOrUpdateAccountService].RequestBody().(api.Application)
-	err := this.engine.Unmarshal(req, &application)
+	service := api.Methods[api.AddOrUpdateAccountService].RequestBody().(api.Service)
+	err := this.engine.Unmarshal(req, &service)
 	if err != nil {
 		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)
 		return
@@ -367,22 +367,22 @@ func (this *EndPoint) ApiSaveAccountService(resp http.ResponseWriter, req *http.
 		return
 	}
 
-	// find the application by id and replace it
+	// find the service by id and replace it
 	if len(account.GetServices()) == 0 {
-		account.Services = []*api.Application{
-			&application,
+		account.Services = []*api.Service{
+			&service,
 		}
 	} else {
 		match := false
 		for i, app := range account.GetServices() {
-			if app.GetId() == application.GetId() {
-				account.Services[i] = &application
+			if app.GetId() == service.GetId() {
+				account.Services[i] = &service
 				match = true
 				break
 			}
 		}
 		if !match {
-			account.Services = append(account.Services, &application)
+			account.Services = append(account.Services, &service)
 		}
 	}
 
@@ -395,7 +395,7 @@ func (this *EndPoint) ApiSaveAccountService(resp http.ResponseWriter, req *http.
 
 func (this *EndPoint) ApiSaveAccountServiceAttribute(resp http.ResponseWriter, req *http.Request) {
 	id := this.engine.GetUrlParameter(req, "id")
-	applicationId := this.engine.GetUrlParameter(req, "applicationId")
+	serviceId := this.engine.GetUrlParameter(req, "service")
 
 	attribute := api.Methods[api.AddOrUpdateServiceAttribute].RequestBody().(api.Attribute)
 	err := this.engine.Unmarshal(req, &attribute)
@@ -420,35 +420,35 @@ func (this *EndPoint) ApiSaveAccountServiceAttribute(resp http.ResponseWriter, r
 		return
 	}
 
-	// find the application by id and update its attributes
-	var application *api.Application
+	// find the service by id and update its attributes
+	var service *api.Service
 	for _, app := range account.GetServices() {
-		if app.GetId() == applicationId {
-			application = app
+		if app.GetId() == serviceId {
+			service = app
 			break
 		}
 	}
 
-	if application == nil {
-		this.engine.HandleError(resp, req, "error-application-id-not-found", http.StatusBadRequest)
+	if service == nil {
+		this.engine.HandleError(resp, req, "error-service-id-not-found", http.StatusBadRequest)
 		return
 	}
 
-	if len(application.GetAttributes()) == 0 {
-		application.Attributes = []*api.Attribute{
+	if len(service.GetAttributes()) == 0 {
+		service.Attributes = []*api.Attribute{
 			&attribute,
 		}
 	} else {
 		match := false
-		for i, attr := range application.GetAttributes() {
+		for i, attr := range service.GetAttributes() {
 			if attr.GetKey() == attribute.GetKey() {
-				application.Attributes[i] = &attribute
+				service.Attributes[i] = &attribute
 				match = true
 				break
 			}
 		}
 		if !match {
-			application.Attributes = append(application.Attributes, &attribute)
+			service.Attributes = append(service.Attributes, &attribute)
 		}
 	}
 

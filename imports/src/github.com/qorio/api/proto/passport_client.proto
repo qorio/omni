@@ -1,7 +1,7 @@
 package passport;
 
 message AuthRequest {
-	optional string application = 1;
+	optional string service = 1;
 	required string password = 2;
 	optional string email = 3;
 	optional string phone = 4;

@@ -146,7 +146,7 @@ Create or update a service / application in an existing account
 		HttpMethod:   "POST",
 		ContentTypes: []string{"application/json", "application/protobuf"},
 		RequestBody: func() interface{} {
-			return Application{}
+			return Service{}
 		},
 		ResponseBody: nil,
 	},
@@ -157,7 +157,7 @@ Create or update a service / application in an existing account
 Create or update a service / application attribute in an existing account and application.
 `,
 		Name:         "AddOrUpdateUpdateServiceAttribute",
-		UrlRoute:     "/api/v1/account/{id}/service/{applicationId}/attributes",
+		UrlRoute:     "/api/v1/account/{id}/service/{service}/attributes",
 		HttpMethod:   "POST",
 		ContentTypes: []string{"application/json", "application/protobuf"},
 		RequestBody: func() interface{} {

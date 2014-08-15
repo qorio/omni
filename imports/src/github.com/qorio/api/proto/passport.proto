@@ -24,10 +24,10 @@ message Attribute {
 	optional Blob blob_value = 7;
 }
 
-message Application {
+message Service {
 	required string id = 1;
-	required string status = 2;  // free-form for the application to interpret
-	required string accountId = 3;  // account key used by the application
+	required string status = 2;  // free-form for the service to interpret
+	required string accountId = 3;  // account key used by the service
 	repeated string permissions = 4; // capability strings
 	optional double startTimestamp = 5;
 	repeated Attribute attributes = 6;
@@ -38,7 +38,7 @@ message Account {
 	optional string status = 2;
 	required Login primary = 3;
 	optional double createdTimestamp = 4; // unix seconds
-	repeated Application services = 5;
+	repeated Service services = 5;
 }
 
 message AccountLogs {
