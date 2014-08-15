@@ -39,6 +39,7 @@ func NewService(settings Settings) (Service, error) {
 		Key:      []string{"beacon.location"},
 		Unique:   false,
 		DropDups: false,
+		Sparse:   true,
 		Name:     "2dsphere",
 	})
 
@@ -46,6 +47,7 @@ func NewService(settings Settings) (Service, error) {
 		Key:      []string{"beacon.advertise_info.uuid, beacon.advertise_info.major, beacon.advertise_info.minor"},
 		Unique:   true,
 		DropDups: true,
+		Sparse:   true,
 		Name:     "ibeacon_advertise_info",
 	})
 

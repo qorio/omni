@@ -1,16 +1,19 @@
 package http
 
 import (
+	"bytes"
 	"code.google.com/p/goprotobuf/proto"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/qorio/api"
 	"github.com/qorio/omni/auth"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"text/template"
 )
 
 var (
@@ -72,12 +75,12 @@ var unmarshalers = map[string]func(io.ReadCloser, proto.Message) error{
 type Handler func(http.ResponseWriter, *http.Request)
 
 type ServiceMethodImpl struct {
-	Api                  *api.MethodSpec
+	Api                  api.MethodSpec // note this is by copy -- so that behavior is deterministic after initialization
 	Handler              Handler
 	AuthenticatedHandler auth.HttpHandler
 }
 
-func SetHandler(m *api.MethodSpec, h Handler) *ServiceMethodImpl {
+func SetHandler(m api.MethodSpec, h Handler) *ServiceMethodImpl {
 	if m.RequiresAuth {
 		panic(errors.New("Method " + m.Name + " requires auth; binding to unauthed handler."))
 	}
@@ -87,7 +90,7 @@ func SetHandler(m *api.MethodSpec, h Handler) *ServiceMethodImpl {
 	}
 }
 
-func SetAuthenticatedHandler(m *api.MethodSpec, h auth.HttpHandler) *ServiceMethodImpl {
+func SetAuthenticatedHandler(m api.MethodSpec, h auth.HttpHandler) *ServiceMethodImpl {
 	if !m.RequiresAuth {
 		panic(errors.New("Method " + m.Name + " requires no auth; binding to authed handler."))
 	}
@@ -95,6 +98,11 @@ func SetAuthenticatedHandler(m *api.MethodSpec, h auth.HttpHandler) *ServiceMeth
 		Api:                  m,
 		AuthenticatedHandler: h,
 	}
+}
+
+type EngineEvent struct {
+	ServiceMethod api.ServiceMethod
+	Body          interface{}
 }
 
 type Engine interface {
@@ -107,19 +115,26 @@ type Engine interface {
 	Unmarshal(*http.Request, proto.Message) error
 	Marshal(*http.Request, proto.Message, http.ResponseWriter) error
 	HandleError(http.ResponseWriter, *http.Request, string, int) error
+	EventChannel() chan<- *EngineEvent
 }
 
 type engine struct {
-	router  *mux.Router
-	auth    *auth.Service
-	methods map[string]*ServiceMethodImpl
+	spec       *api.ServiceMethods
+	router     *mux.Router
+	auth       *auth.Service
+	methods    map[string]*ServiceMethodImpl
+	event_chan chan *EngineEvent
+	done_chan  chan bool
 }
 
-func NewEngine(auth *auth.Service) Engine {
+func NewEngine(spec *api.ServiceMethods, auth *auth.Service) Engine {
 	return &engine{
-		router:  mux.NewRouter(),
-		auth:    auth,
-		methods: make(map[string]*ServiceMethodImpl),
+		spec:       spec,
+		router:     mux.NewRouter(),
+		auth:       auth,
+		methods:    make(map[string]*ServiceMethodImpl),
+		event_chan: make(chan *EngineEvent),
+		done_chan:  make(chan bool),
 	}
 }
 
@@ -131,8 +146,59 @@ func (this *engine) SignedString(token *auth.Token) (string, error) {
 	return this.auth.SignedString(token)
 }
 
+func (this *engine) do_callback(message *EngineEvent) {
+	methods := *this.spec
+	if m, has := methods[message.ServiceMethod]; has {
+		if m.CallbackEvent != api.EventKey("") {
+			go func() {
+				glog.Infoln("Sending", message, "spec", m)
+
+				// TODO - cache the compiled templates
+				var buffer bytes.Buffer
+				if m.CallbackBodyTemplate != "" {
+					t := template.Must(template.New(m.Name).Parse(m.CallbackBodyTemplate))
+					err := t.Execute(&buffer, message.Body)
+					if err != nil {
+						glog.Warningln("Cannot build payload for event", message)
+						return
+					}
+				}
+				// Determine where to send the event.
+				url := ""
+				client := &http.Client{}
+				post, err := http.NewRequest("POST", url, &buffer)
+				post.Header.Add("x-passport-hmac", "TO DO: compute a HMAC here")
+				resp, err := client.Do(post)
+				if err != nil {
+					glog.Warningln("Cannot deliver callback to", url)
+				} else {
+					glog.Infoln("Sent callback to ", url, "response=", resp)
+				}
+			}()
+		}
+	}
+}
+
 func (this *engine) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
+	// Also start listening on the event channel for any webhook calls
+	go func() {
+		for {
+			select {
+			case message := <-this.event_chan:
+				this.do_callback(message)
+
+			case done := <-this.done_chan:
+				if done {
+					glog.Infoln("REST engine event channel stopped.")
+					return
+				}
+			}
+		}
+	}()
+
 	this.router.ServeHTTP(resp, request)
+	glog.Infoln("Stopping event channel")
+	this.done_chan <- true
 }
 
 func (this *engine) ServiceMethod(key string) *ServiceMethodImpl {
@@ -202,4 +268,8 @@ func (this *engine) HandleError(resp http.ResponseWriter, req *http.Request, mes
 	resp.WriteHeader(code)
 	resp.Write([]byte(fmt.Sprintf("{\"error\":\"%s\"}", message)))
 	return
+}
+
+func (this *engine) EventChannel() chan<- *EngineEvent {
+	return this.event_chan
 }

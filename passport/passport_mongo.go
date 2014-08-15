@@ -38,6 +38,7 @@ func NewService(settings Settings) (Service, error) {
 		Key:      []string{"primary.location"},
 		Unique:   false,
 		DropDups: false,
+		Sparse:   true,
 		Name:     "2dsphere",
 	})
 
@@ -45,6 +46,7 @@ func NewService(settings Settings) (Service, error) {
 		Key:      []string{"primary.phone"},
 		Unique:   true,
 		DropDups: true,
+		Sparse:   true,
 		Name:     "primary.phone",
 	})
 
@@ -52,7 +54,16 @@ func NewService(settings Settings) (Service, error) {
 		Key:      []string{"primary.email"},
 		Unique:   true,
 		DropDups: true,
+		Sparse:   true,
 		Name:     "primary.email",
+	})
+
+	impl.collection.EnsureIndex(mgo.Index{
+		Key:      []string{"primary.username"},
+		Unique:   true,
+		DropDups: true,
+		Sparse:   true,
+		Name:     "primary.username",
 	})
 
 	glog.Infoln("Passport MongoDb backend initialized:", impl)
@@ -78,6 +89,18 @@ func (this *serviceImpl) FindAccountByEmail(email string) (account *api.Account,
 func (this *serviceImpl) FindAccountByPhone(phone string) (account *api.Account, err error) {
 	result := api.Account{}
 	err = this.collection.Find(bson.M{"primary.phone": phone}).One(&result)
+	switch {
+	case err == mgo.ErrNotFound:
+		return nil, ERROR_NOT_FOUND
+	case err != nil:
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (this *serviceImpl) FindAccountByUsername(username string) (account *api.Account, err error) {
+	result := api.Account{}
+	err = this.collection.Find(bson.M{"primary.username": username}).One(&result)
 	switch {
 	case err == mgo.ErrNotFound:
 		return nil, ERROR_NOT_FOUND

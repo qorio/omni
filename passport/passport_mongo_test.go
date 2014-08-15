@@ -84,6 +84,9 @@ func TestFindByPhone(t *testing.T) {
 	service, err := NewService(default_settings())
 	assert.Equal(t, nil, err)
 
+	impl := service.(*serviceImpl)
+	impl.dropDatabase()
+
 	defer service.Close()
 	t.Log("Started db client", service)
 
@@ -116,6 +119,9 @@ func TestFindByPhone(t *testing.T) {
 func TestFindByEmail(t *testing.T) {
 	service, err := NewService(default_settings())
 	assert.Equal(t, nil, err)
+
+	impl := service.(*serviceImpl)
+	impl.dropDatabase()
 
 	defer service.Close()
 	t.Log("Started db client", service)
@@ -150,6 +156,9 @@ func TestFindByPhoneAndUpdate(t *testing.T) {
 	service, err := NewService(default_settings())
 	assert.Equal(t, nil, err)
 
+	impl := service.(*serviceImpl)
+	impl.dropDatabase()
+
 	defer service.Close()
 	t.Log("Started db client", service)
 
@@ -183,5 +192,19 @@ func TestFindByPhoneAndUpdate(t *testing.T) {
 	assert.Equal(t, nil, err2)
 	t.Log("account2", account3)
 	assert.Equal(t, "password", account3.GetPrimary().GetPassword())
+
+	// insert another
+	account4 := &api.Account{}
+	*account4 = *account
+	account4.Primary.Phone = ptr("222-333-4444")
+	uuid4 := common.NewUUID()
+	account4.Id = ptr(uuid4.String())
+
+	err = service.SaveAccount(account4)
+	assert.Equal(t, nil, err)
+	account5, err2 := service.FindAccountByPhone("222-333-4444")
+	assert.Equal(t, nil, err2)
+	t.Log("account5", account5)
+	assert.Equal(t, account4.String(), account5.String())
 
 }

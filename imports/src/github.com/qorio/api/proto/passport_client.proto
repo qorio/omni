@@ -5,7 +5,7 @@ message AuthRequest {
 	required string password = 2;
 	optional string email = 3;
 	optional string phone = 4;
-	optional string usernmae = 5;
+	optional string username = 5;
 }
 
 message AuthResponse {

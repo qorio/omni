@@ -11,48 +11,12 @@ import math "math"
 var _ = proto.Marshal
 var _ = math.Inf
 
-type Login_Status int32
-
-const (
-	Login_CREATED  Login_Status = 1
-	Login_VERIFIED Login_Status = 2
-	Login_BLOCKED  Login_Status = 3
-)
-
-var Login_Status_name = map[int32]string{
-	1: "CREATED",
-	2: "VERIFIED",
-	3: "BLOCKED",
-}
-var Login_Status_value = map[string]int32{
-	"CREATED":  1,
-	"VERIFIED": 2,
-	"BLOCKED":  3,
-}
-
-func (x Login_Status) Enum() *Login_Status {
-	p := new(Login_Status)
-	*p = x
-	return p
-}
-func (x Login_Status) String() string {
-	return proto.EnumName(Login_Status_name, int32(x))
-}
-func (x *Login_Status) UnmarshalJSON(data []byte) error {
-	value, err := proto.UnmarshalJSONEnum(Login_Status_value, data, "Login_Status")
-	if err != nil {
-		return err
-	}
-	*x = Login_Status(value)
-	return nil
-}
-
 type AuthRequest struct {
 	Application      *string `protobuf:"bytes,1,opt,name=application" json:"application,omitempty"`
 	Password         *string `protobuf:"bytes,2,req,name=password" json:"password,omitempty"`
 	Email            *string `protobuf:"bytes,3,opt,name=email" json:"email,omitempty"`
 	Phone            *string `protobuf:"bytes,4,opt,name=phone" json:"phone,omitempty"`
-	Usernmae         *string `protobuf:"bytes,5,opt,name=usernmae" json:"usernmae,omitempty"`
+	Username         *string `protobuf:"bytes,5,opt,name=username" json:"username,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -88,9 +52,9 @@ func (m *AuthRequest) GetPhone() string {
 	return ""
 }
 
-func (m *AuthRequest) GetUsernmae() string {
-	if m != nil && m.Usernmae != nil {
-		return *m.Usernmae
+func (m *AuthRequest) GetUsername() string {
+	if m != nil && m.Username != nil {
+		return *m.Username
 	}
 	return ""
 }
@@ -113,12 +77,11 @@ func (m *AuthResponse) GetToken() string {
 
 type Login struct {
 	Id               *string         `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
-	Status           *Login_Status   `protobuf:"varint,2,opt,name=status,enum=passport.Login_Status,def=1" json:"status,omitempty"`
-	Email            *string         `protobuf:"bytes,3,opt,name=email" json:"email,omitempty"`
-	Phone            *string         `protobuf:"bytes,4,opt,name=phone" json:"phone,omitempty"`
-	Password         *string         `protobuf:"bytes,5,req,name=password" json:"password,omitempty"`
-	Location         *Login_Location `protobuf:"bytes,6,opt,name=location" json:"location,omitempty"`
-	Username         *string         `protobuf:"bytes,7,opt,name=username" json:"username,omitempty"`
+	Email            *string         `protobuf:"bytes,2,opt,name=email" json:"email,omitempty"`
+	Phone            *string         `protobuf:"bytes,3,opt,name=phone" json:"phone,omitempty"`
+	Password         *string         `protobuf:"bytes,4,req,name=password" json:"password,omitempty"`
+	Location         *Login_Location `protobuf:"bytes,5,opt,name=location" json:"location,omitempty"`
+	Username         *string         `protobuf:"bytes,6,opt,name=username" json:"username,omitempty"`
 	XXX_unrecognized []byte          `json:"-"`
 }
 
@@ -126,20 +89,11 @@ func (m *Login) Reset()         { *m = Login{} }
 func (m *Login) String() string { return proto.CompactTextString(m) }
 func (*Login) ProtoMessage()    {}
 
-const Default_Login_Status Login_Status = Login_CREATED
-
 func (m *Login) GetId() string {
 	if m != nil && m.Id != nil {
 		return *m.Id
 	}
 	return ""
-}
-
-func (m *Login) GetStatus() Login_Status {
-	if m != nil && m.Status != nil {
-		return *m.Status
-	}
-	return Default_Login_Status
 }
 
 func (m *Login) GetEmail() string {
@@ -202,5 +156,4 @@ func (m *Login_Location) GetLat() float64 {
 }
 
 func init() {
-	proto.RegisterEnum("passport.Login_Status", Login_Status_name, Login_Status_value)
 }

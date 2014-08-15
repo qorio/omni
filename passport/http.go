@@ -6,8 +6,10 @@ import (
 	omni_auth "github.com/qorio/omni/auth"
 	omni_common "github.com/qorio/omni/common"
 	omni_http "github.com/qorio/omni/http"
+	"math"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type EndPoint struct {
@@ -16,19 +18,16 @@ type EndPoint struct {
 	engine   omni_http.Engine
 }
 
-func defaultResolveApplicationId(req *http.Request) string {
-	return req.URL.Host
-}
-
 func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service) (ep *EndPoint, err error) {
 	ep = &EndPoint{
 		settings: settings,
 		service:  service,
-		engine:   omni_http.NewEngine(auth),
+		engine:   omni_http.NewEngine(&api.Methods, auth),
 	}
 
 	ep.engine.Bind(
 		omni_http.SetHandler(api.Methods[api.AuthUser], ep.ApiAuthenticate),
+		omni_http.SetHandler(api.Methods[api.AuthUserForService], ep.ApiAuthenticateForService),
 	)
 
 	ep.engine.Bind(
@@ -47,8 +46,35 @@ func (this *EndPoint) ServeHTTP(resp http.ResponseWriter, request *http.Request)
 	this.engine.ServeHTTP(resp, request)
 }
 
+func defaultResolveApplicationId(req *http.Request) string {
+	return req.URL.Host
+}
+
+func (this *EndPoint) resolve_application_id(requestedApplicationId string, req *http.Request) string {
+	if requestedApplicationId == "" {
+		if this.settings.ResolveApplicationId != nil {
+			return this.settings.ResolveApplicationId(req)
+		} else {
+			return defaultResolveApplicationId(req)
+		}
+	}
+	return requestedApplicationId
+}
+
 // Authenticates and returns a token as the response
 func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Request) {
+	this.auth(resp, req, func(ep *EndPoint, authRequest *api.AuthRequest) string {
+		return authRequest.GetApplication()
+	})
+}
+
+func (this *EndPoint) ApiAuthenticateForService(resp http.ResponseWriter, req *http.Request) {
+	this.auth(resp, req, func(ep *EndPoint, authRequest *api.AuthRequest) string {
+		return ep.engine.GetUrlParameter(req, "service")
+	})
+}
+
+func (this *EndPoint) auth(resp http.ResponseWriter, req *http.Request, get_service func(*EndPoint, *api.AuthRequest) string) {
 	request := api.Methods[api.AuthUser].RequestBody().(api.AuthRequest)
 	err := this.engine.Unmarshal(req, &request)
 	if err != nil {
@@ -56,8 +82,8 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	// do the lookup here...
-	account, err := this.findAccount(request.GetEmail(), request.GetPhone())
+	// Lookup account
+	account, err := this.findAccount(request.GetEmail(), request.GetPhone(), request.GetUsername())
 
 	switch {
 	case err == ERROR_NOT_FOUND:
@@ -70,20 +96,15 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 	case err != nil:
 		this.engine.HandleError(resp, req, "error-lookup-account", http.StatusInternalServerError)
 		return
-	case err == nil && account.Primary.GetPassword() != request.GetPassword():
+	}
+
+	// Check credentials
+	if account.Primary.GetPassword() != request.GetPassword() {
 		this.engine.HandleError(resp, req, "error-bad-credentials", http.StatusUnauthorized)
 		return
 	}
 
-	// now look for the application
-	requestedApplicationId := request.GetApplication()
-	if requestedApplicationId == "" {
-		if this.settings.ResolveApplicationId != nil {
-			requestedApplicationId = this.settings.ResolveApplicationId(req)
-		} else {
-			requestedApplicationId = defaultResolveApplicationId(req)
-		}
-	}
+	requestedApplicationId := this.resolve_application_id(get_service(this, &request), req)
 	var application *api.Application
 	for _, test := range account.GetServices() {
 		if test.GetId() == requestedApplicationId {
@@ -136,6 +157,58 @@ func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Reques
 	}
 }
 
+func (this *EndPoint) ApiRegisterUser(resp http.ResponseWriter, req *http.Request) {
+	requestedApplicationId := this.resolve_application_id(this.engine.GetUrlParameter(req, "service"), req)
+	if requestedApplicationId == "" {
+		this.engine.HandleError(resp, req, "cannot-determine-service", http.StatusBadRequest)
+		return
+	}
+
+	login := api.Methods[api.RegisterUser].RequestBody().(api.Login)
+	err := this.engine.Unmarshal(req, &login)
+	if err != nil {
+		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Check to see if login already exists
+	account, err := this.findAccount(login.GetEmail(), login.GetPhone(), login.GetUsername())
+	if err != nil {
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if account != nil {
+		this.engine.HandleError(resp, req, "error-duplicate", http.StatusConflict)
+		return
+	}
+
+	// Create the entire Account object
+	uuid := omni_common.NewUUID().String()
+	login.Id = &uuid
+
+	ts := float64(time.Now().UnixNano()) / math.Pow10(9)
+	account = &api.Account{
+		Id:               &uuid,
+		Primary:          &login,
+		CreatedTimestamp: &ts,
+	}
+	err = this.service.SaveAccount(account)
+	if err != nil {
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Clear the password before we send it on to other systems
+	account.Primary.Password = nil
+
+	// Use the application id to determine the necessary callback / webhook after account record has been created.
+	this.engine.EventChannel() <- &omni_http.EngineEvent{
+		ServiceMethod: api.RegisterUser,
+		Body:          struct{ Account *api.Account }{account},
+	}
+
+}
+
 func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request) {
 	account := api.Methods[api.CreateOrUpdateAccount].RequestBody().(api.Account)
 	err := this.engine.Unmarshal(req, &account)
@@ -166,7 +239,7 @@ func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request
 		// this is changing primary login of the account
 		// check availability of phone/email
 		existing, _ := this.findAccount(account.GetPrimary().GetEmail(),
-			account.GetPrimary().GetPhone())
+			account.GetPrimary().GetPhone(), account.GetPrimary().GetUsername())
 		if existing != nil {
 			this.engine.HandleError(resp, req, "error-duplicate", http.StatusConflict)
 			return
@@ -180,7 +253,7 @@ func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request
 		// this is new login and account
 		// check availability of phone/email
 		existing, _ := this.findAccount(account.GetPrimary().GetEmail(),
-			account.GetPrimary().GetPhone())
+			account.GetPrimary().GetPhone(), account.GetPrimary().GetUsername())
 		if existing != nil {
 			this.engine.HandleError(resp, req, "error-duplicate", http.StatusConflict)
 			return
@@ -432,13 +505,15 @@ func (this *EndPoint) ApiDeleteAccount(resp http.ResponseWriter, req *http.Reque
 	}
 }
 
-func (this *EndPoint) findAccount(email, phone string) (account *api.Account, err error) {
+func (this *EndPoint) findAccount(email, phone, username string) (account *api.Account, err error) {
 	switch {
 	case email != "":
 		account, err = this.service.FindAccountByEmail(email)
 	case phone != "":
 		account, err = this.service.FindAccountByPhone(phone)
-	case email == "" && phone == "":
+	case username != "":
+		account, err = this.service.FindAccountByUsername(phone)
+	case email == "" && phone == "" && username == "":
 		err = ERROR_MISSING_INPUT
 	}
 	return

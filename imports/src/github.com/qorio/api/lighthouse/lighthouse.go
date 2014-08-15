@@ -14,9 +14,9 @@ const (
 	ListAllBeacons
 )
 
-var Methods = map[api.ServiceMethod]*api.MethodSpec{
+var Methods = api.ServiceMethods{
 
-	RegisterUser: &api.MethodSpec{
+	RegisterUser: api.MethodSpec{
 		RequiresAuth: true,
 		Doc: `
 Registers a user
@@ -33,7 +33,7 @@ Registers a user
 		},
 	},
 
-	AddOrUpdateBeacon: &api.MethodSpec{
+	AddOrUpdateBeacon: api.MethodSpec{
 		RequiresAuth: true,
 		Doc: `
 Create or update a beacon inventory entry
@@ -51,7 +51,7 @@ Create or update a beacon inventory entry
 		},
 	},
 
-	ListAllBeacons: &api.MethodSpec{
+	ListAllBeacons: api.MethodSpec{
 		RequiresAuth: true,
 		Doc: `
 List all beacons

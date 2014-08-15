@@ -22,7 +22,7 @@ func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service)
 	ep = &EndPoint{
 		settings: settings,
 		service:  service,
-		engine:   omni_http.NewEngine(auth),
+		engine:   omni_http.NewEngine(&api.Methods, auth),
 	}
 
 	ep.engine.Bind(

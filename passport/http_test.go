@@ -20,11 +20,12 @@ var (
 )
 
 type mock struct {
-	findByEmail   func(email string) (account *api.Account, err error)
-	findByPhone   func(phone string) (account *api.Account, err error)
-	saveAccount   func(account *api.Account) (err error)
-	getAccount    func(id uuid.UUID) (account *api.Account, err error)
-	deleteAccount func(id uuid.UUID) (err error)
+	findByEmail    func(email string) (account *api.Account, err error)
+	findByPhone    func(phone string) (account *api.Account, err error)
+	findByUsername func(username string) (account *api.Account, err error)
+	saveAccount    func(account *api.Account) (err error)
+	getAccount     func(id uuid.UUID) (account *api.Account, err error)
+	deleteAccount  func(id uuid.UUID) (err error)
 }
 
 func (this *mock) FindAccountByEmail(email string) (account *api.Account, err error) {
@@ -33,6 +34,10 @@ func (this *mock) FindAccountByEmail(email string) (account *api.Account, err er
 
 func (this *mock) FindAccountByPhone(email string) (account *api.Account, err error) {
 	return this.findByPhone(email)
+}
+
+func (this *mock) FindAccountByUsername(username string) (account *api.Account, err error) {
+	return this.findByUsername(username)
 }
 
 func (this *mock) SaveAccount(account *api.Account) (err error) {

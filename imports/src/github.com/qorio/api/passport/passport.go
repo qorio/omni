@@ -6,6 +6,9 @@ import (
 
 const (
 	AuthUser api.ServiceMethod = iota
+	AuthUserForService
+	RegisterUser
+
 	FetchAccount
 	DeleteAccount
 	CreateOrUpdateAccount
@@ -14,9 +17,9 @@ const (
 	AddOrUpdateServiceAttribute
 )
 
-var Methods = map[api.ServiceMethod]*api.MethodSpec{
+var Methods = api.ServiceMethods{
 
-	AuthUser: &api.MethodSpec{
+	AuthUser: api.MethodSpec{
 		RequiresAuth: false,
 		Doc: `
 Authentication endpoint.
@@ -33,7 +36,49 @@ Authentication endpoint.
 		},
 	},
 
-	FetchAccount: &api.MethodSpec{
+	AuthUserForService: api.MethodSpec{
+		RequiresAuth: false,
+		Doc: `
+Authentication endpoint.
+`,
+		Name:         "AuthenticateUserForService",
+		UrlRoute:     "/api/v1/auth/{service}",
+		HttpMethod:   "POST",
+		ContentTypes: []string{"application/json", "application/protobuf"},
+		RequestBody: func() interface{} {
+			return AuthRequest{}
+		},
+		ResponseBody: func() interface{} {
+			return AuthResponse{}
+		},
+	},
+
+	RegisterUser: api.MethodSpec{
+		RequiresAuth: true,
+		Doc: `
+User account registration.  On successful registration, the webhook of the corresponding
+service will be called.  It is up to the service to then create any additional account
+or service-related data.  The service then calls this service's AddOrUpdateAccountService
+endpoint to update the mapping of service account id and any custom data to be passed to
+the service on successful login auth.  The webhook is keyed by the CallbackEvent property
+and is registered for the particular service.
+`,
+		Name:         "RegisterUser",
+		UrlRoute:     "/api/v1/register/{service}",
+		HttpMethod:   "POST",
+		ContentTypes: []string{"application/json", "application/protobuf"},
+		RequestBody: func() interface{} {
+			return Login{}
+		},
+		ResponseBody: func() interface{} {
+			return Login{}
+		},
+		// Calls the url webhook of given key for given service
+		CallbackEvent:        api.EventKey("new-user-registration"),
+		CallbackBodyTemplate: `{"id": {{.Account.Id}} }`,
+	},
+
+	FetchAccount: api.MethodSpec{
 		RequiresAuth: false,
 		Doc: `
 Returns the account object.
@@ -48,7 +93,7 @@ Returns the account object.
 		},
 	},
 
-	DeleteAccount: &api.MethodSpec{
+	DeleteAccount: api.MethodSpec{
 		RequiresAuth: false,
 		Doc: `
 Deletes the account.
@@ -60,7 +105,7 @@ Deletes the account.
 		ResponseBody: nil,
 	},
 
-	CreateOrUpdateAccount: &api.MethodSpec{
+	CreateOrUpdateAccount: api.MethodSpec{
 		RequiresAuth: false,
 		Doc: `
 Create or update account. If id is missing, a new record will be created;
@@ -76,7 +121,7 @@ otherwise, an existing record will be overwritten with the POST value.
 		ResponseBody: nil,
 	},
 
-	UpdateAccountPrimaryLogin: &api.MethodSpec{
+	UpdateAccountPrimaryLogin: api.MethodSpec{
 		RequiresAuth: false,
 		Doc: `
 Update primary login for account.
@@ -91,7 +136,7 @@ Update primary login for account.
 		ResponseBody: nil,
 	},
 
-	AddOrUpdateAccountService: &api.MethodSpec{
+	AddOrUpdateAccountService: api.MethodSpec{
 		RequiresAuth: false,
 		Doc: `
 Create or update a service / application in an existing account
@@ -106,7 +151,7 @@ Create or update a service / application in an existing account
 		ResponseBody: nil,
 	},
 
-	AddOrUpdateServiceAttribute: &api.MethodSpec{
+	AddOrUpdateServiceAttribute: api.MethodSpec{
 		RequiresAuth: false,
 		Doc: `
 Create or update a service / application attribute in an existing account and application.
