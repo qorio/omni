@@ -10,11 +10,15 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
 var (
 	instanceId = flag.String("id", "", "Instance id")
+
+	mongoHosts = flag.String("mongo_hosts", "localhost", "Mongo hosts, comma-separated")
+	mongoDb    = flag.String("mongo_db", "accounts", "Mongo Db name")
 
 	currentWorkingDir, _ = os.Getwd()
 
@@ -64,8 +68,9 @@ func main() {
 	var apiStopped chan bool
 
 	lighthouseSettings := lighthouse.Settings{
-		FsSettings: lighthouse.FsSettings{
-			RootDir: *rootDir,
+		Mongo: lighthouse.DbSettings{
+			Hosts: strings.Split(*mongoHosts, ","),
+			Db:    *mongoDb,
 		},
 	}
 

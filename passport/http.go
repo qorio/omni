@@ -5,7 +5,7 @@ import (
 	api "github.com/qorio/api/passport"
 	omni_auth "github.com/qorio/omni/auth"
 	omni_common "github.com/qorio/omni/common"
-	omni_http "github.com/qorio/omni/http"
+	omni_rest "github.com/qorio/omni/rest"
 	"math"
 	"net/http"
 	"strings"
@@ -15,28 +15,28 @@ import (
 type EndPoint struct {
 	settings Settings
 	service  Service
-	engine   omni_http.Engine
+	engine   omni_rest.Engine
 }
 
-func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service) (ep *EndPoint, err error) {
+func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service, webhooks omni_rest.WebHooksService) (ep *EndPoint, err error) {
 	ep = &EndPoint{
 		settings: settings,
 		service:  service,
-		engine:   omni_http.NewEngine(&api.Methods, auth),
+		engine:   omni_rest.NewEngine(&api.Methods, auth, webhooks),
 	}
 
 	ep.engine.Bind(
-		omni_http.SetHandler(api.Methods[api.AuthUser], ep.ApiAuthenticate),
-		omni_http.SetHandler(api.Methods[api.AuthUserForService], ep.ApiAuthenticateForService),
+		omni_rest.SetHandler(api.Methods[api.AuthUser], ep.ApiAuthenticate),
+		omni_rest.SetHandler(api.Methods[api.AuthUserForService], ep.ApiAuthenticateForService),
 	)
 
 	ep.engine.Bind(
-		omni_http.SetHandler(api.Methods[api.FetchAccount], ep.ApiGetAccount),
-		omni_http.SetHandler(api.Methods[api.CreateOrUpdateAccount], ep.ApiSaveAccount),
-		omni_http.SetHandler(api.Methods[api.UpdateAccountPrimaryLogin], ep.ApiSaveAccountPrimary),
-		omni_http.SetHandler(api.Methods[api.AddOrUpdateAccountService], ep.ApiSaveAccountService),
-		omni_http.SetHandler(api.Methods[api.AddOrUpdateServiceAttribute], ep.ApiSaveAccountServiceAttribute),
-		omni_http.SetHandler(api.Methods[api.DeleteAccount], ep.ApiDeleteAccount),
+		omni_rest.SetHandler(api.Methods[api.FetchAccount], ep.ApiGetAccount),
+		omni_rest.SetHandler(api.Methods[api.CreateOrUpdateAccount], ep.ApiSaveAccount),
+		omni_rest.SetHandler(api.Methods[api.UpdateAccountPrimaryLogin], ep.ApiSaveAccountPrimary),
+		omni_rest.SetHandler(api.Methods[api.AddOrUpdateAccountService], ep.ApiSaveAccountService),
+		omni_rest.SetHandler(api.Methods[api.AddOrUpdateServiceAttribute], ep.ApiSaveAccountServiceAttribute),
+		omni_rest.SetHandler(api.Methods[api.DeleteAccount], ep.ApiDeleteAccount),
 	)
 
 	return ep, nil
@@ -202,7 +202,7 @@ func (this *EndPoint) ApiRegisterUser(resp http.ResponseWriter, req *http.Reques
 	account.Primary.Password = nil
 
 	// Use the service id to determine the necessary callback / webhook after account record has been created.
-	this.engine.EventChannel() <- &omni_http.EngineEvent{
+	this.engine.EventChannel() <- &omni_rest.EngineEvent{
 		ServiceMethod: api.RegisterUser,
 		Body:          struct{ Account *api.Account }{account},
 	}

@@ -5,19 +5,27 @@ import (
 	"github.com/golang/glog"
 	api "github.com/qorio/api/passport"
 	omni_common "github.com/qorio/omni/common"
+	omni_rest "github.com/qorio/omni/rest"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"strings"
 )
 
 type serviceImpl struct {
-	settings   Settings
-	db         *mgo.Database
-	session    *mgo.Session
-	collection *mgo.Collection
+	settings Settings
+	db       *mgo.Database
+	session  *mgo.Session
+	accounts *mgo.Collection
+	webhooks *mgo.Collection
 }
 
-func NewService(settings Settings) (Service, error) {
+type mgo_webhook struct {
+	Id      bson.ObjectId `bson:"_id"`
+	Service string
+	Map     omni_rest.EventKeyUrlMap
+}
+
+func NewService(settings Settings) (*serviceImpl, error) {
 
 	impl := &serviceImpl{
 		settings: settings,
@@ -30,11 +38,12 @@ func NewService(settings Settings) (Service, error) {
 	}
 	// Optional. Switch the session to a monotonic behavior.
 	impl.session.SetMode(mgo.Monotonic, true)
+	impl.session.SetSafe(&mgo.Safe{})
 
 	impl.db = impl.session.DB(settings.Mongo.Db)
-	impl.collection = impl.db.C("accounts")
+	impl.accounts = impl.db.C("accounts")
 	// 2d spatial index on primary login's location
-	impl.collection.EnsureIndex(mgo.Index{
+	impl.accounts.EnsureIndex(mgo.Index{
 		Key:      []string{"primary.location"},
 		Unique:   false,
 		DropDups: false,
@@ -42,7 +51,7 @@ func NewService(settings Settings) (Service, error) {
 		Name:     "2dsphere",
 	})
 
-	impl.collection.EnsureIndex(mgo.Index{
+	impl.accounts.EnsureIndex(mgo.Index{
 		Key:      []string{"primary.phone"},
 		Unique:   true,
 		DropDups: true,
@@ -50,7 +59,7 @@ func NewService(settings Settings) (Service, error) {
 		Name:     "primary.phone",
 	})
 
-	impl.collection.EnsureIndex(mgo.Index{
+	impl.accounts.EnsureIndex(mgo.Index{
 		Key:      []string{"primary.email"},
 		Unique:   true,
 		DropDups: true,
@@ -58,13 +67,39 @@ func NewService(settings Settings) (Service, error) {
 		Name:     "primary.email",
 	})
 
-	impl.collection.EnsureIndex(mgo.Index{
+	impl.accounts.EnsureIndex(mgo.Index{
 		Key:      []string{"primary.username"},
 		Unique:   true,
 		DropDups: true,
 		Sparse:   true,
 		Name:     "primary.username",
 	})
+
+	// This is for configuration of services like callback/webhooks
+	impl.webhooks = impl.db.C("webhooks")
+	impl.webhooks.EnsureIndex(mgo.Index{
+		Key:      []string{"service"},
+		Unique:   true,
+		DropDups: true,
+		Sparse:   true,
+		Name:     "webhooks_service",
+	})
+
+	if count, err := impl.webhooks.Count(); err == nil && count == 0 {
+		for service, ekum := range DefaultWebHooks {
+			err := impl.webhooks.Insert(&mgo_webhook{
+				Id:      bson.NewObjectId(),
+				Service: service,
+				Map:     ekum,
+			})
+			if err != nil {
+				panic(err)
+			}
+		}
+
+	} else if err != nil {
+		panic(err)
+	}
 
 	glog.Infoln("Passport MongoDb backend initialized:", impl)
 	return impl, nil
@@ -76,7 +111,7 @@ func (this *serviceImpl) dropDatabase() (err error) {
 
 func (this *serviceImpl) FindAccountByEmail(email string) (account *api.Account, err error) {
 	result := api.Account{}
-	err = this.collection.Find(bson.M{"primary.email": email}).One(&result)
+	err = this.accounts.Find(bson.M{"primary.email": email}).One(&result)
 	switch {
 	case err == mgo.ErrNotFound:
 		return nil, ERROR_NOT_FOUND
@@ -88,7 +123,7 @@ func (this *serviceImpl) FindAccountByEmail(email string) (account *api.Account,
 
 func (this *serviceImpl) FindAccountByPhone(phone string) (account *api.Account, err error) {
 	result := api.Account{}
-	err = this.collection.Find(bson.M{"primary.phone": phone}).One(&result)
+	err = this.accounts.Find(bson.M{"primary.phone": phone}).One(&result)
 	switch {
 	case err == mgo.ErrNotFound:
 		return nil, ERROR_NOT_FOUND
@@ -100,7 +135,7 @@ func (this *serviceImpl) FindAccountByPhone(phone string) (account *api.Account,
 
 func (this *serviceImpl) FindAccountByUsername(username string) (account *api.Account, err error) {
 	result := api.Account{}
-	err = this.collection.Find(bson.M{"primary.username": username}).One(&result)
+	err = this.accounts.Find(bson.M{"primary.username": username}).One(&result)
 	switch {
 	case err == mgo.ErrNotFound:
 		return nil, ERROR_NOT_FOUND
@@ -131,7 +166,7 @@ func (this *serviceImpl) SaveAccount(account *api.Account) (err error) {
 		account.GetPrimary().Email = &uuid4
 	}
 
-	changeInfo, err := this.collection.Upsert(bson.M{"id": account.GetId()}, account)
+	changeInfo, err := this.accounts.Upsert(bson.M{"id": account.GetId()}, account)
 	if changeInfo != nil && changeInfo.Updated >= 0 {
 		return nil
 	}
@@ -140,7 +175,7 @@ func (this *serviceImpl) SaveAccount(account *api.Account) (err error) {
 
 func (this *serviceImpl) GetAccount(id uuid.UUID) (account *api.Account, err error) {
 	result := api.Account{}
-	err = this.collection.Find(bson.M{"id": id.String()}).One(&result)
+	err = this.accounts.Find(bson.M{"id": id.String()}).One(&result)
 	switch {
 	case err == mgo.ErrNotFound:
 		return nil, ERROR_NOT_FOUND
@@ -151,7 +186,7 @@ func (this *serviceImpl) GetAccount(id uuid.UUID) (account *api.Account, err err
 }
 
 func (this *serviceImpl) DeleteAccount(id uuid.UUID) (err error) {
-	err = this.collection.Remove(bson.M{"id": id.String()})
+	err = this.accounts.Remove(bson.M{"id": id.String()})
 	switch {
 	case err == mgo.ErrNotFound:
 		return nil
@@ -164,4 +199,24 @@ func (this *serviceImpl) DeleteAccount(id uuid.UUID) (err error) {
 func (this *serviceImpl) Close() {
 	this.session.Close()
 	glog.Infoln("Session closed", this.session)
+}
+
+func (this *serviceImpl) Send(serviceKey, eventKey string, message interface{}, templateString string) error {
+
+	result := &mgo_webhook{}
+
+	err := this.webhooks.Find(bson.M{"service": serviceKey}).One(result)
+	switch {
+	case err == mgo.ErrNotFound:
+		return ERROR_NOT_FOUND
+	case err != nil:
+		return err
+	}
+
+	if webhook, has := result.Map[eventKey]; has {
+		webhook.Send(message, templateString)
+	}
+
+	return nil
+
 }

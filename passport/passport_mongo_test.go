@@ -1,9 +1,14 @@
 package passport
 
 import (
+	"encoding/json"
+	"errors"
 	"github.com/bmizerany/assert"
+	"github.com/gorilla/mux"
 	api "github.com/qorio/api/passport"
 	"github.com/qorio/omni/common"
+	"github.com/qorio/omni/rest"
+	"net/http"
 	"testing"
 )
 
@@ -41,9 +46,7 @@ func TestNewService(t *testing.T) {
 
 	defer service.Close()
 	t.Log("Started db client", service)
-
-	impl := service.(*serviceImpl)
-	impl.dropDatabase()
+	service.dropDatabase()
 }
 
 func TestInsertGetAndDelete(t *testing.T) {
@@ -53,8 +56,7 @@ func TestInsertGetAndDelete(t *testing.T) {
 	defer service.Close()
 	t.Log("Started db client", service)
 
-	impl := service.(*serviceImpl)
-	impl.dropDatabase()
+	service.dropDatabase()
 
 	account := test_account()
 	account.Id = ptr(common.NewUUID().String())
@@ -83,9 +85,7 @@ func TestInsertGetAndDelete(t *testing.T) {
 func TestFindByPhone(t *testing.T) {
 	service, err := NewService(default_settings())
 	assert.Equal(t, nil, err)
-
-	impl := service.(*serviceImpl)
-	impl.dropDatabase()
+	service.dropDatabase()
 
 	defer service.Close()
 	t.Log("Started db client", service)
@@ -119,9 +119,7 @@ func TestFindByPhone(t *testing.T) {
 func TestFindByEmail(t *testing.T) {
 	service, err := NewService(default_settings())
 	assert.Equal(t, nil, err)
-
-	impl := service.(*serviceImpl)
-	impl.dropDatabase()
+	service.dropDatabase()
 
 	defer service.Close()
 	t.Log("Started db client", service)
@@ -155,9 +153,7 @@ func TestFindByEmail(t *testing.T) {
 func TestFindByPhoneAndUpdate(t *testing.T) {
 	service, err := NewService(default_settings())
 	assert.Equal(t, nil, err)
-
-	impl := service.(*serviceImpl)
-	impl.dropDatabase()
+	service.dropDatabase()
 
 	defer service.Close()
 	t.Log("Started db client", service)
@@ -207,4 +203,89 @@ func TestFindByPhoneAndUpdate(t *testing.T) {
 	t.Log("account5", account5)
 	assert.Equal(t, account4.String(), account5.String())
 
+}
+
+func TestWebHooks(t *testing.T) {
+
+	service, err := NewService(default_settings())
+	assert.Equal(t, nil, err)
+	service.dropDatabase()
+	service.Close()
+
+	done_chan := make(chan bool)
+
+	// restart
+	service, err = NewService(default_settings())
+
+	defer service.Close()
+	t.Log("Started db client", service)
+
+	uuid := common.NewUUID()
+	test := &struct {
+		Err error
+	}{}
+
+	// receiver of the event callback / webhook
+	r := mux.NewRouter()
+	r.HandleFunc("/event/new-user-registration", func(resp http.ResponseWriter, req *http.Request) {
+
+		defer func() {
+			done_chan <- true
+		}()
+
+		t.Log("Received post", req.Header)
+
+		// check header
+		if _, has := req.Header[rest.WebHookHmacHeader]; !has {
+			test.Err = errors.New("no hmac header")
+			return
+		}
+
+		v := make(map[string]string)
+		dec := json.NewDecoder(req.Body)
+		err := dec.Decode(&v)
+
+		t.Log("Post body", v, "err", err)
+
+		if err != nil {
+			test.Err = err
+			return
+		}
+
+		if id, has := v["id"]; has {
+			if id != uuid.String() {
+				test.Err = errors.New("id does not match")
+				return
+			}
+		} else {
+			test.Err = errors.New("no id property")
+			return
+		}
+	}).Methods("POST")
+	server := &http.Server{
+		Handler: r,
+		Addr:    ":9999",
+	}
+	go func() {
+		server.ListenAndServe()
+	}()
+
+	account := test_account()
+	account.Id = ptr(uuid.String())
+	account.Primary.Phone = ptr("111-222-5555")
+	account.Services[0].Id = ptr("app-1")
+	account.Services[0].Status = ptr("verified")
+	account.Services[0].AccountId = ptr("app-1-account-by-phone-1")
+	account.Services[0].Attributes[0].Key = ptr("key-1")
+	account.Services[0].Attributes[0].StringValue = ptr("value-1")
+
+	err = service.Send("test", "new-user-registration",
+		struct{ Account *api.Account }{account},
+		api.Methods[api.RegisterUser].CallbackBodyTemplate)
+
+	assert.Equal(t, nil, err)
+
+	<-done_chan
+
+	assert.Equal(t, nil, test.Err)
 }

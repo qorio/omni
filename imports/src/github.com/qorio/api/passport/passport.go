@@ -75,7 +75,7 @@ and is registered for the particular service.
 		},
 		// Calls the url webhook of given key for given service
 		CallbackEvent:        api.EventKey("new-user-registration"),
-		CallbackBodyTemplate: `{"id": {{.Account.Id}} }`,
+		CallbackBodyTemplate: `{"id": "{{.Account.Id}}" }`,
 	},
 
 	FetchAccount: api.MethodSpec{
