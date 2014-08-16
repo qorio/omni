@@ -49,8 +49,10 @@ database:
 ## Customize test commands
 test:
   override:
+    - go test github.com/qorio/omni/rest
     - go test github.com/qorio/omni/auth --auth_public_key_file=$BUILD_SRC_DIR/test/authKey.pub
     - go test github.com/qorio/omni/passport --auth_public_key_file=$BUILD_SRC_DIR/test/authKey.pub
+    - go test github.com/qorio/omni/lighthouse --auth_public_key_file=$BUILD_SRC_DIR/test/authKey.pub
     - go test github.com/qorio/omni/shorty
     - go test github.com/qorio/omni/stripe
 
