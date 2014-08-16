@@ -228,7 +228,10 @@ func (this *engine) Unmarshal(req *http.Request, typed proto.Message) (err error
 }
 
 func (this *engine) Marshal(req *http.Request, typed proto.Message, resp http.ResponseWriter) (err error) {
-	contentType := req.Header.Get("Content-Type")
+	contentType := req.Header.Get("Content-Type") // Usually the case when a client POSTs
+	if contentType == "" {
+		contentType = req.Header.Get("Accept") // Usually the case with GET
+	}
 	if marshaler, has := marshalers[contentType]; has {
 		return marshaler(contentType, resp, typed)
 	} else {

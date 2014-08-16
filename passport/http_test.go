@@ -89,7 +89,7 @@ func TestAuthNotFound(t *testing.T) {
 		},
 	}
 
-	endpoint, err := NewApiEndPoint(settings, auth, svc, nil)
+	endpoint, err := NewApiEndPoint(settings, auth, svc, nil, auth)
 
 	if err != nil {
 		t.Error(err)
@@ -190,7 +190,7 @@ func TestNotAMember(t *testing.T) {
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
 	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, svc, nil)
+	endpoint, err := NewApiEndPoint(settings, auth, svc, nil, auth)
 	if err != nil {
 		t.Error(err)
 	}
@@ -226,7 +226,7 @@ func TestFoundAccountAndService(t *testing.T) {
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
 	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, svc, nil)
+	endpoint, err := NewApiEndPoint(settings, auth, svc, nil, auth)
 	if err != nil {
 		t.Error(err)
 	}
@@ -371,7 +371,7 @@ func TestFoundAccountButNotMatchService(t *testing.T) {
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
 	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, svc, nil)
+	endpoint, err := NewApiEndPoint(settings, auth, svc, nil, auth)
 	if err != nil {
 		t.Error(err)
 	}
@@ -433,7 +433,7 @@ func TestGetAccount(t *testing.T) {
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
 	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, svc, nil)
+	endpoint, err := NewApiEndPoint(settings, auth, svc, nil, auth)
 	if err != nil {
 		t.Error(err)
 	}
@@ -498,7 +498,7 @@ func TestDeleteAccount(t *testing.T) {
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
 	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, svc, nil)
+	endpoint, err := NewApiEndPoint(settings, auth, svc, nil, auth)
 	if err != nil {
 		t.Error(err)
 	}
@@ -521,7 +521,7 @@ func TestSaveAccount(t *testing.T) {
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
 	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, svc, nil)
+	endpoint, err := NewApiEndPoint(settings, auth, svc, nil, auth)
 	if err != nil {
 		t.Error(err)
 	}
@@ -588,7 +588,7 @@ func TestNewAccount(t *testing.T) {
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
 	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, svc, nil)
+	endpoint, err := NewApiEndPoint(settings, auth, svc, nil, auth)
 	if err != nil {
 		t.Error(err)
 	}
@@ -639,7 +639,7 @@ func TestNewAccountMissingInput(t *testing.T) {
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
 	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, svc, nil)
+	endpoint, err := NewApiEndPoint(settings, auth, svc, nil, auth)
 	if err != nil {
 		t.Error(err)
 	}
@@ -681,7 +681,7 @@ func TestNewAccountConflict(t *testing.T) {
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
 	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, svc, nil)
+	endpoint, err := NewApiEndPoint(settings, auth, svc, nil, auth)
 	if err != nil {
 		t.Error(err)
 	}
@@ -729,7 +729,7 @@ func TestSaveAccountPrimay(t *testing.T) {
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
 	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, svc, nil)
+	endpoint, err := NewApiEndPoint(settings, auth, svc, nil, auth)
 	if err != nil {
 		t.Error(err)
 	}
@@ -800,7 +800,7 @@ func TestSaveAccountService(t *testing.T) {
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
 	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, svc, nil)
+	endpoint, err := NewApiEndPoint(settings, auth, svc, nil, auth)
 	if err != nil {
 		t.Error(err)
 	}
@@ -888,7 +888,7 @@ func TestSaveAccountServiceAttribute(t *testing.T) {
 	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
 	svc := &mock{}
 
-	endpoint, err := NewApiEndPoint(settings, auth, svc, nil)
+	endpoint, err := NewApiEndPoint(settings, auth, svc, nil, auth)
 	if err != nil {
 		t.Error(err)
 	}

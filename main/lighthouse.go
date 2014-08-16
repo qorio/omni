@@ -78,7 +78,7 @@ func main() {
 	if sErr != nil {
 		panic(sErr)
 	}
-	if endpoint, err := lighthouse.NewApiEndPoint(lighthouseSettings, auth, lighthouseService); err == nil {
+	if endpoint, err := lighthouse.NewApiEndPoint(lighthouseSettings, auth, lighthouseService, auth); err == nil {
 		apiHttpServer := &http.Server{
 			Handler: endpoint,
 			Addr:    addr,

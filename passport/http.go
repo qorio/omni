@@ -1,6 +1,7 @@
 package passport
 
 import (
+	"fmt"
 	"github.com/golang/glog"
 	api "github.com/qorio/api/passport"
 	omni_auth "github.com/qorio/omni/auth"
@@ -16,13 +17,17 @@ type EndPoint struct {
 	settings Settings
 	service  Service
 	engine   omni_rest.Engine
+	encrypt  omni_auth.EncryptionService
 }
 
-func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service, webhooks omni_rest.WebHooksService) (ep *EndPoint, err error) {
+func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service,
+	webhooks omni_rest.WebHooksService,
+	encrypt omni_auth.EncryptionService) (ep *EndPoint, err error) {
 	ep = &EndPoint{
 		settings: settings,
 		service:  service,
 		engine:   omni_rest.NewEngine(&api.Methods, auth, webhooks),
+		encrypt:  encrypt,
 	}
 
 	ep.engine.Bind(
@@ -99,6 +104,12 @@ func (this *EndPoint) auth(resp http.ResponseWriter, req *http.Request, get_serv
 	}
 
 	// Check credentials
+	encrypted, err := this.encrypt.Encrypt([]byte(request.GetPassword()))
+	if err == nil {
+		encryptedStr := fmt.Sprintf("%0x", encrypted)
+		request.Password = &encryptedStr
+	}
+
 	if account.Primary.GetPassword() != request.GetPassword() {
 		this.engine.HandleError(resp, req, "error-bad-credentials", http.StatusUnauthorized)
 		return
@@ -180,6 +191,13 @@ func (this *EndPoint) ApiRegisterUser(resp http.ResponseWriter, req *http.Reques
 	if account != nil {
 		this.engine.HandleError(resp, req, "error-duplicate", http.StatusConflict)
 		return
+	}
+
+	// Encrypt the password
+	encrypted, err := this.encrypt.Encrypt([]byte(login.GetPassword()))
+	if err == nil {
+		encryptedStr := fmt.Sprintf("%0x", encrypted)
+		login.Password = &encryptedStr
 	}
 
 	// Create the entire Account object

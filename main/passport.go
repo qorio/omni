@@ -76,7 +76,7 @@ func main() {
 	if sErr != nil {
 		panic(sErr)
 	}
-	if endpoint, err := passport.NewApiEndPoint(passportSettings, auth, passportService, passportService); err == nil {
+	if endpoint, err := passport.NewApiEndPoint(passportSettings, auth, passportService, passportService, auth); err == nil {
 		apiHttpServer := &http.Server{
 			Handler: endpoint,
 			Addr:    addr,
