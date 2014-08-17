@@ -19,27 +19,31 @@ var (
 
 type UUID string
 
+// Function to override checking of flag.  This is useful for testing
+// to turn off auth.
+type IsAuthOn func() bool
+
+type CheckScope func(string, []string) bool
+
 type Settings struct {
-	SignKey  []byte
-	TTLHours time.Duration
-	IsAuthOn IsAuthOn
+	SignKey    []byte
+	TTLHours   time.Duration
+	IsAuthOn   IsAuthOn
+	CheckScope CheckScope
 }
 
 type Service interface {
 	NewToken() (token *Token)
 	SignedString(token *Token) (tokenString string, err error)
 	Parse(tokenString string) (token *Token, err error)
-	RequiresAuth(handler HttpHandler) func(http.ResponseWriter, *http.Request)
+	RequiresAuth(scope string, handler HttpHandler) func(http.ResponseWriter, *http.Request)
 }
 
-// Function to override checking of flag.  This is useful for testing
-// to turn off auth.
-type IsAuthOn func() bool
-
 type serviceImpl struct {
-	settings Settings
-	GetTime  func() time.Time
-	IsAuthOn IsAuthOn
+	settings   Settings
+	GetTime    func() time.Time
+	IsAuthOn   IsAuthOn
+	CheckScope CheckScope
 }
 
 type Token struct {
@@ -56,9 +60,10 @@ func ReadPublicKey(filename string) (key []byte, err error) {
 
 func Init(settings Settings) *serviceImpl {
 	return &serviceImpl{
-		settings: settings,
-		GetTime:  func() time.Time { return time.Now() },
-		IsAuthOn: settings.IsAuthOn,
+		settings:   settings,
+		GetTime:    func() time.Time { return time.Now() },
+		IsAuthOn:   settings.IsAuthOn,
+		CheckScope: settings.CheckScope,
 	}
 }
 

@@ -158,7 +158,7 @@ type Service struct {
 	Id               *string      `protobuf:"bytes,1,req,name=id" json:"id,omitempty"`
 	Status           *string      `protobuf:"bytes,2,req,name=status" json:"status,omitempty"`
 	AccountId        *string      `protobuf:"bytes,3,req,name=accountId" json:"accountId,omitempty"`
-	Permissions      []string     `protobuf:"bytes,4,rep,name=permissions" json:"permissions,omitempty"`
+	Scopes           []string     `protobuf:"bytes,4,rep,name=scopes" json:"scopes,omitempty"`
 	StartTimestamp   *float64     `protobuf:"fixed64,5,opt,name=startTimestamp" json:"startTimestamp,omitempty"`
 	Attributes       []*Attribute `protobuf:"bytes,6,rep,name=attributes" json:"attributes,omitempty"`
 	XXX_unrecognized []byte       `json:"-"`
@@ -189,9 +189,9 @@ func (m *Service) GetAccountId() string {
 	return ""
 }
 
-func (m *Service) GetPermissions() []string {
+func (m *Service) GetScopes() []string {
 	if m != nil {
-		return m.Permissions
+		return m.Scopes
 	}
 	return nil
 }

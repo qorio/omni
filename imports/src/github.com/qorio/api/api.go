@@ -13,9 +13,9 @@ type MethodSpec struct {
 	ContentTypes         []string
 	RequestBody          ObjectFactory
 	ResponseBody         ObjectFactory
-	RequiresAuth         bool
 	CallbackEvent        EventKey
 	CallbackBodyTemplate string
+	AuthScope            string
 }
 
 type ServiceMethods map[ServiceMethod]MethodSpec

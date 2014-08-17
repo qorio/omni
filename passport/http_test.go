@@ -220,7 +220,7 @@ func TestFoundAccountAndService(t *testing.T) {
 					Id:        &serviceId,
 					Status:    &serviceStatus,
 					AccountId: &serviceAccountId,
-					Permissions: []string{
+					Scopes: []string{
 						"admin",
 						"readwrite",
 					},
@@ -259,8 +259,8 @@ func TestFoundAccountAndService(t *testing.T) {
 			t.Error(err)
 		}
 		assert.Equal(t, serviceStatus, token.GetString("@status"))
-		assert.Equal(t, serviceAccountId, token.GetString("@accountId"))
-		assert.Equal(t, "admin,readwrite", token.GetString("@permissions"))
+		assert.Equal(t, serviceAccountId, token.GetString("@service_account_id"))
+		assert.Equal(t, "admin,readwrite", token.GetString("@scopes"))
 		assert.Equal(t, value1, token.GetString(attribute1))
 	})
 
@@ -284,8 +284,8 @@ func TestFoundAccountAndService(t *testing.T) {
 			t.Error(err)
 		}
 		assert.Equal(t, serviceStatus, token.GetString("@status"))
-		assert.Equal(t, serviceAccountId, token.GetString("@accountId"))
-		assert.Equal(t, "admin,readwrite", token.GetString("@permissions"))
+		assert.Equal(t, serviceAccountId, token.GetString("@service_account_id"))
+		assert.Equal(t, "admin,readwrite", token.GetString("@scopes"))
 		assert.Equal(t, value1, token.GetString(attribute1))
 	})
 
@@ -319,7 +319,7 @@ func TestFoundAccountAndService(t *testing.T) {
 			t.Error(err)
 		}
 		assert.Equal(t, serviceStatus, token.GetString("@status"))
-		assert.Equal(t, serviceAccountId, token.GetString("@accountId"))
+		assert.Equal(t, serviceAccountId, token.GetString("@service_account_id"))
 		assert.Equal(t, value1, token.GetString(attribute1))
 	})
 }
@@ -386,6 +386,8 @@ func TestFoundAccountButNotMatchService(t *testing.T) {
 	})
 }
 
+var no_auth = func() bool { return false }
+
 func TestGetAccount(t *testing.T) {
 
 	signKey := []byte("test")
@@ -396,7 +398,7 @@ func TestGetAccount(t *testing.T) {
 		},
 	}
 
-	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
+	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0, IsAuthOn: no_auth})
 	svc := &mock{}
 
 	endpoint, err := NewApiEndPoint(settings, auth, svc, nil, auth)
@@ -461,7 +463,7 @@ func TestDeleteAccount(t *testing.T) {
 		},
 	}
 
-	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
+	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0, IsAuthOn: no_auth})
 	svc := &mock{}
 
 	endpoint, err := NewApiEndPoint(settings, auth, svc, nil, auth)
@@ -484,7 +486,7 @@ func TestSaveAccount(t *testing.T) {
 	signKey := []byte("test")
 	settings := Settings{}
 
-	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
+	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0, IsAuthOn: no_auth})
 	svc := &mock{}
 
 	endpoint, err := NewApiEndPoint(settings, auth, svc, nil, auth)
@@ -551,7 +553,7 @@ func TestNewAccount(t *testing.T) {
 	signKey := []byte("test")
 	settings := Settings{}
 
-	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
+	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0, IsAuthOn: no_auth})
 	svc := &mock{}
 
 	endpoint, err := NewApiEndPoint(settings, auth, svc, nil, auth)
@@ -602,7 +604,7 @@ func TestNewAccountMissingInput(t *testing.T) {
 	signKey := []byte("test")
 	settings := Settings{}
 
-	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
+	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0, IsAuthOn: no_auth})
 	svc := &mock{}
 
 	endpoint, err := NewApiEndPoint(settings, auth, svc, nil, auth)
@@ -644,7 +646,7 @@ func TestNewAccountConflict(t *testing.T) {
 	signKey := []byte("test")
 	settings := Settings{}
 
-	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
+	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0, IsAuthOn: no_auth})
 	svc := &mock{}
 
 	endpoint, err := NewApiEndPoint(settings, auth, svc, nil, auth)
@@ -692,7 +694,7 @@ func TestSaveAccountPrimay(t *testing.T) {
 	signKey := []byte("test")
 	settings := Settings{}
 
-	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
+	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0, IsAuthOn: no_auth})
 	svc := &mock{}
 
 	endpoint, err := NewApiEndPoint(settings, auth, svc, nil, auth)
@@ -763,7 +765,7 @@ func TestSaveAccountService(t *testing.T) {
 	signKey := []byte("test")
 	settings := Settings{}
 
-	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
+	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0, IsAuthOn: no_auth})
 	svc := &mock{}
 
 	endpoint, err := NewApiEndPoint(settings, auth, svc, nil, auth)
@@ -851,7 +853,7 @@ func TestSaveAccountServiceAttribute(t *testing.T) {
 	signKey := []byte("test")
 	settings := Settings{}
 
-	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0})
+	auth := omni_auth.Init(omni_auth.Settings{SignKey: signKey, TTLHours: 0, IsAuthOn: no_auth})
 	svc := &mock{}
 
 	endpoint, err := NewApiEndPoint(settings, auth, svc, nil, auth)

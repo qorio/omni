@@ -79,8 +79,8 @@ type ServiceMethodImpl struct {
 }
 
 func SetHandler(m api.MethodSpec, h Handler) *ServiceMethodImpl {
-	if m.RequiresAuth {
-		panic(errors.New("Method " + m.Name + " requires auth; binding to unauthed handler."))
+	if m.AuthScope != "" {
+		panic(errors.New("Method " + m.Name + " has oauth scopes but binding to unauthed handler."))
 	}
 	return &ServiceMethodImpl{
 		Api:     m,
@@ -89,8 +89,8 @@ func SetHandler(m api.MethodSpec, h Handler) *ServiceMethodImpl {
 }
 
 func SetAuthenticatedHandler(m api.MethodSpec, h auth.HttpHandler) *ServiceMethodImpl {
-	if !m.RequiresAuth {
-		panic(errors.New("Method " + m.Name + " requires no auth; binding to authed handler."))
+	if m.AuthScope == "" {
+		panic(errors.New("Method " + m.Name + " has no oauth scopes but binding to authenticated handler"))
 	}
 	return &ServiceMethodImpl{
 		Api:                  m,
@@ -195,11 +195,13 @@ func (this *engine) Bind(endpoints ...*ServiceMethodImpl) {
 	for i, ep := range endpoints {
 		switch {
 		case ep.Handler != nil:
-			this.router.HandleFunc(ep.Api.UrlRoute, ep.Handler).Methods(ep.Api.HttpMethod).Name(ep.Api.Name)
+			this.router.HandleFunc(ep.Api.UrlRoute,
+				ep.Handler).Methods(ep.Api.HttpMethod).Name(ep.Api.Name)
 			this.methods[ep.Api.Name] = ep
 
 		case ep.AuthenticatedHandler != nil:
-			this.router.HandleFunc(ep.Api.UrlRoute, this.auth.RequiresAuth(ep.AuthenticatedHandler)).Methods(ep.Api.HttpMethod).Name(ep.Api.Name)
+			this.router.HandleFunc(ep.Api.UrlRoute,
+				this.auth.RequiresAuth(ep.Api.AuthScope, ep.AuthenticatedHandler)).Methods(ep.Api.HttpMethod).Name(ep.Api.Name)
 			this.methods[ep.Api.Name] = ep
 
 		case ep.Handler == nil && ep.AuthenticatedHandler == nil:

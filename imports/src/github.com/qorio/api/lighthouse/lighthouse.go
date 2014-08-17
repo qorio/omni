@@ -17,7 +17,7 @@ const (
 var Methods = api.ServiceMethods{
 
 	RegisterUser: api.MethodSpec{
-		RequiresAuth: true,
+		AuthScope: "*",
 		Doc: `
 Registers a user
 `,
@@ -34,7 +34,7 @@ Registers a user
 	},
 
 	AddOrUpdateBeacon: api.MethodSpec{
-		RequiresAuth: true,
+		AuthScope: "*",
 		Doc: `
 Create or update a beacon inventory entry
 `,
@@ -52,7 +52,7 @@ Create or update a beacon inventory entry
 	},
 
 	ListAllBeacons: api.MethodSpec{
-		RequiresAuth: true,
+		AuthScope: "*",
 		Doc: `
 List all beacons
 `,

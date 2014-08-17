@@ -40,12 +40,12 @@ func NewApiEndPoint(settings Settings, auth omni_auth.Service, service Service,
 	)
 
 	ep.engine.Bind(
-		omni_rest.SetHandler(api.Methods[api.FetchAccount], ep.ApiGetAccount),
-		omni_rest.SetHandler(api.Methods[api.CreateOrUpdateAccount], ep.ApiSaveAccount),
-		omni_rest.SetHandler(api.Methods[api.UpdateAccountPrimaryLogin], ep.ApiSaveAccountPrimary),
-		omni_rest.SetHandler(api.Methods[api.AddOrUpdateAccountService], ep.ApiSaveAccountService),
-		omni_rest.SetHandler(api.Methods[api.AddOrUpdateServiceAttribute], ep.ApiSaveAccountServiceAttribute),
-		omni_rest.SetHandler(api.Methods[api.DeleteAccount], ep.ApiDeleteAccount),
+		omni_rest.SetAuthenticatedHandler(api.Methods[api.FetchAccount], ep.ApiGetAccount),
+		omni_rest.SetAuthenticatedHandler(api.Methods[api.CreateOrUpdateAccount], ep.ApiSaveAccount),
+		omni_rest.SetAuthenticatedHandler(api.Methods[api.UpdateAccountPrimaryLogin], ep.ApiSaveAccountPrimary),
+		omni_rest.SetAuthenticatedHandler(api.Methods[api.AddOrUpdateAccountService], ep.ApiSaveAccountService),
+		omni_rest.SetAuthenticatedHandler(api.Methods[api.AddOrUpdateServiceAttribute], ep.ApiSaveAccountServiceAttribute),
+		omni_rest.SetAuthenticatedHandler(api.Methods[api.DeleteAccount], ep.ApiDeleteAccount),
 	)
 
 	return ep, nil
@@ -137,8 +137,8 @@ func (this *EndPoint) auth(resp http.ResponseWriter, req *http.Request, get_serv
 	token := this.engine.NewAuthToken()
 	token.Add("@id", service.GetId()).
 		Add("@status", service.GetStatus()).
-		Add("@accountId", service.GetAccountId()).
-		Add("@permissions", strings.Join(service.GetPermissions(), ","))
+		Add("@service_account_id", service.GetAccountId()).
+		Add("@scopes", strings.Join(service.GetScopes(), ","))
 
 	for _, attribute := range service.GetAttributes() {
 		if attribute.GetEmbedSigninToken() {
@@ -231,7 +231,7 @@ func (this *EndPoint) ApiRegisterUser(context omni_auth.Context, resp http.Respo
 
 }
 
-func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request) {
+func (this *EndPoint) ApiSaveAccount(context omni_auth.Context, resp http.ResponseWriter, req *http.Request) {
 	account := api.Methods[api.CreateOrUpdateAccount].RequestBody().(api.Account)
 	err := this.engine.Unmarshal(req, &account)
 	if err != nil {
@@ -313,7 +313,7 @@ func (this *EndPoint) ApiSaveAccount(resp http.ResponseWriter, req *http.Request
 	}
 }
 
-func (this *EndPoint) ApiSaveAccountPrimary(resp http.ResponseWriter, req *http.Request) {
+func (this *EndPoint) ApiSaveAccountPrimary(context omni_auth.Context, resp http.ResponseWriter, req *http.Request) {
 	id := this.engine.GetUrlParameter(req, "id")
 
 	login := api.Methods[api.UpdateAccountPrimaryLogin].RequestBody().(api.Login)
@@ -363,7 +363,7 @@ func (this *EndPoint) ApiSaveAccountPrimary(resp http.ResponseWriter, req *http.
 	}
 }
 
-func (this *EndPoint) ApiSaveAccountService(resp http.ResponseWriter, req *http.Request) {
+func (this *EndPoint) ApiSaveAccountService(context omni_auth.Context, resp http.ResponseWriter, req *http.Request) {
 	id := this.engine.GetUrlParameter(req, "id")
 
 	service := api.Methods[api.AddOrUpdateAccountService].RequestBody().(api.Service)
@@ -415,7 +415,7 @@ func (this *EndPoint) ApiSaveAccountService(resp http.ResponseWriter, req *http.
 	}
 }
 
-func (this *EndPoint) ApiSaveAccountServiceAttribute(resp http.ResponseWriter, req *http.Request) {
+func (this *EndPoint) ApiSaveAccountServiceAttribute(context omni_auth.Context, resp http.ResponseWriter, req *http.Request) {
 	id := this.engine.GetUrlParameter(req, "id")
 	serviceId := this.engine.GetUrlParameter(req, "service")
 
@@ -481,7 +481,7 @@ func (this *EndPoint) ApiSaveAccountServiceAttribute(resp http.ResponseWriter, r
 	}
 }
 
-func (this *EndPoint) ApiGetAccount(resp http.ResponseWriter, req *http.Request) {
+func (this *EndPoint) ApiGetAccount(context omni_auth.Context, resp http.ResponseWriter, req *http.Request) {
 	id := this.engine.GetUrlParameter(req, "id")
 
 	if id == "" {
@@ -507,7 +507,7 @@ func (this *EndPoint) ApiGetAccount(resp http.ResponseWriter, req *http.Request)
 	}
 }
 
-func (this *EndPoint) ApiDeleteAccount(resp http.ResponseWriter, req *http.Request) {
+func (this *EndPoint) ApiDeleteAccount(context omni_auth.Context, resp http.ResponseWriter, req *http.Request) {
 	id := this.engine.GetUrlParameter(req, "id")
 
 	if id == "" {

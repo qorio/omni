@@ -16,13 +16,13 @@ import (
 type EndPoint struct {
 	settings Settings
 	router   *mux.Router
-	auth     *omni_auth.Service
+	auth     omni_auth.Service
 	service  Service
 }
 
 var ID_FORMAT = "[_A-Za-z0-9\\-]+"
 
-func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service) (api *EndPoint, err error) {
+func NewApiEndPoint(settings Settings, auth omni_auth.Service, service Service) (api *EndPoint, err error) {
 	api = &EndPoint{
 		settings: settings,
 		router:   mux.NewRouter(),

@@ -28,7 +28,7 @@ message Service {
 	required string id = 1;
 	required string status = 2;  // free-form for the service to interpret
 	required string accountId = 3;  // account key used by the service
-	repeated string permissions = 4; // capability strings
+	repeated string scopes = 4; // oauth scopes / permissions
 	optional double startTimestamp = 5;
 	repeated Attribute attributes = 6;
 }

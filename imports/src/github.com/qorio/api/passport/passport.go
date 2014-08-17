@@ -20,7 +20,6 @@ const (
 var Methods = api.ServiceMethods{
 
 	AuthUser: api.MethodSpec{
-		RequiresAuth: false,
 		Doc: `
 Authentication endpoint.
 `,
@@ -37,7 +36,6 @@ Authentication endpoint.
 	},
 
 	AuthUserForService: api.MethodSpec{
-		RequiresAuth: false,
 		Doc: `
 Authentication endpoint.
 `,
@@ -54,7 +52,7 @@ Authentication endpoint.
 	},
 
 	RegisterUser: api.MethodSpec{
-		RequiresAuth: true,
+		AuthScope: "*",
 		Doc: `
 User account registration.  On successful registration, the webhook of the corresponding
 service will be called.  It is up to the service to then create any additional account
@@ -79,7 +77,7 @@ and is registered for the particular service.
 	},
 
 	FetchAccount: api.MethodSpec{
-		RequiresAuth: false,
+		AuthScope: "*",
 		Doc: `
 Returns the account object.
 `,
@@ -94,7 +92,7 @@ Returns the account object.
 	},
 
 	DeleteAccount: api.MethodSpec{
-		RequiresAuth: false,
+		AuthScope: "*",
 		Doc: `
 Deletes the account.
 `,
@@ -106,7 +104,7 @@ Deletes the account.
 	},
 
 	CreateOrUpdateAccount: api.MethodSpec{
-		RequiresAuth: false,
+		AuthScope: "*",
 		Doc: `
 Create or update account. If id is missing, a new record will be created;
 otherwise, an existing record will be overwritten with the POST value.
@@ -122,7 +120,7 @@ otherwise, an existing record will be overwritten with the POST value.
 	},
 
 	UpdateAccountPrimaryLogin: api.MethodSpec{
-		RequiresAuth: false,
+		AuthScope: "*",
 		Doc: `
 Update primary login for account.
 `,
@@ -137,7 +135,7 @@ Update primary login for account.
 	},
 
 	AddOrUpdateAccountService: api.MethodSpec{
-		RequiresAuth: false,
+		AuthScope: "*",
 		Doc: `
 Create or update a service / application in an existing account
 `,
@@ -152,7 +150,7 @@ Create or update a service / application in an existing account
 	},
 
 	AddOrUpdateServiceAttribute: api.MethodSpec{
-		RequiresAuth: false,
+		AuthScope: "*",
 		Doc: `
 Create or update a service / application attribute in an existing account and application.
 `,
