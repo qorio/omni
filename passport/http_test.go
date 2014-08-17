@@ -4,7 +4,6 @@ import (
 	"code.google.com/p/go-uuid/uuid"
 	"code.google.com/p/goprotobuf/proto"
 	"encoding/json"
-	"flag"
 	"github.com/bmizerany/assert"
 	"github.com/drewolson/testflight"
 	api "github.com/qorio/api/passport"
@@ -13,10 +12,6 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-)
-
-var (
-	authKeyFile = flag.String("auth_public_key_file", "", "Auth public key file")
 )
 
 type mock struct {
@@ -58,19 +53,6 @@ func (this *mock) Close() {
 
 func ptr(s string) *string {
 	return &s
-}
-
-func check_error_response_reason(t *testing.T, body string, expected string) {
-	dec := json.NewDecoder(strings.NewReader(body))
-	authResponse := make(map[string]string)
-
-	if err := dec.Decode(&authResponse); err != nil {
-		t.Error(err)
-	}
-
-	reason, has := authResponse["error"]
-	assert.Equal(t, true, has)
-	assert.Equal(t, expected, reason)
 }
 
 func TestAuthNotFound(t *testing.T) {
@@ -164,22 +146,6 @@ func TestAuthNotFound(t *testing.T) {
 		assert.Equal(t, 400, response.StatusCode)
 		check_error_response_reason(t, response.Body, "error-missing-input")
 	})
-}
-
-func to_json(o interface{}, t *testing.T) []byte {
-	data, err := json.Marshal(o)
-	if err != nil {
-		t.Error(err)
-	}
-	return data
-}
-
-func to_protobuf(o proto.Message, t *testing.T) []byte {
-	data, err := proto.Marshal(o)
-	if err != nil {
-		t.Error(err)
-	}
-	return data
 }
 
 func TestNotAMember(t *testing.T) {

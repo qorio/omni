@@ -120,14 +120,14 @@ type Engine interface {
 type engine struct {
 	spec       *api.ServiceMethods
 	router     *mux.Router
-	auth       *auth.Service
+	auth       auth.Service
 	methods    map[string]*ServiceMethodImpl
 	event_chan chan *EngineEvent
 	done_chan  chan bool
 	webhooks   WebHooksService
 }
 
-func NewEngine(spec *api.ServiceMethods, auth *auth.Service, webhooks WebHooksService) Engine {
+func NewEngine(spec *api.ServiceMethods, auth auth.Service, webhooks WebHooksService) Engine {
 	e := &engine{
 		spec:       spec,
 		router:     mux.NewRouter(),

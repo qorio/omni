@@ -16,11 +16,11 @@ type EncryptionService interface {
 
 // Currently implemented by the Auth service -- yeah kinda weird, move it later.
 
-func (this *Service) Encrypt(input []byte) (encrypted []byte, err error) {
+func (this *serviceImpl) Encrypt(input []byte) (encrypted []byte, err error) {
 	return encrypt(this.settings.SignKey, input)
 }
 
-func (this *Service) Decrypt(input []byte) (decrypted []byte, err error) {
+func (this *serviceImpl) Decrypt(input []byte) (decrypted []byte, err error) {
 	return decrypt(this.settings.SignKey, input)
 }
 

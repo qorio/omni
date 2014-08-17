@@ -16,16 +16,21 @@ message Login {
 
 	optional string id = 1;
 
-	optional string email = 2;
-	optional string phone = 3;
-	required string password = 4;
-
 	message Location {
     		required double lon = 1;
     		required double lat = 2;
     	}
+	optional Location location = 2;
 
-	optional Location location = 5;
 
-	optional string username = 6;
+	optional string username = 3;
+	optional string email = 4;
+	optional string phone = 5;
+	optional string password = 6;
+
+	message OAuth2 {
+		required string provider = 1;
+		required string user = 2;
+	}
+	optional OAuth2 oauth2 = 7;
 }

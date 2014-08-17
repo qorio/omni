@@ -18,7 +18,7 @@ func defaultResolveApplicationId(req *http.Request) string {
 	return req.URL.Host
 }
 
-func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service) (ep *EndPoint, err error) {
+func NewApiEndPoint(settings Settings, auth omni_auth.Service, service Service) (ep *EndPoint, err error) {
 	ep = &EndPoint{
 		settings: settings,
 		service:  service,
@@ -35,6 +35,6 @@ func (this *EndPoint) ServeHTTP(resp http.ResponseWriter, request *http.Request)
 	this.engine.ServeHTTP(resp, request)
 }
 
-func (this *EndPoint) ApiUpsertBeacon(context *omni_auth.Context, resp http.ResponseWriter, req *http.Request) {
+func (this *EndPoint) ApiUpsertBeacon(context omni_auth.Context, resp http.ResponseWriter, req *http.Request) {
 	glog.Infoln("ApiUpsertBeacon")
 }

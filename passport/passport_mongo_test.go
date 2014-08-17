@@ -1,25 +1,15 @@
 package passport
 
 import (
-	"encoding/json"
+	_ "encoding/json"
 	"errors"
 	"github.com/bmizerany/assert"
-	"github.com/gorilla/mux"
 	api "github.com/qorio/api/passport"
 	"github.com/qorio/omni/common"
 	"github.com/qorio/omni/rest"
 	"net/http"
 	"testing"
 )
-
-func default_settings() Settings {
-	return Settings{
-		Mongo: DbSettings{
-			Hosts: []string{"localhost"},
-			Db:    "passport_test",
-		},
-	}
-}
 
 func test_account() *api.Account {
 	embed := true
@@ -212,8 +202,6 @@ func TestWebHooks(t *testing.T) {
 	service.dropDatabase()
 	service.Close()
 
-	done_chan := make(chan bool)
-
 	// restart
 	service, err = NewService(default_settings())
 
@@ -221,54 +209,30 @@ func TestWebHooks(t *testing.T) {
 	t.Log("Started db client", service)
 
 	uuid := common.NewUUID()
-	test := &struct {
-		Err error
-	}{}
-
-	// receiver of the event callback / webhook
-	r := mux.NewRouter()
-	r.HandleFunc("/event/new-user-registration", func(resp http.ResponseWriter, req *http.Request) {
-
-		defer func() {
-			done_chan <- true
-		}()
-
-		t.Log("Received post", req.Header)
-
-		// check header
-		if _, has := req.Header[rest.WebHookHmacHeader]; !has {
-			test.Err = errors.New("no hmac header")
-			return
-		}
-
-		v := make(map[string]string)
-		dec := json.NewDecoder(req.Body)
-		err := dec.Decode(&v)
-
-		t.Log("Post body", v, "err", err)
-
-		if err != nil {
-			test.Err = err
-			return
-		}
-
-		if id, has := v["id"]; has {
-			if id != uuid.String() {
-				test.Err = errors.New("id does not match")
-				return
+	wait := start_server(t, ":9999", "/event/new-user-registration", "POST",
+		func(resp http.ResponseWriter, req *http.Request) error {
+			t.Log("Received post", req.Header)
+			// check header
+			if _, has := req.Header[rest.WebHookHmacHeader]; !has {
+				return errors.New("no hmac header")
 			}
-		} else {
-			test.Err = errors.New("no id property")
-			return
-		}
-	}).Methods("POST")
-	server := &http.Server{
-		Handler: r,
-		Addr:    ":9999",
-	}
-	go func() {
-		server.ListenAndServe()
-	}()
+
+			v := from_json(make(map[string]interface{}), req.Body, t).(map[string]interface{})
+			t.Log("Post body", v, "err", err)
+
+			if err != nil {
+				return err
+			}
+
+			if id, has := v["id"]; has {
+				if id != uuid.String() {
+					return errors.New("id does not match")
+				}
+			} else {
+				return errors.New("no id property")
+			}
+			return nil
+		})
 
 	account := test_account()
 	account.Id = ptr(uuid.String())
@@ -285,7 +249,6 @@ func TestWebHooks(t *testing.T) {
 
 	assert.Equal(t, nil, err)
 
-	<-done_chan
-
-	assert.Equal(t, nil, test.Err)
+	testErr := wait(2)
+	assert.Equal(t, nil, testErr)
 }

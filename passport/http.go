@@ -20,7 +20,7 @@ type EndPoint struct {
 	encrypt  omni_auth.EncryptionService
 }
 
-func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service,
+func NewApiEndPoint(settings Settings, auth omni_auth.Service, service Service,
 	webhooks omni_rest.WebHooksService,
 	encrypt omni_auth.EncryptionService) (ep *EndPoint, err error) {
 	ep = &EndPoint{
@@ -33,6 +33,10 @@ func NewApiEndPoint(settings Settings, auth *omni_auth.Service, service Service,
 	ep.engine.Bind(
 		omni_rest.SetHandler(api.Methods[api.AuthUser], ep.ApiAuthenticate),
 		omni_rest.SetHandler(api.Methods[api.AuthUserForService], ep.ApiAuthenticateForService),
+	)
+
+	ep.engine.Bind(
+		omni_rest.SetAuthenticatedHandler(api.Methods[api.RegisterUser], ep.ApiRegisterUser),
 	)
 
 	ep.engine.Bind(
@@ -168,7 +172,7 @@ func (this *EndPoint) auth(resp http.ResponseWriter, req *http.Request, get_serv
 	}
 }
 
-func (this *EndPoint) ApiRegisterUser(resp http.ResponseWriter, req *http.Request) {
+func (this *EndPoint) ApiRegisterUser(context omni_auth.Context, resp http.ResponseWriter, req *http.Request) {
 	requestedServiceId := this.resolve_service_id(this.engine.GetUrlParameter(req, "service"), req)
 	if requestedServiceId == "" {
 		this.engine.HandleError(resp, req, "cannot-determine-service", http.StatusBadRequest)

@@ -77,11 +77,12 @@ func (m *AuthResponse) GetToken() string {
 
 type Login struct {
 	Id               *string         `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
-	Email            *string         `protobuf:"bytes,2,opt,name=email" json:"email,omitempty"`
-	Phone            *string         `protobuf:"bytes,3,opt,name=phone" json:"phone,omitempty"`
-	Password         *string         `protobuf:"bytes,4,req,name=password" json:"password,omitempty"`
-	Location         *Login_Location `protobuf:"bytes,5,opt,name=location" json:"location,omitempty"`
-	Username         *string         `protobuf:"bytes,6,opt,name=username" json:"username,omitempty"`
+	Location         *Login_Location `protobuf:"bytes,2,opt,name=location" json:"location,omitempty"`
+	Username         *string         `protobuf:"bytes,3,opt,name=username" json:"username,omitempty"`
+	Email            *string         `protobuf:"bytes,4,opt,name=email" json:"email,omitempty"`
+	Phone            *string         `protobuf:"bytes,5,opt,name=phone" json:"phone,omitempty"`
+	Password         *string         `protobuf:"bytes,6,opt,name=password" json:"password,omitempty"`
+	Oauth2           *Login_OAuth2   `protobuf:"bytes,7,opt,name=oauth2" json:"oauth2,omitempty"`
 	XXX_unrecognized []byte          `json:"-"`
 }
 
@@ -92,6 +93,20 @@ func (*Login) ProtoMessage()    {}
 func (m *Login) GetId() string {
 	if m != nil && m.Id != nil {
 		return *m.Id
+	}
+	return ""
+}
+
+func (m *Login) GetLocation() *Login_Location {
+	if m != nil {
+		return m.Location
+	}
+	return nil
+}
+
+func (m *Login) GetUsername() string {
+	if m != nil && m.Username != nil {
+		return *m.Username
 	}
 	return ""
 }
@@ -117,18 +132,11 @@ func (m *Login) GetPassword() string {
 	return ""
 }
 
-func (m *Login) GetLocation() *Login_Location {
+func (m *Login) GetOauth2() *Login_OAuth2 {
 	if m != nil {
-		return m.Location
+		return m.Oauth2
 	}
 	return nil
-}
-
-func (m *Login) GetUsername() string {
-	if m != nil && m.Username != nil {
-		return *m.Username
-	}
-	return ""
 }
 
 type Login_Location struct {
@@ -153,6 +161,30 @@ func (m *Login_Location) GetLat() float64 {
 		return *m.Lat
 	}
 	return 0
+}
+
+type Login_OAuth2 struct {
+	Provider         *string `protobuf:"bytes,1,req,name=provider" json:"provider,omitempty"`
+	User             *string `protobuf:"bytes,2,req,name=user" json:"user,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *Login_OAuth2) Reset()         { *m = Login_OAuth2{} }
+func (m *Login_OAuth2) String() string { return proto.CompactTextString(m) }
+func (*Login_OAuth2) ProtoMessage()    {}
+
+func (m *Login_OAuth2) GetProvider() string {
+	if m != nil && m.Provider != nil {
+		return *m.Provider
+	}
+	return ""
+}
+
+func (m *Login_OAuth2) GetUser() string {
+	if m != nil && m.User != nil {
+		return *m.User
+	}
+	return ""
 }
 
 func init() {

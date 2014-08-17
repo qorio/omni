@@ -140,15 +140,5 @@ it blindly to other people's files can cause enormously messy diffs!"
                (h (window-height w)))
           (select-window w)
           (switch-to-buffer "*compilation*")
-          (shrink-window (- h 30)))))))
+          (shrink-window (- h 20)))))))
 (add-hook 'compilation-mode-hook 'my-compilation-hook)
-
-(defun layout-for-80-col ()
-   "Lay out the frame as two 80-column windows across"
-   (interactive)
-   (when window-system
-     (require 'frame-cmds)
-     (set-frame-width (selected-frame) 160)
-     (with-selected-window (get-mru-window)
-       (delete-other-windows)
-       (split-window-right 80))))

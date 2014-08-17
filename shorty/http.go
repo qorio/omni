@@ -39,7 +39,7 @@ type ShortyEndPoint struct {
 	service       Shorty
 }
 
-func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty, auth *omni_auth.Service) (api *ShortyEndPoint, err error) {
+func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty, auth omni_auth.Service) (api *ShortyEndPoint, err error) {
 	if requestParser, err := omni_http.NewRequestParser(settings.GeoIpDbFilePath); err == nil {
 		api = &ShortyEndPoint{
 			settings:      settings,

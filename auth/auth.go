@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"io/ioutil"
+	"net/http"
 	"time"
 )
 
@@ -21,11 +22,24 @@ type UUID string
 type Settings struct {
 	SignKey  []byte
 	TTLHours time.Duration
+	IsAuthOn IsAuthOn
 }
 
-type Service struct {
+type Service interface {
+	NewToken() (token *Token)
+	SignedString(token *Token) (tokenString string, err error)
+	Parse(tokenString string) (token *Token, err error)
+	RequiresAuth(handler HttpHandler) func(http.ResponseWriter, *http.Request)
+}
+
+// Function to override checking of flag.  This is useful for testing
+// to turn off auth.
+type IsAuthOn func() bool
+
+type serviceImpl struct {
 	settings Settings
 	GetTime  func() time.Time
+	IsAuthOn IsAuthOn
 }
 
 type Token struct {
@@ -40,14 +54,15 @@ func ReadPublicKey(filename string) (key []byte, err error) {
 	return
 }
 
-func Init(settings Settings) *Service {
-	return &Service{
+func Init(settings Settings) *serviceImpl {
+	return &serviceImpl{
 		settings: settings,
 		GetTime:  func() time.Time { return time.Now() },
+		IsAuthOn: settings.IsAuthOn,
 	}
 }
 
-func (this *Service) NewToken() (token *Token) {
+func (this *serviceImpl) NewToken() (token *Token) {
 	token = &Token{token: jwt.New(jwt.GetSigningMethod("HS256"))}
 	if this.settings.TTLHours > 0 {
 		token.token.Claims["exp"] = time.Now().Add(time.Hour * this.settings.TTLHours).Unix()
@@ -55,12 +70,12 @@ func (this *Service) NewToken() (token *Token) {
 	return
 }
 
-func (this *Service) SignedString(token *Token) (tokenString string, err error) {
+func (this *serviceImpl) SignedString(token *Token) (tokenString string, err error) {
 	tokenString, err = token.token.SignedString(this.settings.SignKey)
 	return
 }
 
-func (this *Service) Parse(tokenString string) (token *Token, err error) {
+func (this *serviceImpl) Parse(tokenString string) (token *Token, err error) {
 	t, err := jwt.Parse(tokenString, func(t *jwt.Token) ([]byte, error) {
 		return this.settings.SignKey, nil
 	})

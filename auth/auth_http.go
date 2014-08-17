@@ -7,28 +7,43 @@ import (
 	"strings"
 )
 
-type Context struct {
+type Context interface {
+	HasKey(key string) bool
+	GetString(key string) string
+	Get(key string) interface{}
+}
+
+type context struct {
 	token *Token
 }
 
-func (this *Context) HasKey(key string) bool {
+func (this *context) HasKey(key string) bool {
 	return this.token.HasKey(key)
 }
 
-func (this *Context) GetString(key string) string {
+func (this *context) GetString(key string) string {
 	return this.token.GetString(key)
 }
 
-func (this *Context) Get(key string) interface{} {
+func (this *context) Get(key string) interface{} {
 	return this.token.Get(key)
 }
 
-type HttpHandler func(auth *Context, resp http.ResponseWriter, req *http.Request)
+type HttpHandler func(auth Context, resp http.ResponseWriter, req *http.Request)
 
-func (service *Service) RequiresAuth(handler HttpHandler) func(http.ResponseWriter, *http.Request) {
+func (service *serviceImpl) RequiresAuth(handler HttpHandler) func(http.ResponseWriter, *http.Request) {
 	return func(resp http.ResponseWriter, req *http.Request) {
-		info := &Context{}
-		if *doAuth {
+		info := &context{}
+		checkAuth := true
+		if service.IsAuthOn != nil {
+			checkAuth = service.IsAuthOn()
+		} else {
+			checkAuth = *doAuth
+		}
+		if checkAuth {
+
+			// Format:  Authorization: Bearer|token|Oauth + ' ' + <token>
+
 			// Get the auth header
 			header := req.Header.Get("Authorization")
 			if header == "" {
@@ -36,7 +51,7 @@ func (service *Service) RequiresAuth(handler HttpHandler) func(http.ResponseWrit
 				return
 			}
 
-			tokenString := strings.Trim(strings.TrimLeft(header, "Bearer "), " ")
+			tokenString := strings.SplitAfterN(header, " ", 2)[1]
 			token, err := service.Parse(tokenString)
 			if err != nil {
 				glog.Warningln("auth-error", err)
