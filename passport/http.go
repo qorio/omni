@@ -1,7 +1,6 @@
 package passport
 
 import (
-	"fmt"
 	"github.com/golang/glog"
 	api "github.com/qorio/api/passport"
 	omni_auth "github.com/qorio/omni/auth"
@@ -108,13 +107,8 @@ func (this *EndPoint) auth(resp http.ResponseWriter, req *http.Request, get_serv
 	}
 
 	// Check credentials
-	encrypted, err := this.encrypt.Encrypt([]byte(request.GetPassword()))
-	if err == nil {
-		encryptedStr := fmt.Sprintf("%0x", encrypted)
-		request.Password = &encryptedStr
-	}
-
-	if account.Primary.GetPassword() != request.GetPassword() {
+	userProvided := request.GetPassword()
+	if !Password(&userProvided).MatchAccount(account) {
 		this.engine.HandleError(resp, req, "error-bad-credentials", http.StatusUnauthorized)
 		return
 	}
@@ -197,13 +191,6 @@ func (this *EndPoint) ApiRegisterUser(context omni_auth.Context, resp http.Respo
 		return
 	}
 
-	// Encrypt the password
-	encrypted, err := this.encrypt.Encrypt([]byte(login.GetPassword()))
-	if err == nil {
-		encryptedStr := fmt.Sprintf("%0x", encrypted)
-		login.Password = &encryptedStr
-	}
-
 	// Create the entire Account object
 	uuid := omni_common.NewUUID().String()
 	login.Id = &uuid
@@ -214,6 +201,10 @@ func (this *EndPoint) ApiRegisterUser(context omni_auth.Context, resp http.Respo
 		Primary:          &login,
 		CreatedTimestamp: &ts,
 	}
+
+	// Store the hmac instead
+	Password(account.Primary.Password).Hash().Update()
+
 	err = this.service.SaveAccount(account)
 	if err != nil {
 		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)

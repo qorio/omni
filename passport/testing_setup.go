@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"github.com/bmizerany/assert"
-	_ "github.com/bmizerany/assert"
-	_ "github.com/drewolson/testflight"
 	"github.com/gorilla/mux"
 	omni_auth "github.com/qorio/omni/auth"
 	"io"
@@ -60,18 +58,42 @@ func default_settings() Settings {
 	}
 }
 
-func endpoint(t *testing.T) *EndPoint {
-
+func default_auth_settings(t *testing.T) omni_auth.Settings {
 	key, err := omni_auth.ReadPublicKey(*authKeyFile)
 	if err != nil {
 		t.Log("Cannot read public key file", *authKeyFile)
 		t.Fatal(err)
 	}
-	auth := omni_auth.Init(omni_auth.Settings{
+	return omni_auth.Settings{
 		SignKey:  key,
 		TTLHours: time.Duration(1),
-	})
-	service, err := NewService(default_settings())
+	}
+}
+
+func default_auth(t *testing.T) interface{} {
+	return omni_auth.Init(default_auth_settings(t))
+}
+
+func default_endpoint(t *testing.T) *EndPoint {
+	return endpoint(t, default_auth_settings(t), default_settings(), nil)
+}
+
+type serviceImplInit func(*testing.T, *serviceImpl)
+
+func endpoint(t *testing.T, authSettings omni_auth.Settings, s Settings, serviceInits ...serviceImplInit) *EndPoint {
+
+	auth := omni_auth.Init(authSettings)
+	service, err := NewService(s)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, serviceInit := range serviceInits {
+		if serviceInit != nil {
+			serviceInit(t, service)
+		}
+	}
 
 	endpoint, err := NewApiEndPoint(default_settings(), auth, service, service, auth)
 	if err != nil {

@@ -5,6 +5,14 @@ import (
 )
 
 const (
+	ManageAccount api.AuthScope = iota
+)
+
+var AuthScopes = api.AuthScopes{
+	ManageAccount: "manage_account",
+}
+
+const (
 	AuthUser api.ServiceMethod = iota
 	AuthUserForService
 	RegisterUser
@@ -52,7 +60,7 @@ Authentication endpoint.
 	},
 
 	RegisterUser: api.MethodSpec{
-		AuthScope: "*",
+		AuthScope: AuthScopes[ManageAccount],
 		Doc: `
 User account registration.  On successful registration, the webhook of the corresponding
 service will be called.  It is up to the service to then create any additional account
@@ -77,7 +85,7 @@ and is registered for the particular service.
 	},
 
 	FetchAccount: api.MethodSpec{
-		AuthScope: "*",
+		AuthScope: AuthScopes[ManageAccount],
 		Doc: `
 Returns the account object.
 `,
@@ -92,7 +100,7 @@ Returns the account object.
 	},
 
 	DeleteAccount: api.MethodSpec{
-		AuthScope: "*",
+		AuthScope: AuthScopes[ManageAccount],
 		Doc: `
 Deletes the account.
 `,
@@ -104,7 +112,7 @@ Deletes the account.
 	},
 
 	CreateOrUpdateAccount: api.MethodSpec{
-		AuthScope: "*",
+		AuthScope: AuthScopes[ManageAccount],
 		Doc: `
 Create or update account. If id is missing, a new record will be created;
 otherwise, an existing record will be overwritten with the POST value.
@@ -120,7 +128,7 @@ otherwise, an existing record will be overwritten with the POST value.
 	},
 
 	UpdateAccountPrimaryLogin: api.MethodSpec{
-		AuthScope: "*",
+		AuthScope: AuthScopes[ManageAccount],
 		Doc: `
 Update primary login for account.
 `,
@@ -135,7 +143,7 @@ Update primary login for account.
 	},
 
 	AddOrUpdateAccountService: api.MethodSpec{
-		AuthScope: "*",
+		AuthScope: AuthScopes[ManageAccount],
 		Doc: `
 Create or update a service / application in an existing account
 `,
@@ -150,7 +158,7 @@ Create or update a service / application in an existing account
 	},
 
 	AddOrUpdateServiceAttribute: api.MethodSpec{
-		AuthScope: "*",
+		AuthScope: AuthScopes[ManageAccount],
 		Doc: `
 Create or update a service / application attribute in an existing account and application.
 `,

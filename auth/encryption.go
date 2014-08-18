@@ -3,7 +3,9 @@ package auth
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"io"
@@ -12,12 +14,35 @@ import (
 type EncryptionService interface {
 	Encrypt(input []byte) (encrypted []byte, err error)
 	Decrypt(input []byte) (decrypted []byte, err error)
+	EncryptString(input string) (encrypted string, err error)
+	HmacSha256(input []byte) (h []byte)
+	HmacSha256String(input string) (h string)
 }
 
 // Currently implemented by the Auth service -- yeah kinda weird, move it later.
 
+func (this *serviceImpl) HmacSha256(input []byte) (h []byte) {
+	mac := hmac.New(sha256.New, this.settings.SignKey)
+	mac.Write(input)
+	h = mac.Sum(nil)
+	return
+}
+
+func (this *serviceImpl) HmacSha256String(input string) (h string) {
+	buff := this.HmacSha256([]byte(input))
+	return base64.StdEncoding.EncodeToString(buff)
+}
+
 func (this *serviceImpl) Encrypt(input []byte) (encrypted []byte, err error) {
 	return encrypt(this.settings.SignKey, input)
+}
+
+func (this *serviceImpl) EncryptString(input string) (encrypted string, err error) {
+	buff, err := this.Encrypt([]byte(input))
+	if err == nil {
+		encrypted = base64.StdEncoding.EncodeToString(buff)
+	}
+	return
 }
 
 func (this *serviceImpl) Decrypt(input []byte) (decrypted []byte, err error) {

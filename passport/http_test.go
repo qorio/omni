@@ -168,6 +168,7 @@ func TestNotAMember(t *testing.T) {
 
 	svc.findByEmail = func(email string) (account *api.Account, err error) {
 		password := "test"
+		Password(&password).Hash().Update()
 		return &api.Account{Primary: &api.Login{Password: &password}}, nil
 	}
 
@@ -213,6 +214,7 @@ func TestFoundAccountAndService(t *testing.T) {
 	t.Log("test finding by email")
 	svc.findByEmail = func(email string) (account *api.Account, err error) {
 		password := "test"
+		Password(&password).Hash().Update()
 		return &api.Account{
 			Primary: &api.Login{Password: &password},
 			Services: []*api.Service{
@@ -357,6 +359,7 @@ func TestFoundAccountButNotMatchService(t *testing.T) {
 
 	svc.findByEmail = func(email string) (account *api.Account, err error) {
 		password := "test"
+		Password(&password).Hash().Update()
 		return &api.Account{
 			Primary: &api.Login{Password: &password},
 			Services: []*api.Service{

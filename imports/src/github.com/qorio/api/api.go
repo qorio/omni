@@ -1,5 +1,8 @@
 package api
 
+type AuthScope int
+type AuthScopes map[AuthScope]string
+
 type ServiceMethod int
 type EventKey string
 

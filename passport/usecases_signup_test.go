@@ -5,33 +5,11 @@ import (
 	"github.com/bmizerany/assert"
 	"github.com/drewolson/testflight"
 	api "github.com/qorio/api/passport"
+	// omni_common "github.com/qorio/omni/common"
 	omni_rest "github.com/qorio/omni/rest"
 	"net/http"
 	"testing"
 )
-
-func TestNoUnaunthenticatedRegistrationCall(t *testing.T) {
-	wait := start_server(t, ":9999", "/event/new-user-registration", "POST",
-		func(resp http.ResponseWriter, req *http.Request) error {
-			return errors.New("This should not be called because request isn't authenticated.")
-		})
-
-	testflight.WithServer(endpoint(t), func(r *testflight.Requester) {
-
-		t.Log("Testing user registration without authentication token")
-
-		assert.Equal(t, nil, nil)
-
-		login := api.Methods[api.RegisterUser].RequestBody().(api.Login)
-
-		response := r.Post("/api/v1/register/test", "application/protobuf", string(to_protobuf(&login, t)))
-		t.Log("Got response", response.Body)
-		assert.Equal(t, 401, response.StatusCode)
-	})
-
-	err := wait(1)
-	assert.Equal(t, nil, err)
-}
 
 func TestRegisterUser(t *testing.T) {
 	wait := start_server(t, ":9999", "/event/new-user-registration", "POST",
@@ -48,18 +26,26 @@ func TestRegisterUser(t *testing.T) {
 			return nil
 		})
 
-	testflight.WithServer(endpoint(t), func(r *testflight.Requester) {
+	authSettings := default_auth_settings(t)
+	authSettings.CheckScope = func(methodScope string, grantedScopes []string) bool {
+		return true
+	}
 
-		t.Log("Testing user registration without authentication token")
+	testflight.WithServer(endpoint(t, authSettings, default_settings(),
+		initialize_service_insert_root_account,
+		initialize_service_log),
+		func(r *testflight.Requester) {
 
-		assert.Equal(t, nil, nil)
+			t.Log("Testing user registration without authentication token")
 
-		login := api.Methods[api.RegisterUser].RequestBody().(api.Login)
+			assert.Equal(t, nil, nil)
 
-		response := r.Post("/api/v1/register/test", "application/protobuf", string(to_protobuf(&login, t)))
-		t.Log("Got response", response)
-		assert.Equal(t, 401, response.StatusCode)
-	})
+			login := api.Methods[api.RegisterUser].RequestBody().(api.Login)
+
+			response := r.Post("/api/v1/register/test", "application/protobuf", string(to_protobuf(&login, t)))
+			t.Log("Got response", response)
+			assert.Equal(t, 401, response.StatusCode)
+		})
 
 	err := wait(2)
 	assert.Equal(t, nil, err)
