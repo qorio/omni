@@ -84,7 +84,11 @@ func TestAuthenticateUser(t *testing.T) {
 			authRequest.Password = ptr("rootpass")
 
 			response := r.Post("/api/v1/auth/test", "application/protobuf", string(to_protobuf(&authRequest, t)))
-			t.Log("Got response", response)
 			assert.Equal(t, 200, response.StatusCode)
+
+			authResponse := api.Methods[api.AuthUser].ResponseBody().(api.AuthResponse)
+			from_protobuf(&authResponse, response.RawBody, t)
+			t.Log("authResponse:", authResponse, "token:", authResponse.GetToken())
+			assert.NotEqual(t, "", authResponse.GetToken())
 		})
 }

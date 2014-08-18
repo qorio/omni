@@ -42,6 +42,18 @@ func to_protobuf(o proto.Message, t *testing.T) []byte {
 	return data
 }
 
+func from_protobuf(o proto.Message, buff []byte, t *testing.T) interface{} {
+	// buff, err := ioutil.ReadAll(src)
+	// if err != nil {
+	// 	t.Error(err)
+	// }
+
+	if err := proto.Unmarshal(buff, o); err != nil {
+		t.Error(err)
+	}
+	return o
+}
+
 func check_error_response_reason(t *testing.T, body string, expected string) {
 	authResponse := from_json(make(map[string]interface{}), strings.NewReader(body), t).(map[string]interface{})
 	reason, has := authResponse["error"]
