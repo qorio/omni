@@ -5,8 +5,6 @@ import (
 	"github.com/bmizerany/assert"
 	"github.com/drewolson/testflight"
 	api "github.com/qorio/api/passport"
-	// omni_common "github.com/qorio/omni/common"
-	//omni_rest "github.com/qorio/omni/rest"
 	"net/http"
 	"testing"
 )
@@ -90,5 +88,12 @@ func TestAuthenticateUser(t *testing.T) {
 			from_protobuf(&authResponse, response.RawBody, t)
 			t.Log("authResponse:", authResponse, "token:", authResponse.GetToken())
 			assert.NotEqual(t, "", authResponse.GetToken())
+
+			authService := default_auth(t)
+			token, _ := authService.Parse(authResponse.GetToken())
+
+			t.Log("Scopes:", token.GetString("@scopes"))
+			assert.Equal(t, api.AuthScopes[api.ManageAccount], token.GetString("@scopes"))
+
 		})
 }

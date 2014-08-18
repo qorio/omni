@@ -82,7 +82,7 @@ func default_auth_settings(t *testing.T) omni_auth.Settings {
 	}
 }
 
-func default_auth(t *testing.T) interface{} {
+func default_auth(t *testing.T) omni_auth.Service {
 	return omni_auth.Init(default_auth_settings(t))
 }
 
