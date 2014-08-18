@@ -16,17 +16,16 @@ type EndPoint struct {
 	settings Settings
 	service  Service
 	engine   omni_rest.Engine
-	encrypt  omni_auth.EncryptionService
 }
 
-func NewApiEndPoint(settings Settings, auth omni_auth.Service, service Service,
-	webhooks omni_rest.WebHooksService,
-	encrypt omni_auth.EncryptionService) (ep *EndPoint, err error) {
+func NewApiEndPoint(settings Settings,
+	auth omni_auth.Service,
+	service Service,
+	webhooks omni_rest.WebHooksService) (ep *EndPoint, err error) {
 	ep = &EndPoint{
 		settings: settings,
 		service:  service,
 		engine:   omni_rest.NewEngine(&api.Methods, auth, webhooks),
-		encrypt:  encrypt,
 	}
 
 	ep.engine.Bind(

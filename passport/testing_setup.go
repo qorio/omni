@@ -95,7 +95,7 @@ func endpoint(t *testing.T, authSettings omni_auth.Settings, s Settings, service
 		}
 	}
 
-	endpoint, err := NewApiEndPoint(default_settings(), auth, service, service, auth)
+	endpoint, err := NewApiEndPoint(default_settings(), auth, service, service)
 	if err != nil {
 		t.Log("Error starting endpoint:", err)
 		t.Fatal(err)

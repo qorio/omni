@@ -11,7 +11,7 @@ import (
 	"io"
 )
 
-type EncryptionService interface {
+type CryptoService interface {
 	Encrypt(input []byte) (encrypted []byte, err error)
 	Decrypt(input []byte) (decrypted []byte, err error)
 	EncryptString(input string) (encrypted string, err error)
