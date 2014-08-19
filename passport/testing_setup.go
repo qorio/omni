@@ -43,11 +43,6 @@ func to_protobuf(o proto.Message, t *testing.T) []byte {
 }
 
 func from_protobuf(o proto.Message, buff []byte, t *testing.T) interface{} {
-	// buff, err := ioutil.ReadAll(src)
-	// if err != nil {
-	// 	t.Error(err)
-	// }
-
 	if err := proto.Unmarshal(buff, o); err != nil {
 		t.Error(err)
 	}

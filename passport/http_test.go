@@ -260,10 +260,10 @@ func TestFoundAccountAndService(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		assert.Equal(t, serviceStatus, token.GetString("@status"))
-		assert.Equal(t, serviceAccountId, token.GetString("@service_account_id"))
-		assert.Equal(t, "admin,readwrite", token.GetString("@scopes"))
-		assert.Equal(t, value1, token.GetString(attribute1))
+		assert.Equal(t, serviceStatus, token.GetString("@test-app/status"))
+		assert.Equal(t, serviceAccountId, token.GetString("@test-app/service_account_id"))
+		assert.Equal(t, "admin,readwrite", token.GetString("@test-app/scopes"))
+		assert.Equal(t, value1, token.GetString("test-app/"+attribute1))
 	})
 
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
@@ -285,10 +285,10 @@ func TestFoundAccountAndService(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		assert.Equal(t, serviceStatus, token.GetString("@status"))
-		assert.Equal(t, serviceAccountId, token.GetString("@service_account_id"))
-		assert.Equal(t, "admin,readwrite", token.GetString("@scopes"))
-		assert.Equal(t, value1, token.GetString(attribute1))
+		assert.Equal(t, serviceStatus, token.GetString("@test-app/status"))
+		assert.Equal(t, serviceAccountId, token.GetString("@test-app/service_account_id"))
+		assert.Equal(t, "admin,readwrite", token.GetString("@test-app/scopes"))
+		assert.Equal(t, value1, token.GetString("test-app/"+attribute1))
 	})
 
 	// test finding by phone
@@ -320,9 +320,9 @@ func TestFoundAccountAndService(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		assert.Equal(t, serviceStatus, token.GetString("@status"))
-		assert.Equal(t, serviceAccountId, token.GetString("@service_account_id"))
-		assert.Equal(t, value1, token.GetString(attribute1))
+		assert.Equal(t, serviceStatus, token.GetString("@test-app/status"))
+		assert.Equal(t, serviceAccountId, token.GetString("@test-app/service_account_id"))
+		assert.Equal(t, value1, token.GetString("test-app/"+attribute1))
 	})
 }
 
@@ -381,7 +381,7 @@ func TestFoundAccountButNotMatchService(t *testing.T) {
 	}
 
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
-		response := r.Post("/api/v1/auth", "application/json", string(to_json(ar, t)))
+		response := r.Post("/api/v1/auth/not-test-app", "application/json", string(to_json(ar, t)))
 
 		t.Log("Got response", response.Body)
 		assert.Equal(t, 401, response.StatusCode)

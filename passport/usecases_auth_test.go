@@ -21,7 +21,7 @@ var initialize_service_insert_root_account = func(t *testing.T, impl *serviceImp
 				Id:        ptr("test"),
 				AccountId: ptr("test-root"),
 				Scopes: []string{
-					api.AuthScopes[api.ManageAccount],
+					api.AuthScopes[api.AccountUpdate],
 				},
 			},
 		},
@@ -92,8 +92,7 @@ func TestAuthenticateUser(t *testing.T) {
 			authService := default_auth(t)
 			token, _ := authService.Parse(authResponse.GetToken())
 
-			t.Log("Scopes:", token.GetString("@scopes"))
-			assert.Equal(t, api.AuthScopes[api.ManageAccount], token.GetString("@scopes"))
-
+			t.Log("Scopes:", token.GetString("@test/scopes"))
+			assert.Equal(t, api.AuthScopes[api.AccountUpdate], token.GetString("@test/scopes"))
 		})
 }

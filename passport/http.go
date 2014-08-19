@@ -81,7 +81,9 @@ func (this *EndPoint) ApiAuthenticateForService(resp http.ResponseWriter, req *h
 	})
 }
 
-func (this *EndPoint) auth(resp http.ResponseWriter, req *http.Request, get_service func(*EndPoint, *api.AuthRequest) string) {
+func (this *EndPoint) auth(resp http.ResponseWriter, req *http.Request,
+	get_service_friendly_name func(*EndPoint, *api.AuthRequest) string) {
+
 	request := api.Methods[api.AuthUser].RequestBody().(api.AuthRequest)
 	err := this.engine.Unmarshal(req, &request)
 	if err != nil {
@@ -112,41 +114,57 @@ func (this *EndPoint) auth(resp http.ResponseWriter, req *http.Request, get_serv
 		return
 	}
 
-	requestedServiceId := this.resolve_service_id(get_service(this, &request), req)
-	var service *api.Service
-	for _, test := range account.GetServices() {
-		if test.GetId() == requestedServiceId {
-			service = test
-			break
+	serviceFriendlyName := get_service_friendly_name(this, &request)
+	requestedServiceId := this.resolve_service_id(get_service_friendly_name(this, &request), req)
+
+	matches := 0
+	matchAll := false
+
+	if serviceFriendlyName == "" {
+		// If the friendly name of the service is "", this means we are retrieving all the services
+		// and their auth scopes.
+		matchAll = true
+	}
+
+	token := this.engine.NewAuthToken()
+	for _, service := range account.GetServices() {
+		if matchAll || service.GetId() == requestedServiceId {
+			matches++
+			prefix := service.GetId() + "/"
+			func() {
+				// encode the token
+				token.Add("@"+prefix+"id", service.GetId()).
+					Add("@"+prefix+"status", service.GetStatus()).
+					Add("@"+prefix+"service_account_id", service.GetAccountId()).
+					Add("@"+prefix+"scopes", strings.Join(service.GetScopes(), ","))
+
+				for _, attribute := range service.GetAttributes() {
+					if attribute.GetEmbedSigninToken() {
+						switch attribute.GetType() {
+						case api.Attribute_STRING:
+							token.Add(prefix+attribute.GetKey(), attribute.GetStringValue())
+						case api.Attribute_NUMBER:
+							token.Add(prefix+attribute.GetKey(), attribute.GetNumberValue())
+						case api.Attribute_BOOL:
+							token.Add(prefix+attribute.GetKey(), attribute.GetBoolValue())
+						case api.Attribute_BLOB:
+							token.Add(prefix+attribute.GetKey(), attribute.GetBlobValue())
+						}
+					}
+				}
+			}()
+
+			if !matchAll {
+				break
+			}
 		}
 	}
 
-	if service == nil {
+	if matches == 0 {
 		this.engine.HandleError(resp, req, "error-not-a-member", http.StatusUnauthorized)
 		return
 	}
 
-	// encode the token
-	token := this.engine.NewAuthToken()
-	token.Add("@id", service.GetId()).
-		Add("@status", service.GetStatus()).
-		Add("@service_account_id", service.GetAccountId()).
-		Add("@scopes", strings.Join(service.GetScopes(), ","))
-
-	for _, attribute := range service.GetAttributes() {
-		if attribute.GetEmbedSigninToken() {
-			switch attribute.GetType() {
-			case api.Attribute_STRING:
-				token.Add(attribute.GetKey(), attribute.GetStringValue())
-			case api.Attribute_NUMBER:
-				token.Add(attribute.GetKey(), attribute.GetNumberValue())
-			case api.Attribute_BOOL:
-				token.Add(attribute.GetKey(), attribute.GetBoolValue())
-			case api.Attribute_BLOB:
-				token.Add(attribute.GetKey(), attribute.GetBlobValue())
-			}
-		}
-	}
 	tokenString, err := this.engine.SignedString(token)
 	if err != nil {
 		glog.Warningln("error-generating-auth-token", err)

@@ -5,11 +5,13 @@ import (
 )
 
 const (
-	ManageAccount api.AuthScope = iota
+	AccountUpdate api.AuthScope = iota
+	AccountReadOnly
 )
 
 var AuthScopes = api.AuthScopes{
-	ManageAccount: "manage_account",
+	AccountUpdate:   "account_update",
+	AccountReadOnly: "account_readonly",
 }
 
 const (
@@ -60,7 +62,7 @@ Authentication endpoint.
 	},
 
 	RegisterUser: api.MethodSpec{
-		AuthScope: AuthScopes[ManageAccount],
+		AuthScope: AuthScopes[AccountUpdate],
 		Doc: `
 User account registration.  On successful registration, the webhook of the corresponding
 service will be called.  It is up to the service to then create any additional account
@@ -85,7 +87,7 @@ and is registered for the particular service.
 	},
 
 	FetchAccount: api.MethodSpec{
-		AuthScope: AuthScopes[ManageAccount],
+		AuthScope: AuthScopes[AccountReadOnly],
 		Doc: `
 Returns the account object.
 `,
@@ -100,7 +102,7 @@ Returns the account object.
 	},
 
 	DeleteAccount: api.MethodSpec{
-		AuthScope: AuthScopes[ManageAccount],
+		AuthScope: AuthScopes[AccountUpdate],
 		Doc: `
 Deletes the account.
 `,
@@ -112,7 +114,7 @@ Deletes the account.
 	},
 
 	CreateOrUpdateAccount: api.MethodSpec{
-		AuthScope: AuthScopes[ManageAccount],
+		AuthScope: AuthScopes[AccountUpdate],
 		Doc: `
 Create or update account. If id is missing, a new record will be created;
 otherwise, an existing record will be overwritten with the POST value.
@@ -128,7 +130,7 @@ otherwise, an existing record will be overwritten with the POST value.
 	},
 
 	UpdateAccountPrimaryLogin: api.MethodSpec{
-		AuthScope: AuthScopes[ManageAccount],
+		AuthScope: AuthScopes[AccountUpdate],
 		Doc: `
 Update primary login for account.
 `,
@@ -143,7 +145,7 @@ Update primary login for account.
 	},
 
 	AddOrUpdateAccountService: api.MethodSpec{
-		AuthScope: AuthScopes[ManageAccount],
+		AuthScope: AuthScopes[AccountUpdate],
 		Doc: `
 Create or update a service / application in an existing account
 `,
@@ -158,7 +160,7 @@ Create or update a service / application in an existing account
 	},
 
 	AddOrUpdateServiceAttribute: api.MethodSpec{
-		AuthScope: AuthScopes[ManageAccount],
+		AuthScope: AuthScopes[AccountUpdate],
 		Doc: `
 Create or update a service / application attribute in an existing account and application.
 `,
