@@ -20,8 +20,7 @@ type serviceImpl struct {
 }
 
 type mgo_webhook struct {
-	Id      bson.ObjectId `bson:"_id"`
-	Service string
+	Service string `bson:"_id"`
 	Map     omni_rest.EventKeyUrlMap
 }
 
@@ -77,21 +76,10 @@ func NewService(settings Settings) (*serviceImpl, error) {
 
 	// This is for configuration of services like callback/webhooks
 	impl.webhooks = impl.db.C("webhooks")
-	impl.webhooks.EnsureIndex(mgo.Index{
-		Key:      []string{"service"},
-		Unique:   true,
-		DropDups: true,
-		Sparse:   true,
-		Name:     "webhooks_service",
-	})
 
 	if count, err := impl.webhooks.Count(); err == nil && count == 0 {
 		for service, ekum := range DefaultWebHooks {
-			err := impl.webhooks.Insert(&mgo_webhook{
-				Id:      bson.NewObjectId(),
-				Service: service,
-				Map:     ekum,
-			})
+			err := impl.RegisterWebHooks(service, ekum)
 			if err != nil {
 				panic(err)
 			}
@@ -145,25 +133,40 @@ func (this *serviceImpl) FindAccountByUsername(username string) (account *api.Ac
 	return &result, nil
 }
 
+// For removing sensitive information before sending back to client
+func sanitize(account *api.Account) *api.Account {
+	if account.Primary.GetEmail() == account.GetId() {
+		account.Primary.Email = nil
+	}
+	if account.Primary.GetPhone() == account.GetId() {
+		account.Primary.Phone = nil
+	}
+	if account.Primary.GetUsername() == account.GetId() {
+		account.Primary.Username = nil
+	}
+	account.Primary.Password = nil
+	return account
+}
+
 func (this *serviceImpl) SaveAccount(account *api.Account) (err error) {
 	if account.GetId() == "" {
 		uuid := omni_common.NewUUID().String()
 		account.Id = &uuid
 	}
 	if account.GetPrimary().GetId() == "" {
-		uuid2 := omni_common.NewUUID().String()
-		account.GetPrimary().Id = &uuid2
+		account.GetPrimary().Id = account.Id
 	}
 	// To work around the problem with Go's default "" value for string causing problem
 	// with unique indexes (email, phone), we assign some uuid to fill up the fields so
 	// that the fields that have unique indexes are never empty strings
 	if account.GetPrimary().GetPhone() == "" {
-		uuid3 := omni_common.NewUUID().String()
-		account.GetPrimary().Phone = &uuid3
+		account.GetPrimary().Phone = account.Id
 	}
 	if account.GetPrimary().GetEmail() == "" {
-		uuid4 := omni_common.NewUUID().String()
-		account.GetPrimary().Email = &uuid4
+		account.GetPrimary().Email = account.Id
+	}
+	if account.GetPrimary().GetUsername() == "" {
+		account.GetPrimary().Username = account.Id
 	}
 
 	changeInfo, err := this.accounts.Upsert(bson.M{"id": account.GetId()}, account)
@@ -201,11 +204,25 @@ func (this *serviceImpl) Close() {
 	glog.Infoln("Session closed", this.session)
 }
 
+func (this *serviceImpl) RegisterWebHooks(service string, ekum omni_rest.EventKeyUrlMap) error {
+	changeInfo, err := this.webhooks.Upsert(bson.M{"_id": service}, &mgo_webhook{
+		Service: service,
+		Map:     ekum,
+	})
+	glog.Infoln("Registered webhooks:", service, ekum, changeInfo, err)
+	return err
+}
+
+func (this *serviceImpl) RemoveWebHooks(service string) error {
+	return this.webhooks.Remove(bson.M{"_id": service})
+}
+
 func (this *serviceImpl) Send(serviceKey, eventKey string, message interface{}, templateString string) error {
 
 	result := &mgo_webhook{}
 
-	err := this.webhooks.Find(bson.M{"service": serviceKey}).One(result)
+	err := this.webhooks.Find(bson.M{"_id": serviceKey}).One(result)
+
 	switch {
 	case err == mgo.ErrNotFound:
 		return ERROR_NOT_FOUND

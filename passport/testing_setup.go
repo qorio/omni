@@ -85,6 +85,14 @@ func default_endpoint(t *testing.T) *EndPoint {
 	return endpoint(t, default_auth_settings(t), default_settings(), nil)
 }
 
+func default_service(t *testing.T) *serviceImpl {
+	service, err := NewService(default_settings())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return service
+}
+
 type serviceImplInit func(*testing.T, *serviceImpl)
 
 func endpoint(t *testing.T, authSettings omni_auth.Settings, s Settings, serviceInits ...serviceImplInit) *EndPoint {
@@ -121,7 +129,8 @@ func start_server(t *testing.T, addr, route, method string, handler func(resp ht
 		err = handler(resp, req)
 	}).Methods(method)
 	go func() {
-		http.ListenAndServe(addr, r)
+		err := http.ListenAndServe(addr, r)
+		t.Log("ERROR", err)
 	}()
 	return func(seconds int) error {
 		time.AfterFunc(time.Duration(seconds)*time.Second, func() { done <- true })

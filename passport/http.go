@@ -18,6 +18,8 @@ type EndPoint struct {
 	engine   omni_rest.Engine
 }
 
+var ServiceId = "passport"
+
 func NewApiEndPoint(settings Settings,
 	auth omni_auth.Service,
 	service Service,
@@ -34,16 +36,16 @@ func NewApiEndPoint(settings Settings,
 	)
 
 	ep.engine.Bind(
-		omni_rest.SetAuthenticatedHandler(api.Methods[api.RegisterUser], ep.ApiRegisterUser),
+		omni_rest.SetAuthenticatedHandler(ServiceId, api.Methods[api.RegisterUser], ep.ApiRegisterUser),
 	)
 
 	ep.engine.Bind(
-		omni_rest.SetAuthenticatedHandler(api.Methods[api.FetchAccount], ep.ApiGetAccount),
-		omni_rest.SetAuthenticatedHandler(api.Methods[api.CreateOrUpdateAccount], ep.ApiSaveAccount),
-		omni_rest.SetAuthenticatedHandler(api.Methods[api.UpdateAccountPrimaryLogin], ep.ApiSaveAccountPrimary),
-		omni_rest.SetAuthenticatedHandler(api.Methods[api.AddOrUpdateAccountService], ep.ApiSaveAccountService),
-		omni_rest.SetAuthenticatedHandler(api.Methods[api.AddOrUpdateServiceAttribute], ep.ApiSaveAccountServiceAttribute),
-		omni_rest.SetAuthenticatedHandler(api.Methods[api.DeleteAccount], ep.ApiDeleteAccount),
+		omni_rest.SetAuthenticatedHandler(ServiceId, api.Methods[api.FetchAccount], ep.ApiGetAccount),
+		omni_rest.SetAuthenticatedHandler(ServiceId, api.Methods[api.CreateOrUpdateAccount], ep.ApiSaveAccount),
+		omni_rest.SetAuthenticatedHandler(ServiceId, api.Methods[api.UpdateAccountPrimaryLogin], ep.ApiSaveAccountPrimary),
+		omni_rest.SetAuthenticatedHandler(ServiceId, api.Methods[api.AddOrUpdateAccountService], ep.ApiSaveAccountService),
+		omni_rest.SetAuthenticatedHandler(ServiceId, api.Methods[api.AddOrUpdateServiceAttribute], ep.ApiSaveAccountServiceAttribute),
+		omni_rest.SetAuthenticatedHandler(ServiceId, api.Methods[api.DeleteAccount], ep.ApiDeleteAccount),
 	)
 
 	return ep, nil
@@ -199,7 +201,7 @@ func (this *EndPoint) ApiRegisterUser(context omni_auth.Context, resp http.Respo
 
 	// Check to see if login already exists
 	account, err := this.findAccount(login.GetEmail(), login.GetPhone(), login.GetUsername())
-	if err != nil {
+	if err != nil && err != ERROR_NOT_FOUND {
 		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -233,10 +235,17 @@ func (this *EndPoint) ApiRegisterUser(context omni_auth.Context, resp http.Respo
 
 	// Use the service id to determine the necessary callback / webhook after account record has been created.
 	this.engine.EventChannel() <- &omni_rest.EngineEvent{
+		Service:       requestedServiceId,
 		ServiceMethod: api.RegisterUser,
 		Body:          struct{ Account *api.Account }{account},
 	}
 
+	sanitize(account)
+	err = this.engine.Marshal(req, account.Primary, resp)
+	if err != nil {
+		this.engine.HandleError(resp, req, "malformed-account", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (this *EndPoint) ApiSaveAccount(context omni_auth.Context, resp http.ResponseWriter, req *http.Request) {
@@ -508,7 +517,7 @@ func (this *EndPoint) ApiGetAccount(context omni_auth.Context, resp http.Respons
 		return
 	}
 
-	err = this.engine.Marshal(req, account, resp)
+	err = this.engine.Marshal(req, sanitize(account), resp)
 	if err != nil {
 		this.engine.HandleError(resp, req, "malformed-account", http.StatusInternalServerError)
 		return

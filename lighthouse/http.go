@@ -18,6 +18,8 @@ func defaultResolveApplicationId(req *http.Request) string {
 	return req.URL.Host
 }
 
+var ServiceId = "lighthouse"
+
 func NewApiEndPoint(settings Settings, auth omni_auth.Service, service Service) (ep *EndPoint, err error) {
 	ep = &EndPoint{
 		settings: settings,
@@ -26,7 +28,7 @@ func NewApiEndPoint(settings Settings, auth omni_auth.Service, service Service) 
 	}
 
 	ep.engine.Bind(
-		omni_rest.SetAuthenticatedHandler(api.Methods[api.AddOrUpdateBeacon], ep.ApiUpsertBeacon),
+		omni_rest.SetAuthenticatedHandler(ServiceId, api.Methods[api.AddOrUpdateBeacon], ep.ApiUpsertBeacon),
 	)
 	return ep, nil
 }

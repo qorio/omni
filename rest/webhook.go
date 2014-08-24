@@ -18,16 +18,16 @@ var (
 )
 
 // Webhook callbacks
-
-type WebHooksService interface {
-	Send(string, string, interface{}, string) error
-}
-
-type WebHooks map[string]EventKeyUrlMap
-
 type EventKeyUrlMap map[string]WebHook
 type WebHook struct {
 	Url string `json:"destination_url"`
+}
+type WebHooks map[string]EventKeyUrlMap
+
+type WebHooksService interface {
+	Send(string, string, interface{}, string) error
+	RegisterWebHooks(string, EventKeyUrlMap) error
+	RemoveWebHooks(string) error
 }
 
 func (this *WebHooks) ToJSON() []byte {
@@ -54,6 +54,7 @@ func (this *EventKeyUrlMap) FromJSON(s []byte) error {
 	return dec.Decode(this)
 }
 
+// Default in-memory implementation
 func (this WebHooks) Send(serviceKey, eventKey string, message interface{}, templateString string) error {
 	m := this[serviceKey]
 	if m == nil {
@@ -64,6 +65,16 @@ func (this WebHooks) Send(serviceKey, eventKey string, message interface{}, temp
 		return ERROR_NO_WEBHOOK_DEFINED
 	}
 	return hook.Send(message, templateString)
+}
+
+func (this WebHooks) RegisterWebHooks(serviceKey string, ekum EventKeyUrlMap) error {
+	this[serviceKey] = ekum
+	return nil
+}
+
+func (this WebHooks) RemoveWebHooks(serviceKey string) error {
+	delete(this, serviceKey)
+	return nil
 }
 
 func (hook *WebHook) Send(message interface{}, templateString string) error {

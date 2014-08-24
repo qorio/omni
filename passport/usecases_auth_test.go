@@ -9,19 +9,19 @@ import (
 	"testing"
 )
 
-var initialize_service_insert_root_account = func(t *testing.T, impl *serviceImpl) {
+var initialize_service_insert_test_user_account = func(t *testing.T, impl *serviceImpl) {
 	rootAccount := &api.Account{
-		Id: ptr("root"),
+		Id: ptr("user1"),
 		Primary: &api.Login{
-			Email:    ptr("root@passport"),
-			Password: ptr("rootpass"),
+			Email:    ptr("user1@passport"),
+			Password: ptr("user1pass"),
 		},
 		Services: []*api.Service{
 			&api.Service{
 				Id:        ptr("test"),
 				AccountId: ptr("test-root"),
 				Scopes: []string{
-					api.AuthScopes[api.AccountUpdate],
+					api.AuthScopes[api.AccountReadOnly],
 				},
 			},
 		},
@@ -69,17 +69,17 @@ func TestAuthenticateUser(t *testing.T) {
 	}
 
 	testflight.WithServer(endpoint(t, authSettings, default_settings(),
-		initialize_service_insert_root_account,
+		initialize_service_insert_test_user_account,
 		initialize_service_log),
 		func(r *testflight.Requester) {
 
-			t.Log("Authenticate root user")
+			t.Log("Authenticate user of service -- test")
 
 			assert.Equal(t, nil, nil)
 
 			authRequest := api.Methods[api.AuthUser].RequestBody().(api.AuthRequest)
-			authRequest.Email = ptr("root@passport")
-			authRequest.Password = ptr("rootpass")
+			authRequest.Email = ptr("user1@passport")
+			authRequest.Password = ptr("user1pass")
 
 			response := r.Post("/api/v1/auth/test", "application/protobuf", string(to_protobuf(&authRequest, t)))
 			assert.Equal(t, 200, response.StatusCode)
@@ -93,6 +93,6 @@ func TestAuthenticateUser(t *testing.T) {
 			token, _ := authService.Parse(authResponse.GetToken())
 
 			t.Log("Scopes:", token.GetString("@test/scopes"))
-			assert.Equal(t, api.AuthScopes[api.AccountUpdate], token.GetString("@test/scopes"))
+			assert.Equal(t, api.AuthScopes[api.AccountReadOnly], token.GetString("@test/scopes"))
 		})
 }

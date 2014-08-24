@@ -13,6 +13,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 var (
@@ -76,6 +77,7 @@ type ServiceMethodImpl struct {
 	Api                  api.MethodSpec // note this is by copy -- so that behavior is deterministic after initialization
 	Handler              Handler
 	AuthenticatedHandler auth.HttpHandler
+	ServiceId            string
 }
 
 func SetHandler(m api.MethodSpec, h Handler) *ServiceMethodImpl {
@@ -88,13 +90,14 @@ func SetHandler(m api.MethodSpec, h Handler) *ServiceMethodImpl {
 	}
 }
 
-func SetAuthenticatedHandler(m api.MethodSpec, h auth.HttpHandler) *ServiceMethodImpl {
+func SetAuthenticatedHandler(serviceId string, m api.MethodSpec, h auth.HttpHandler) *ServiceMethodImpl {
 	if m.AuthScope == "" {
 		panic(errors.New("Method " + m.Name + " has no oauth scopes but binding to authenticated handler"))
 	}
 	return &ServiceMethodImpl{
 		Api:                  m,
 		AuthenticatedHandler: h,
+		ServiceId:            serviceId,
 	}
 }
 
@@ -201,7 +204,9 @@ func (this *engine) Bind(endpoints ...*ServiceMethodImpl) {
 
 		case ep.AuthenticatedHandler != nil:
 			this.router.HandleFunc(ep.Api.UrlRoute,
-				this.auth.RequiresAuth(ep.Api.AuthScope, ep.AuthenticatedHandler)).Methods(ep.Api.HttpMethod).Name(ep.Api.Name)
+				this.auth.RequiresAuth(ep.Api.AuthScope, func(token *auth.Token) []string {
+					return strings.Split(token.GetString("@"+ep.ServiceId+"/scopes"), ",")
+				}, ep.AuthenticatedHandler)).Methods(ep.Api.HttpMethod).Name(ep.Api.Name)
 			this.methods[ep.Api.Name] = ep
 
 		case ep.Handler == nil && ep.AuthenticatedHandler == nil:
