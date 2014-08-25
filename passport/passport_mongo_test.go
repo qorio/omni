@@ -209,7 +209,7 @@ func TestWebHooks(t *testing.T) {
 	t.Log("Started db client", service)
 
 	uuid := common.NewUUID()
-	wait := start_server(t, ":9999", "/event/new-user-registration", "POST",
+	wait := start_server(t, "test", "new-user-registration", "/event/new-user-registration", "POST",
 		func(resp http.ResponseWriter, req *http.Request) error {
 			t.Log("Received post", req.Header)
 			// check header

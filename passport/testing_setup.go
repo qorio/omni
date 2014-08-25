@@ -4,10 +4,13 @@ import (
 	"code.google.com/p/goprotobuf/proto"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"github.com/bmizerany/assert"
 	"github.com/gorilla/mux"
 	omni_auth "github.com/qorio/omni/auth"
+	omni_rest "github.com/qorio/omni/rest"
 	"io"
+	"math/rand"
 	"net/http"
 	"strings"
 	"testing"
@@ -118,10 +121,29 @@ func endpoint(t *testing.T, authSettings omni_auth.Settings, s Settings, service
 	return endpoint
 }
 
-func start_server(t *testing.T, addr, route, method string, handler func(resp http.ResponseWriter, req *http.Request) error) (wait func(int) error) {
+func start_server(t *testing.T, service, event, route, method string,
+	handler func(resp http.ResponseWriter, req *http.Request) error) (wait func(int) error) {
+
+	// first create a new callback /webhook record
+
+	rand.Seed(time.Now().Unix())
+	port := fmt.Sprintf(":%d", rand.Int()%10000+10000)
+
+	t.Log("Creating webhook listener for service", service, ",event=", event, "at", port)
+
+	webhook := default_service(t)
+	err := webhook.RegisterWebHooks(service, omni_rest.EventKeyUrlMap{
+		event: omni_rest.WebHook{
+			Url: "http://localhost" + port + route,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Start the server
 	done := make(chan bool)
 	r := mux.NewRouter()
-	var err error
 	r.HandleFunc(route, func(resp http.ResponseWriter, req *http.Request) {
 		defer func() {
 			done <- true
@@ -129,7 +151,7 @@ func start_server(t *testing.T, addr, route, method string, handler func(resp ht
 		err = handler(resp, req)
 	}).Methods(method)
 	go func() {
-		err := http.ListenAndServe(addr, r)
+		err := http.ListenAndServe(port, r)
 		t.Log("ERROR", err)
 	}()
 	return func(seconds int) error {

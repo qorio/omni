@@ -3,15 +3,12 @@ package passport
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"github.com/bmizerany/assert"
 	"github.com/drewolson/testflight"
 	api "github.com/qorio/api/passport"
 	omni_rest "github.com/qorio/omni/rest"
-	"math/rand"
 	"net/http"
 	"testing"
-	"time"
 )
 
 var initialize_service_insert_passport_user_accounts = func(t *testing.T, impl *serviceImpl) {
@@ -62,24 +59,8 @@ var initialize_service_insert_passport_user_accounts = func(t *testing.T, impl *
 
 func TestRegisterUser(t *testing.T) {
 
-	// first create a new callback /webhook record
-	rand.Seed(time.Now().Unix())
-	port := fmt.Sprintf(":%d", rand.Int()%10000+10000)
-
-	t.Log("Creating webhook listener at", port)
-
-	webhook := default_service(t)
-	err := webhook.RegisterWebHooks("test", omni_rest.EventKeyUrlMap{
-		"new-user-registration": omni_rest.WebHook{
-			Url: "http://localhost" + port + "/event/new-user-registration",
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	var newAccountId = ptr("")
-	wait := start_server(t, port, "/event/new-user-registration", "POST",
+	wait := start_server(t, "test", "new-user-registration", "/event/new-user-registration", "POST",
 		func(resp http.ResponseWriter, req *http.Request) error {
 			t.Log("The webhook got called:", req.Body)
 			// check header

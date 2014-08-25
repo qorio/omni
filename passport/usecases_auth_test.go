@@ -40,7 +40,7 @@ var initialize_service_log = func(t *testing.T, impl *serviceImpl) {
 }
 
 func TestNoUnaunthenticatedRegistrationCall(t *testing.T) {
-	wait := start_server(t, ":9999", "/event/new-user-registration", "POST",
+	wait := start_server(t, "test", "new-user-registration", "/event/new-user-registration", "POST",
 		func(resp http.ResponseWriter, req *http.Request) error {
 			return errors.New("This should not be called because request isn't authenticated.")
 		})
