@@ -21,7 +21,6 @@ var Methods = api.ServiceMethods{
 		Doc: `
 Registers a user
 `,
-		Name:         "RegisterUser",
 		UrlRoute:     "/api/v1/register",
 		HttpMethod:   "POST",
 		ContentTypes: []string{"application/protobuf", "application/json"},
@@ -38,7 +37,6 @@ Registers a user
 		Doc: `
 Create or update a beacon inventory entry
 `,
-		Name:         "AddOrUpdateBeacon",
 		UrlRoute:     "/api/v1/beacon",
 		HttpMethod:   "POST",
 		ContentTypes: []string{"application/protobuf", "application/json"},
@@ -56,7 +54,6 @@ Create or update a beacon inventory entry
 		Doc: `
 List all beacons
 `,
-		Name:         "ListAllBeacons",
 		UrlRoute:     "/api/v1/beacon/",
 		HttpMethod:   "GET",
 		ContentTypes: []string{"application/protobuf", "application/json"},

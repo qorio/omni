@@ -82,7 +82,7 @@ type ServiceMethodImpl struct {
 
 func SetHandler(m api.MethodSpec, h Handler) *ServiceMethodImpl {
 	if m.AuthScope != "" {
-		panic(errors.New("Method " + m.Name + " has oauth scopes but binding to unauthed handler."))
+		panic(errors.New(fmt.Sprintf("Method %s has oauth scopes but binding to unauthed handler.", m)))
 	}
 	return &ServiceMethodImpl{
 		Api:     m,
@@ -92,7 +92,7 @@ func SetHandler(m api.MethodSpec, h Handler) *ServiceMethodImpl {
 
 func SetAuthenticatedHandler(serviceId string, m api.MethodSpec, h auth.HttpHandler) *ServiceMethodImpl {
 	if m.AuthScope == "" {
-		panic(errors.New("Method " + m.Name + " has no oauth scopes but binding to authenticated handler"))
+		panic(errors.New(fmt.Sprintf("Method %s has no oauth scopes but binding to authenticated handler.", m)))
 	}
 	return &ServiceMethodImpl{
 		Api:                  m,
@@ -112,7 +112,6 @@ type Engine interface {
 	ServeHTTP(http.ResponseWriter, *http.Request)
 	NewAuthToken() *auth.Token
 	SignedString(*auth.Token) (string, error)
-	ServiceMethod(string) *ServiceMethodImpl
 	GetUrlParameter(*http.Request, string) string
 	Unmarshal(*http.Request, proto.Message) error
 	Marshal(*http.Request, proto.Message, http.ResponseWriter) error
@@ -124,7 +123,6 @@ type engine struct {
 	spec       *api.ServiceMethods
 	router     *mux.Router
 	auth       auth.Service
-	methods    map[string]*ServiceMethodImpl
 	event_chan chan *EngineEvent
 	done_chan  chan bool
 	webhooks   WebHooksService
@@ -135,7 +133,6 @@ func NewEngine(spec *api.ServiceMethods, auth auth.Service, webhooks WebHooksSer
 		spec:       spec,
 		router:     mux.NewRouter(),
 		auth:       auth,
-		methods:    make(map[string]*ServiceMethodImpl),
 		event_chan: make(chan *EngineEvent),
 		done_chan:  make(chan bool),
 		webhooks:   webhooks,
@@ -174,14 +171,6 @@ func (this *engine) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
 	this.done_chan <- true
 }
 
-func (this *engine) ServiceMethod(key string) *ServiceMethodImpl {
-	if v, has := this.methods[key]; has {
-		return v
-	} else {
-		panic(errors.New(fmt.Sprintf("Mismatched key: %s", key)))
-	}
-}
-
 func (this *engine) GetUrlParameter(req *http.Request, key string) string {
 	vars := mux.Vars(req)
 	if val, has := vars[key]; has {
@@ -198,16 +187,13 @@ func (this *engine) Bind(endpoints ...*ServiceMethodImpl) {
 	for i, ep := range endpoints {
 		switch {
 		case ep.Handler != nil:
-			this.router.HandleFunc(ep.Api.UrlRoute,
-				ep.Handler).Methods(ep.Api.HttpMethod).Name(ep.Api.Name)
-			this.methods[ep.Api.Name] = ep
+			this.router.HandleFunc(ep.Api.UrlRoute, ep.Handler).Methods(ep.Api.HttpMethod)
 
 		case ep.AuthenticatedHandler != nil:
 			this.router.HandleFunc(ep.Api.UrlRoute,
 				this.auth.RequiresAuth(ep.Api.AuthScope, func(token *auth.Token) []string {
-					return strings.Split(token.GetString("@"+ep.ServiceId+"/scopes"), ",")
-				}, ep.AuthenticatedHandler)).Methods(ep.Api.HttpMethod).Name(ep.Api.Name)
-			this.methods[ep.Api.Name] = ep
+					return strings.Split(token.GetString(ep.ServiceId+"/@scopes"), ",")
+				}, ep.AuthenticatedHandler)).Methods(ep.Api.HttpMethod)
 
 		case ep.Handler == nil && ep.AuthenticatedHandler == nil:
 			panic(errors.New(fmt.Sprintf("No implementation for REST endpoint[%d]: %s", i, ep)))

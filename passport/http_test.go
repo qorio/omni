@@ -260,9 +260,9 @@ func TestFoundAccountAndService(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		assert.Equal(t, serviceStatus, token.GetString("@test-app/status"))
-		assert.Equal(t, serviceAccountId, token.GetString("@test-app/service_account_id"))
-		assert.Equal(t, "admin,readwrite", token.GetString("@test-app/scopes"))
+		assert.Equal(t, serviceStatus, token.GetString("test-app/@status"))
+		assert.Equal(t, serviceAccountId, token.GetString("test-app/@id"))
+		assert.Equal(t, "admin,readwrite", token.GetString("test-app/@scopes"))
 		assert.Equal(t, value1, token.GetString("test-app/"+attribute1))
 	})
 
@@ -285,9 +285,9 @@ func TestFoundAccountAndService(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		assert.Equal(t, serviceStatus, token.GetString("@test-app/status"))
-		assert.Equal(t, serviceAccountId, token.GetString("@test-app/service_account_id"))
-		assert.Equal(t, "admin,readwrite", token.GetString("@test-app/scopes"))
+		assert.Equal(t, serviceStatus, token.GetString("test-app/@status"))
+		assert.Equal(t, serviceAccountId, token.GetString("test-app/@id"))
+		assert.Equal(t, "admin,readwrite", token.GetString("test-app/@scopes"))
 		assert.Equal(t, value1, token.GetString("test-app/"+attribute1))
 	})
 
@@ -320,8 +320,8 @@ func TestFoundAccountAndService(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		assert.Equal(t, serviceStatus, token.GetString("@test-app/status"))
-		assert.Equal(t, serviceAccountId, token.GetString("@test-app/service_account_id"))
+		assert.Equal(t, serviceStatus, token.GetString("test-app/@status"))
+		assert.Equal(t, serviceAccountId, token.GetString("test-app/@id"))
 		assert.Equal(t, value1, token.GetString("test-app/"+attribute1))
 	})
 }

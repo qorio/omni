@@ -121,20 +121,44 @@ func endpoint(t *testing.T, authSettings omni_auth.Settings, s Settings, service
 	return endpoint
 }
 
+var test_port string
+
+func get_port() string {
+	for {
+		port := fmt.Sprintf(":%d", rand.Int()%10000+10000)
+		if port != test_port {
+			test_port = port
+			break
+		}
+	}
+	return test_port
+}
+
+func start_passport(t *testing.T, handler http.Handler) struct{ URL string } {
+	p := get_port()
+	go func() {
+		t.Log("Passport running at port", p)
+		err := http.ListenAndServe(p, handler)
+		t.Log("ERROR", err)
+		if err != nil {
+			t.Fatal(err)
+		} else {
+			select {}
+		}
+	}()
+	return struct{ URL string }{"http://127.0.0.1" + p}
+}
+
 func start_server(t *testing.T, service, event, route, method string,
 	handler func(resp http.ResponseWriter, req *http.Request) error) (wait func(int) error) {
 
-	// first create a new callback /webhook record
-
-	rand.Seed(time.Now().Unix())
-	port := fmt.Sprintf(":%d", rand.Int()%10000+10000)
-
-	t.Log("Creating webhook listener for service", service, ",event=", event, "at", port)
+	p := get_port()
+	t.Log("Creating webhook listener for service", service, ",event=", event, "at", p)
 
 	webhook := default_service(t)
 	err := webhook.RegisterWebHooks(service, omni_rest.EventKeyUrlMap{
 		event: omni_rest.WebHook{
-			Url: "http://localhost" + port + route,
+			Url: "http://localhost" + p + route,
 		},
 	})
 	if err != nil {
@@ -151,7 +175,7 @@ func start_server(t *testing.T, service, event, route, method string,
 		err = handler(resp, req)
 	}).Methods(method)
 	go func() {
-		err := http.ListenAndServe(port, r)
+		err := http.ListenAndServe(test_port, r)
 		t.Log("ERROR", err)
 	}()
 	return func(seconds int) error {

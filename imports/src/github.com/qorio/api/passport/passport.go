@@ -7,11 +7,13 @@ import (
 const (
 	AccountUpdate api.AuthScope = iota
 	AccountReadOnly
+	RegisterNewUser
 )
 
 var AuthScopes = api.AuthScopes{
 	AccountUpdate:   "account_update",
 	AccountReadOnly: "account_readonly",
+	RegisterNewUser: "register_user",
 }
 
 const (
@@ -33,7 +35,6 @@ var Methods = api.ServiceMethods{
 		Doc: `
 Authentication endpoint.
 `,
-		Name:         "AuthenticateUser",
 		UrlRoute:     "/api/v1/auth",
 		HttpMethod:   "POST",
 		ContentTypes: []string{"application/json", "application/protobuf"},
@@ -49,7 +50,6 @@ Authentication endpoint.
 		Doc: `
 Authentication endpoint.
 `,
-		Name:         "AuthenticateUserForService",
 		UrlRoute:     "/api/v1/auth/{service}",
 		HttpMethod:   "POST",
 		ContentTypes: []string{"application/json", "application/protobuf"},
@@ -62,7 +62,7 @@ Authentication endpoint.
 	},
 
 	RegisterUser: api.MethodSpec{
-		AuthScope: AuthScopes[AccountUpdate],
+		AuthScope: AuthScopes[RegisterNewUser],
 		Doc: `
 User account registration.  On successful registration, the webhook of the corresponding
 service will be called.  It is up to the service to then create any additional account
@@ -71,7 +71,6 @@ endpoint to update the mapping of service account id and any custom data to be p
 the service on successful login auth.  The webhook is keyed by the CallbackEvent property
 and is registered for the particular service.
 `,
-		Name:         "RegisterUser",
 		UrlRoute:     "/api/v1/register/{service}",
 		HttpMethod:   "POST",
 		ContentTypes: []string{"application/json", "application/protobuf"},
@@ -91,7 +90,6 @@ and is registered for the particular service.
 		Doc: `
 Returns the account object.
 `,
-		Name:         "FetchAccount",
 		UrlRoute:     "/api/v1/account/{id}",
 		HttpMethod:   "GET",
 		ContentTypes: []string{"application/json", "application/protobuf"},
@@ -106,7 +104,6 @@ Returns the account object.
 		Doc: `
 Deletes the account.
 `,
-		Name:         "DeleteAccount",
 		UrlRoute:     "/api/v1/account/{id}",
 		HttpMethod:   "DELETE",
 		RequestBody:  nil,
@@ -119,7 +116,6 @@ Deletes the account.
 Create or update account. If id is missing, a new record will be created;
 otherwise, an existing record will be overwritten with the POST value.
 `,
-		Name:         "CreateOrUpdateAccount",
 		UrlRoute:     "/api/v1/account",
 		HttpMethod:   "POST",
 		ContentTypes: []string{"application/json", "application/protobuf"},
@@ -134,7 +130,6 @@ otherwise, an existing record will be overwritten with the POST value.
 		Doc: `
 Update primary login for account.
 `,
-		Name:         "UpdateAccountPrimaryLogin",
 		UrlRoute:     "/api/v1/account/{id}/primary",
 		HttpMethod:   "POST",
 		ContentTypes: []string{"application/json", "application/protobuf"},
@@ -149,7 +144,6 @@ Update primary login for account.
 		Doc: `
 Create or update a service / application in an existing account
 `,
-		Name:         "AddOrUpdateUpdateAccountService",
 		UrlRoute:     "/api/v1/account/{id}/services",
 		HttpMethod:   "POST",
 		ContentTypes: []string{"application/json", "application/protobuf"},
@@ -164,7 +158,6 @@ Create or update a service / application in an existing account
 		Doc: `
 Create or update a service / application attribute in an existing account and application.
 `,
-		Name:         "AddOrUpdateUpdateServiceAttribute",
 		UrlRoute:     "/api/v1/account/{id}/service/{service}/attributes",
 		HttpMethod:   "POST",
 		ContentTypes: []string{"application/json", "application/protobuf"},

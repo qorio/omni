@@ -92,7 +92,7 @@ func TestAuthenticateUser(t *testing.T) {
 			authService := default_auth(t)
 			token, _ := authService.Parse(authResponse.GetToken())
 
-			t.Log("Scopes:", token.GetString("@test/scopes"))
-			assert.Equal(t, api.AuthScopes[api.AccountReadOnly], token.GetString("@test/scopes"))
+			t.Log("Scopes:", token.GetString("test/@scopes"))
+			assert.Equal(t, api.AuthScopes[api.AccountReadOnly], token.GetString("test/@scopes"))
 		})
 }

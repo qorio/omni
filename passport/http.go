@@ -135,10 +135,9 @@ func (this *EndPoint) auth(resp http.ResponseWriter, req *http.Request,
 			prefix := service.GetId() + "/"
 			func() {
 				// encode the token
-				token.Add("@"+prefix+"id", service.GetId()).
-					Add("@"+prefix+"status", service.GetStatus()).
-					Add("@"+prefix+"service_account_id", service.GetAccountId()).
-					Add("@"+prefix+"scopes", strings.Join(service.GetScopes(), ","))
+				token.Add(prefix+"@id", service.GetAccountId()).
+					Add(prefix+"@status", service.GetStatus()).
+					Add(prefix+"@scopes", strings.Join(service.GetScopes(), ","))
 
 				for _, attribute := range service.GetAttributes() {
 					if attribute.GetEmbedSigninToken() {

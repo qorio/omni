@@ -10,7 +10,6 @@ type ObjectFactory func() interface{}
 
 type MethodSpec struct {
 	Doc                  string
-	Name                 string
 	UrlRoute             string
 	HttpMethod           string
 	ContentTypes         []string
