@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	api "github.com/qorio/api/shorty"
 	omni_auth "github.com/qorio/omni/auth"
 	omni_common "github.com/qorio/omni/common"
 	omni_http "github.com/qorio/omni/http"
+	omni_rest "github.com/qorio/omni/rest"
 	"net/http"
 	"net/url"
 	"strings"
@@ -37,49 +39,50 @@ type ShortyEndPoint struct {
 	router        *mux.Router
 	requestParser *omni_http.RequestParser
 	service       Shorty
+	engine        omni_rest.Engine
 }
 
-func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty, auth omni_auth.Service) (api *ShortyEndPoint, err error) {
-	if requestParser, err := omni_http.NewRequestParser(settings.GeoIpDbFilePath); err == nil {
-		api = &ShortyEndPoint{
-			settings:      settings,
-			router:        mux.NewRouter(),
-			requestParser: requestParser,
-			service:       service,
-		}
-		regex := fmt.Sprintf(regexFmt, service.UrlLength())
-		api.router.HandleFunc("/{id:"+regex+"}", api.RedirectHandler).Methods("GET").Name("redirect")
+var ServiceId = "shorty"
 
-		// Campaign based
-		api.router.HandleFunc("/api/v1/campaign", auth.RequiresAuth("*", api.ApiAddCampaignHandler)).
-			Methods("POST").Name("add_campaign")
-		api.router.HandleFunc("/api/v1/campaign/{campaignId}", auth.RequiresAuth("*", api.ApiGetCampaignHandler)).
-			Methods("GET").Name("get_campaign")
-		api.router.HandleFunc("/api/v1/campaign/{campaignId}", auth.RequiresAuth("*", api.ApiUpdateCampaignHandler)).
-			Methods("POST").Name("update_campaign")
-		api.router.HandleFunc("/api/v1/campaign/{campaignId}/url", auth.RequiresAuth("*", api.ApiAddCampaignUrlHandler)).
-			Methods("POST").Name("add_campaign_url")
+func NewApiEndPoint(settings ShortyEndPointSettings, service Shorty, auth omni_auth.Service) (ep *ShortyEndPoint, err error) {
 
-		// Stand-alone
-		api.router.HandleFunc("/api/v1/url", auth.RequiresAuth("*", api.ApiAddUrlHandler)).
-			Methods("POST").Name("add")
-
-		// First attempt if the app starts up organically -- this gives the server an opportunity
-		// to match by fingerprinting.  If fingerprinting cannot match a user then the response will tell
-		// the SDK to use safari for first launch install reporting.
-		api.router.HandleFunc("/api/v1/tryfp/{scheme}/{app_uuid}",
-			api.ApiTryMatchInstallOnOrganicAppLaunch).Methods("POST").Name("app_install_try_fingerprint")
-
-		api.router.HandleFunc("/api/v1/events/install/{scheme}/{app_uuid}",
-			api.ApiReportInstallOnReferredAppLaunch).Methods("POST").Name("app_install_referred_launch")
-
-		api.router.HandleFunc("/api/v1/events/openurl/{scheme}/{app_uuid}",
-			api.ApiReportAppOpenUrl).Methods("POST").Name("app_ping")
-
-		return api, nil
-	} else {
+	requestParser, err := omni_http.NewRequestParser(settings.GeoIpDbFilePath)
+	if err != nil {
 		return nil, err
 	}
+	engine := omni_rest.NewEngine(&api.Methods, auth, nil)
+	ep = &ShortyEndPoint{
+		settings:      settings,
+		router:        engine.Router(),
+		requestParser: requestParser,
+		service:       service,
+		engine:        engine,
+	}
+	regex := fmt.Sprintf(regexFmt, service.UrlLength())
+	ep.router.HandleFunc("/{id:"+regex+"}", ep.RedirectHandler).Methods("GET").Name("redirect")
+
+	// Campaign based
+	ep.engine.Bind(
+		omni_rest.SetAuthenticatedHandler(ServiceId, api.Methods[api.AddCampaign], ep.ApiAddCampaignHandler),
+		omni_rest.SetAuthenticatedHandler(ServiceId, api.Methods[api.GetCampaign], ep.ApiGetCampaignHandler),
+		omni_rest.SetAuthenticatedHandler(ServiceId, api.Methods[api.UpdateCampaign], ep.ApiUpdateCampaignHandler),
+		omni_rest.SetAuthenticatedHandler(ServiceId, api.Methods[api.AddShortUrlForCampaign], ep.ApiAddCampaignUrlHandler),
+		omni_rest.SetAuthenticatedHandler(ServiceId, api.Methods[api.AddShortUrl], ep.ApiAddUrlHandler),
+	)
+
+	// First attempt if the app starts up organically -- this gives the server an opportunity
+	// to match by fingerprinting.  If fingerprinting cannot match a user then the response will tell
+	// the SDK to use safari for first launch install reporting.
+	ep.router.HandleFunc("/api/v1/tryfp/{scheme}/{app_uuid}",
+		ep.ApiTryMatchInstallOnOrganicAppLaunch).Methods("POST").Name("app_install_try_fingerprint")
+
+	ep.router.HandleFunc("/api/v1/events/install/{scheme}/{app_uuid}",
+		ep.ApiReportInstallOnReferredAppLaunch).Methods("POST").Name("app_install_referred_launch")
+
+	ep.router.HandleFunc("/api/v1/events/openurl/{scheme}/{app_uuid}",
+		ep.ApiReportAppOpenUrl).Methods("POST").Name("app_ping")
+
+	return ep, nil
 }
 
 func NewRedirector(settings ShortyEndPointSettings, service Shorty) (api *ShortyEndPoint, err error) {

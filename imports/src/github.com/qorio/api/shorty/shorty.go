@@ -2,7 +2,6 @@ package shorty
 
 import (
 	"github.com/qorio/api"
-	"strings"
 	"time"
 )
 
@@ -126,7 +125,6 @@ type ShortUrl struct {
 	Origin      string        `json:"origin,omitempty"`
 	AccountId   UUID          `json:"accountId"`
 	CampaignId  UUID          `json:"campaignId"`
-	//	service     *shortyImpl
 }
 
 type Campaign struct {
@@ -137,7 +135,6 @@ type Campaign struct {
 	Rules       []RoutingRule `json:"rules,omitempty"`
 	Created     int64         `json:"created,omitempty"`
 	IOS_SDK     bool          `json:"iosSDK,omitempty"`
-	//	service *shortyImpl
 }
 
 type RoutingRule struct {
@@ -184,8 +181,4 @@ type RoutingRule struct {
 
 	// Nested rules that can further provide overrides -- e.g. on 'ios', now with FB app
 	Special []RoutingRule `json:"special,omitempty"`
-}
-
-func (this OnOff) isTrue() bool {
-	return strings.ToLower(string(this)) == "on"
 }
