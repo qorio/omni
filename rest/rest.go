@@ -128,7 +128,7 @@ type engine struct {
 	webhooks   WebHooksService
 }
 
-func NewEngine(spec *api.ServiceMethods, auth auth.Service, webhooks WebHooksService) Engine {
+func NewEngine(spec *api.ServiceMethods, auth auth.Service, webhooks WebHooksService) *engine {
 	e := &engine{
 		spec:       spec,
 		router:     mux.NewRouter(),
@@ -138,6 +138,10 @@ func NewEngine(spec *api.ServiceMethods, auth auth.Service, webhooks WebHooksSer
 		webhooks:   webhooks,
 	}
 	return e
+}
+
+func (this *engine) Router() *mux.Router {
+	return this.router
 }
 
 func (this *engine) NewAuthToken() *auth.Token {
