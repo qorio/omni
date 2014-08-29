@@ -1,6 +1,7 @@
 package passport
 
 import (
+	"errors"
 	"github.com/golang/glog"
 	api "github.com/qorio/api/passport"
 	omni_auth "github.com/qorio/omni/auth"
@@ -215,18 +216,7 @@ func (this *EndPoint) ApiRegisterUser(context omni_auth.Context, resp http.Respo
 		return
 	}
 
-	var account *api.Account = nil
-	err = ERROR_NOT_FOUND
-	switch {
-	case login.Native != nil:
-		// Lookup account
-		native := login.Native
-		account, err = this.findAccount(native.GetEmail(), native.GetPhone(), native.GetUsername())
-
-	case login.Oauth2 != nil:
-		// TODO lookup by provider's user id
-	}
-
+	account, err := this.findAccountByLogin(&login)
 	if err != nil && err != ERROR_NOT_FOUND {
 		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
@@ -305,11 +295,13 @@ func (this *EndPoint) ApiSaveAccount(context omni_auth.Context, resp http.Respon
 
 	case !hasLoginId && hasAccountId:
 		// this is changing primary login of the account
-		// check availability of phone/email
-		existing, _ := this.findAccount(account.GetPrimary().GetEmail(),
-			account.GetPrimary().GetPhone(), account.GetPrimary().GetUsername())
+		existing, err := this.findAccountByLogin(account.GetPrimary())
+		if err != nil && err != ERROR_NOT_FOUND {
+			this.engine.HandleError(resp, req, "error-lookup", http.StatusInternalServerError)
+			return
+		}
 		if existing != nil {
-			this.engine.HandleError(resp, req, "error-duplicate", http.StatusConflict)
+			this.engine.HandleError(resp, req, "error-conflict", http.StatusConflict)
 			return
 		}
 
@@ -318,12 +310,13 @@ func (this *EndPoint) ApiSaveAccount(context omni_auth.Context, resp http.Respon
 		account.GetPrimary().Id = &uuid
 
 	case !hasLoginId && !hasAccountId:
-		// this is new login and account
-		// check availability of phone/email
-		existing, _ := this.findAccount(account.GetPrimary().GetEmail(),
-			account.GetPrimary().GetPhone(), account.GetPrimary().GetUsername())
+		existing, err := this.findAccountByLogin(account.GetPrimary())
+		if err != nil && err != ERROR_NOT_FOUND {
+			this.engine.HandleError(resp, req, "error-lookup", http.StatusInternalServerError)
+			return
+		}
 		if existing != nil {
-			this.engine.HandleError(resp, req, "error-duplicate", http.StatusConflict)
+			this.engine.HandleError(resp, req, "error-conflict", http.StatusConflict)
 			return
 		}
 
@@ -333,8 +326,8 @@ func (this *EndPoint) ApiSaveAccount(context omni_auth.Context, resp http.Respon
 		// Ok - assign new account id
 		uuid = omni_common.NewUUID().String()
 		account.Id = &uuid
-
 	}
+
 	if account.GetPrimary().GetId() == "" {
 
 		// If no id, then check to see if the email or phone has
@@ -385,12 +378,9 @@ func (this *EndPoint) ApiSaveAccountPrimary(context omni_auth.Context, resp http
 		return
 	}
 
-	switch {
-	case login.GetPhone() == "" && login.GetEmail() == "":
-		this.engine.HandleError(resp, req, "error-missing-email-or-phone", http.StatusBadRequest)
-		return
-	case login.GetPassword() == "":
-		this.engine.HandleError(resp, req, "error-missing-password", http.StatusBadRequest)
+	err = validate_login(&login)
+	if err != nil {
+		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -571,6 +561,33 @@ func (this *EndPoint) ApiDeleteAccount(context omni_auth.Context, resp http.Resp
 		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func validate_login(login *api.Login) error {
+	switch {
+	case login.Native != nil:
+		native := login.Native
+		if native.Phone == nil && native.Email == nil && native.Username == nil {
+			return errors.New("missing-identifier")
+		}
+		if native.Password == nil {
+			return errors.New("missing-password")
+		}
+	case login.Oauth2 != nil:
+	}
+	return nil
+}
+
+func (this *EndPoint) findAccountByLogin(login *api.Login) (account *api.Account, err error) {
+	switch {
+	case login.Native != nil:
+		// Lookup account
+		native := login.Native
+		account, err = this.findAccount(native.GetEmail(), native.GetPhone(), native.GetUsername())
+	case login.Oauth2 != nil:
+		// lookup by provider's user id
+	}
+	return
 }
 
 func (this *EndPoint) findAccount(email, phone, username string) (account *api.Account, err error) {
