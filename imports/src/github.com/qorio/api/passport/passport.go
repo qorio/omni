@@ -39,7 +39,7 @@ Authentication endpoint.
 		HttpMethod:   "POST",
 		ContentTypes: []string{"application/json", "application/protobuf"},
 		RequestBody: func() interface{} {
-			return AuthRequest{}
+			return Login{}
 		},
 		ResponseBody: func() interface{} {
 			return AuthResponse{}
@@ -54,7 +54,7 @@ Authentication endpoint.
 		HttpMethod:   "POST",
 		ContentTypes: []string{"application/json", "application/protobuf"},
 		RequestBody: func() interface{} {
-			return AuthRequest{}
+			return Login{}
 		},
 		ResponseBody: func() interface{} {
 			return AuthResponse{}

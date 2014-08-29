@@ -10,6 +10,6 @@ popd
 
 pushd imports/src/github.com/qorio/api/proto
 protoc --go_out=../lighthouse lighthouse.proto
-protoc --go_out=../passport passport.proto passport_client.proto
+protoc --go_out=../passport passport.proto
 protoc --go_out=../soapbox soapbox.proto
 popd

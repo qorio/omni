@@ -1,7 +1,46 @@
 package passport;
 
-// Generalized account / user schema
-import "passport_client.proto";
+
+message PassportCredential {
+	optional string password = 1;
+	optional string email = 2;
+	optional string phone = 3;
+	optional string username = 4;
+}
+
+// OAuth2 identity here assumes that the
+// client has performed auth with the provider
+// and the provider has granted an access token.
+// The access token is then verified on the server
+// side via the providers server api.  Once the
+// access token is verified, another token for
+// accessing passport-authenticated systems is
+// issued.
+message OAuth2Credential {
+	required string provider = 1;
+	required string id = 2;
+	optional string access_token = 3;
+}
+
+
+message AuthResponse {
+	required string token = 1;
+}
+
+message Login {
+	optional string id = 1;
+	optional string service = 2;
+
+	message Location {
+    		required double lon = 1;
+    		required double lat = 2;
+    	}
+	optional Location location = 3;
+
+	optional PassportCredential native = 4;
+	optional OAuth2Credential oauth2 = 5;
+}
+
 
 message Blob {
 	required string type = 1;

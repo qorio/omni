@@ -72,29 +72,38 @@ func (this *EndPoint) resolve_service_id(requestedServiceId string, req *http.Re
 
 // Authenticates and returns a token as the response
 func (this *EndPoint) ApiAuthenticate(resp http.ResponseWriter, req *http.Request) {
-	this.auth(resp, req, func(ep *EndPoint, authRequest *api.AuthRequest) string {
+	this.auth(resp, req, func(ep *EndPoint, authRequest *api.Login) string {
 		return authRequest.GetService()
 	})
 }
 
 func (this *EndPoint) ApiAuthenticateForService(resp http.ResponseWriter, req *http.Request) {
-	this.auth(resp, req, func(ep *EndPoint, authRequest *api.AuthRequest) string {
+	this.auth(resp, req, func(ep *EndPoint, authRequest *api.Login) string {
 		return ep.engine.GetUrlParameter(req, "service")
 	})
 }
 
 func (this *EndPoint) auth(resp http.ResponseWriter, req *http.Request,
-	get_service_friendly_name func(*EndPoint, *api.AuthRequest) string) {
+	get_service_friendly_name func(*EndPoint, *api.Login) string) {
 
-	request := api.Methods[api.AuthUser].RequestBody().(api.AuthRequest)
+	request := api.Methods[api.AuthUser].RequestBody().(api.Login)
 	err := this.engine.Unmarshal(req, &request)
 	if err != nil {
 		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Lookup account
-	account, err := this.findAccount(request.GetEmail(), request.GetPhone(), request.GetUsername())
+	var account *api.Account = nil
+	err = ERROR_NOT_FOUND
+	switch {
+	case request.Native != nil:
+		// Lookup account
+		native := request.Native
+		account, err = this.findAccount(native.GetEmail(), native.GetPhone(), native.GetUsername())
+
+	case request.Oauth2 != nil:
+		// TODO lookup by provider's user id
+	}
 
 	switch {
 	case err == ERROR_NOT_FOUND:
@@ -110,10 +119,18 @@ func (this *EndPoint) auth(resp http.ResponseWriter, req *http.Request,
 	}
 
 	// Check credentials
-	userProvided := request.GetPassword()
-	if !Password(&userProvided).MatchAccount(account) {
-		this.engine.HandleError(resp, req, "error-bad-credentials", http.StatusUnauthorized)
-		return
+	switch {
+	case request.Native != nil:
+		native := request.Native
+		userProvided := native.GetPassword()
+		if !Password(&userProvided).MatchAccount(account) {
+			this.engine.HandleError(resp, req, "error-bad-credentials", http.StatusUnauthorized)
+			return
+		}
+
+	case request.Oauth2 != nil:
+		// Use the given token to do a verification via API call
+		// TODO
 	}
 
 	serviceFriendlyName := get_service_friendly_name(this, &request)
@@ -198,8 +215,18 @@ func (this *EndPoint) ApiRegisterUser(context omni_auth.Context, resp http.Respo
 		return
 	}
 
-	// Check to see if login already exists
-	account, err := this.findAccount(login.GetEmail(), login.GetPhone(), login.GetUsername())
+	var account *api.Account = nil
+	err = ERROR_NOT_FOUND
+	switch {
+	case login.Native != nil:
+		// Lookup account
+		native := login.Native
+		account, err = this.findAccount(native.GetEmail(), native.GetPhone(), native.GetUsername())
+
+	case login.Oauth2 != nil:
+		// TODO lookup by provider's user id
+	}
+
 	if err != nil && err != ERROR_NOT_FOUND {
 		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
@@ -220,8 +247,10 @@ func (this *EndPoint) ApiRegisterUser(context omni_auth.Context, resp http.Respo
 		CreatedTimestamp: &ts,
 	}
 
-	// Store the hmac instead
-	Password(account.Primary.Password).Hash().Update()
+	if account.Primary.Native != nil {
+		// Store the hmac instead
+		Password(account.Primary.Native.Password).Hash().Update()
+	}
 
 	err = this.service.SaveAccount(account)
 	if err != nil {
@@ -229,8 +258,7 @@ func (this *EndPoint) ApiRegisterUser(context omni_auth.Context, resp http.Respo
 		return
 	}
 
-	// Clear the password before we send it on to other systems
-	account.Primary.Password = nil
+	sanitize(account)
 
 	// Use the service id to determine the necessary callback / webhook after account record has been created.
 	this.engine.EventChannel() <- &omni_rest.EngineEvent{
@@ -239,7 +267,6 @@ func (this *EndPoint) ApiRegisterUser(context omni_auth.Context, resp http.Respo
 		Body:          struct{ Account *api.Account }{account},
 	}
 
-	sanitize(account)
 	err = this.engine.Marshal(req, account.Primary, resp)
 	if err != nil {
 		this.engine.HandleError(resp, req, "malformed-account", http.StatusInternalServerError)
@@ -255,9 +282,12 @@ func (this *EndPoint) ApiSaveAccount(context omni_auth.Context, resp http.Respon
 		return
 	}
 
-	if account.GetPrimary().GetPhone() == "" && account.GetPrimary().GetEmail() == "" {
-		this.engine.HandleError(resp, req, ERROR_MISSING_INPUT.Error(), http.StatusBadRequest)
-		return
+	if account.Primary.Native != nil {
+		native := account.Primary.Native
+		if native.GetPhone() == "" && native.GetEmail() == "" && native.GetUsername() == "" {
+			this.engine.HandleError(resp, req, ERROR_MISSING_INPUT.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 
 	hasLoginId := account.GetPrimary().GetId() != ""

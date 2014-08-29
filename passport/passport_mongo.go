@@ -135,16 +135,22 @@ func (this *serviceImpl) FindAccountByUsername(username string) (account *api.Ac
 
 // For removing sensitive information before sending back to client
 func sanitize(account *api.Account) *api.Account {
-	if account.Primary.GetEmail() == account.GetId() {
-		account.Primary.Email = nil
+	if account.Primary.Native != nil {
+		native := account.Primary.Native
+		if native.GetEmail() == account.GetId() {
+			native.Email = nil
+		}
+		if native.GetPhone() == account.GetId() {
+			native.Phone = nil
+		}
+		if native.GetUsername() == account.GetId() {
+			native.Username = nil
+		}
+		native.Password = nil
 	}
-	if account.Primary.GetPhone() == account.GetId() {
-		account.Primary.Phone = nil
+	if account.Primary.Oauth2 != nil {
+		account.Primary.Oauth2.AccessToken = nil
 	}
-	if account.Primary.GetUsername() == account.GetId() {
-		account.Primary.Username = nil
-	}
-	account.Primary.Password = nil
 	return account
 }
 
