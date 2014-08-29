@@ -1,7 +1,7 @@
 #!/bin/bash
 
 WORKING=$(pwd)
-GOPATH=$WORKING/imports:$WORKING/third_party:$GOPATH
+export GOPATH=$WORKING/imports:$WORKING/third_party:$GOPATH
 
 TARGETS=""
 for t in $@; do
