@@ -1,6 +1,7 @@
 package passport
 
 import (
+	"code.google.com/p/goprotobuf/proto"
 	_ "encoding/json"
 	"errors"
 	"github.com/bmizerany/assert"
@@ -12,17 +13,14 @@ import (
 )
 
 func test_account() *api.Account {
-	embed := true
-	attr_type := api.Attribute_STRING
-
 	return &api.Account{
-		Primary: &api.Login{},
+		Primary: &api.Identity{},
 		Services: []*api.Service{
 			&api.Service{
 				Attributes: []*api.Attribute{
 					&api.Attribute{
-						Type:             &attr_type,
-						EmbedSigninToken: &embed,
+						Type:         api.Attribute_STRING.Enum(),
+						EmbedInToken: proto.Bool(true),
 					},
 				},
 			},
@@ -49,13 +47,13 @@ func TestInsertGetAndDelete(t *testing.T) {
 	service.dropDatabase()
 
 	account := test_account()
-	account.Id = ptr(common.NewUUID().String())
-	account.Primary.Phone = ptr("111-222-3333")
-	account.Services[0].Id = ptr(common.NewUUID().String())
-	account.Services[0].Status = ptr("verified")
-	account.Services[0].AccountId = ptr("app-1-account-1")
-	account.Services[0].Attributes[0].Key = ptr("key-1")
-	account.Services[0].Attributes[0].StringValue = ptr("value-1")
+	account.Id = proto.String(common.NewUUID().String())
+	account.Primary.Phone = proto.String("111-222-3333")
+	account.Services[0].Id = proto.String(common.NewUUID().String())
+	account.Services[0].Status = proto.String("verified")
+	account.Services[0].AccountId = proto.String("app-1-account-1")
+	account.Services[0].Attributes[0].Key = proto.String("key-1")
+	account.Services[0].Attributes[0].StringValue = proto.String("value-1")
 
 	err = service.SaveAccount(account)
 	assert.Equal(t, nil, err)
@@ -85,13 +83,13 @@ func TestFindByPhone(t *testing.T) {
 	assert.Equal(t, nil, err4)
 
 	account := test_account()
-	account.Id = ptr(uuid.String())
-	account.Primary.Phone = ptr("111-222-4444")
-	account.Services[0].Id = ptr("app-1")
-	account.Services[0].Status = ptr("verified")
-	account.Services[0].AccountId = ptr("app-1-account-by-phone-1")
-	account.Services[0].Attributes[0].Key = ptr("key-1")
-	account.Services[0].Attributes[0].StringValue = ptr("value-1")
+	account.Id = proto.String(uuid.String())
+	account.Primary.Phone = proto.String("111-222-4444")
+	account.Services[0].Id = proto.String("app-1")
+	account.Services[0].Status = proto.String("verified")
+	account.Services[0].AccountId = proto.String("app-1-account-by-phone-1")
+	account.Services[0].Attributes[0].Key = proto.String("key-1")
+	account.Services[0].Attributes[0].StringValue = proto.String("value-1")
 
 	err = service.SaveAccount(account)
 	assert.Equal(t, nil, err)
@@ -119,13 +117,13 @@ func TestFindByEmail(t *testing.T) {
 	assert.Equal(t, nil, err4)
 
 	account := test_account()
-	account.Id = ptr(uuid.String())
-	account.Primary.Email = ptr("foo@bar.com")
-	account.Services[0].Id = ptr("app-1")
-	account.Services[0].Status = ptr("verified")
-	account.Services[0].AccountId = ptr("app-1-account-by-email-1")
-	account.Services[0].Attributes[0].Key = ptr("key-1")
-	account.Services[0].Attributes[0].StringValue = ptr("value-1")
+	account.Id = proto.String(uuid.String())
+	account.Primary.Email = proto.String("foo@bar.com")
+	account.Services[0].Id = proto.String("app-1")
+	account.Services[0].Status = proto.String("verified")
+	account.Services[0].AccountId = proto.String("app-1-account-by-email-1")
+	account.Services[0].Attributes[0].Key = proto.String("key-1")
+	account.Services[0].Attributes[0].StringValue = proto.String("value-1")
 
 	err = service.SaveAccount(account)
 	assert.Equal(t, nil, err)
@@ -153,13 +151,13 @@ func TestFindByPhoneAndUpdate(t *testing.T) {
 	assert.Equal(t, nil, err4)
 
 	account := test_account()
-	account.Id = ptr(uuid.String())
-	account.Primary.Phone = ptr("111-222-5555")
-	account.Services[0].Id = ptr("app-1")
-	account.Services[0].Status = ptr("verified")
-	account.Services[0].AccountId = ptr("app-1-account-by-phone-1")
-	account.Services[0].Attributes[0].Key = ptr("key-1")
-	account.Services[0].Attributes[0].StringValue = ptr("value-1")
+	account.Id = proto.String(uuid.String())
+	account.Primary.Phone = proto.String("111-222-5555")
+	account.Services[0].Id = proto.String("app-1")
+	account.Services[0].Status = proto.String("verified")
+	account.Services[0].AccountId = proto.String("app-1-account-by-phone-1")
+	account.Services[0].Attributes[0].Key = proto.String("key-1")
+	account.Services[0].Attributes[0].StringValue = proto.String("value-1")
 
 	err = service.SaveAccount(account)
 	assert.Equal(t, nil, err)
@@ -170,7 +168,7 @@ func TestFindByPhoneAndUpdate(t *testing.T) {
 	assert.Equal(t, account.String(), account2.String()) // compare the string representation
 
 	// change the properties
-	account2.Primary.Password = ptr("password")
+	account2.Primary.Password = proto.String("password")
 	err = service.SaveAccount(account2)
 	assert.Equal(t, nil, err)
 
@@ -182,9 +180,9 @@ func TestFindByPhoneAndUpdate(t *testing.T) {
 	// insert another
 	account4 := &api.Account{}
 	*account4 = *account
-	account4.Primary.Phone = ptr("222-333-4444")
+	account4.Primary.Phone = proto.String("222-333-4444")
 	uuid4 := common.NewUUID()
-	account4.Id = ptr(uuid4.String())
+	account4.Id = proto.String(uuid4.String())
 
 	err = service.SaveAccount(account4)
 	assert.Equal(t, nil, err)
@@ -235,13 +233,13 @@ func TestWebHooks(t *testing.T) {
 		})
 
 	account := test_account()
-	account.Id = ptr(uuid.String())
-	account.Primary.Phone = ptr("111-222-5555")
-	account.Services[0].Id = ptr("app-1")
-	account.Services[0].Status = ptr("verified")
-	account.Services[0].AccountId = ptr("app-1-account-by-phone-1")
-	account.Services[0].Attributes[0].Key = ptr("key-1")
-	account.Services[0].Attributes[0].StringValue = ptr("value-1")
+	account.Id = proto.String(uuid.String())
+	account.Primary.Phone = proto.String("111-222-5555")
+	account.Services[0].Id = proto.String("app-1")
+	account.Services[0].Status = proto.String("verified")
+	account.Services[0].AccountId = proto.String("app-1-account-by-phone-1")
+	account.Services[0].Attributes[0].Key = proto.String("key-1")
+	account.Services[0].Attributes[0].StringValue = proto.String("value-1")
 
 	err = service.Send("test", "new-user-registration",
 		struct{ Account *api.Account }{account},

@@ -39,7 +39,7 @@ Authentication endpoint.
 		HttpMethod:   "POST",
 		ContentTypes: []string{"application/json", "application/protobuf"},
 		RequestBody: func() interface{} {
-			return Login{}
+			return Identity{}
 		},
 		ResponseBody: func() interface{} {
 			return AuthResponse{}
@@ -54,7 +54,7 @@ Authentication endpoint.
 		HttpMethod:   "POST",
 		ContentTypes: []string{"application/json", "application/protobuf"},
 		RequestBody: func() interface{} {
-			return Login{}
+			return Identity{}
 		},
 		ResponseBody: func() interface{} {
 			return AuthResponse{}
@@ -75,10 +75,10 @@ and is registered for the particular service.
 		HttpMethod:   "POST",
 		ContentTypes: []string{"application/json", "application/protobuf"},
 		RequestBody: func() interface{} {
-			return Login{}
+			return Identity{}
 		},
 		ResponseBody: func() interface{} {
-			return Login{}
+			return Identity{}
 		},
 		// Calls the url webhook of given key for given service
 		CallbackEvent:        api.EventKey("new-user-registration"),
@@ -134,7 +134,7 @@ Update primary login for account.
 		HttpMethod:   "POST",
 		ContentTypes: []string{"application/json", "application/protobuf"},
 		RequestBody: func() interface{} {
-			return Login{}
+			return Identity{}
 		},
 		ResponseBody: nil,
 	},

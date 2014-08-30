@@ -1,6 +1,7 @@
 package passport
 
 import (
+	"code.google.com/p/goprotobuf/proto"
 	"errors"
 	"github.com/bmizerany/assert"
 	"github.com/drewolson/testflight"
@@ -11,15 +12,15 @@ import (
 
 var initialize_service_insert_test_user_account = func(t *testing.T, impl *serviceImpl) {
 	rootAccount := &api.Account{
-		Id: ptr("user1"),
-		Primary: &api.Login{
-			Email:    ptr("user1@passport"),
-			Password: ptr("user1pass"),
+		Id: proto.String("user1"),
+		Primary: &api.Identity{
+			Email:    proto.String("user1@passport"),
+			Password: proto.String("user1pass"),
 		},
 		Services: []*api.Service{
 			&api.Service{
-				Id:        ptr("test"),
-				AccountId: ptr("test-root"),
+				Id:        proto.String("test"),
+				AccountId: proto.String("test-root"),
 				Scopes: []string{
 					api.AuthScopes[api.AccountReadOnly],
 				},
@@ -51,7 +52,7 @@ func TestNoUnaunthenticatedRegistrationCall(t *testing.T) {
 
 		assert.Equal(t, nil, nil)
 
-		login := api.Methods[api.RegisterUser].RequestBody().(api.Login)
+		login := api.Methods[api.RegisterUser].RequestBody().(api.Identity)
 
 		response := r.Post("/api/v1/register/test", "application/protobuf", string(to_protobuf(&login, t)))
 		t.Log("Got response", response.Body)
@@ -77,9 +78,9 @@ func TestAuthenticateUser(t *testing.T) {
 
 			assert.Equal(t, nil, nil)
 
-			authRequest := api.Methods[api.AuthUser].RequestBody().(api.AuthRequest)
-			authRequest.Email = ptr("user1@passport")
-			authRequest.Password = ptr("user1pass")
+			authRequest := api.Methods[api.AuthUser].RequestBody().(api.Identity)
+			authRequest.Email = proto.String("user1@passport")
+			authRequest.Password = proto.String("user1pass")
 
 			response := r.Post("/api/v1/auth/test", "application/protobuf", string(to_protobuf(&authRequest, t)))
 			assert.Equal(t, 200, response.StatusCode)

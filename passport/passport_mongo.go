@@ -2,6 +2,7 @@ package passport
 
 import (
 	"code.google.com/p/go-uuid/uuid"
+	"errors"
 	"github.com/golang/glog"
 	api "github.com/qorio/api/passport"
 	omni_common "github.com/qorio/omni/common"
@@ -74,6 +75,14 @@ func NewService(settings Settings) (*serviceImpl, error) {
 		Name:     "primary.username",
 	})
 
+	impl.accounts.EnsureIndex(mgo.Index{
+		Key:      []string{"primary.oauth2_account_id"},
+		Unique:   true,
+		DropDups: true,
+		Sparse:   true,
+		Name:     "primary.oauth2_account_id",
+	})
+
 	// This is for configuration of services like callback/webhooks
 	impl.webhooks = impl.db.C("webhooks")
 
@@ -133,24 +142,41 @@ func (this *serviceImpl) FindAccountByUsername(username string) (account *api.Ac
 	return &result, nil
 }
 
+func validate_login(login *api.Identity) error {
+	switch {
+	case login.Password != nil:
+		if login.Phone == nil && login.Email == nil && login.Username == nil {
+			return errors.New("missing-identifier")
+		}
+		if login.Password == nil {
+			return errors.New("missing-password")
+		}
+	case login.Oauth2AccessToken != nil:
+	}
+	return nil
+}
+
 // For removing sensitive information before sending back to client
 func sanitize(account *api.Account) *api.Account {
-	if account.Primary.Native != nil {
-		native := account.Primary.Native
-		if native.GetEmail() == account.GetId() {
-			native.Email = nil
-		}
-		if native.GetPhone() == account.GetId() {
-			native.Phone = nil
-		}
-		if native.GetUsername() == account.GetId() {
-			native.Username = nil
-		}
-		native.Password = nil
+	if account.Primary == nil {
+		return account
 	}
-	if account.Primary.Oauth2 != nil {
-		account.Primary.Oauth2.AccessToken = nil
+
+	login := account.Primary
+
+	if login.GetEmail() == account.GetId() {
+		login.Email = nil
 	}
+	if login.GetPhone() == account.GetId() {
+		login.Phone = nil
+	}
+	if login.GetUsername() == account.GetId() {
+		login.Username = nil
+	}
+	if login.GetOauth2AccountId() == account.GetId() {
+		login.Oauth2AccountId = nil
+	}
+	login.Password = nil
 	return account
 }
 

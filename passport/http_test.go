@@ -51,10 +51,6 @@ func (this *mock) Close() {
 	return
 }
 
-func ptr(s string) *string {
-	return &s
-}
-
 func TestAuthNotFound(t *testing.T) {
 
 	signKey := []byte("test")
@@ -77,9 +73,9 @@ func TestAuthNotFound(t *testing.T) {
 		t.Error(err)
 	}
 
-	authRequest := &api.AuthRequest{
-		Email:    ptr("foo@bar.com"),
-		Password: ptr("test"),
+	authRequest := &api.Identity{
+		Email:    proto.String("foo@bar.com"),
+		Password: proto.String("test"),
 	}
 
 	data, err := json.Marshal(authRequest)
@@ -99,7 +95,7 @@ func TestAuthNotFound(t *testing.T) {
 	// Password does not match
 	svc.findByEmail = func(email string) (account *api.Account, err error) {
 		password := "not-a-match"
-		return &api.Account{Primary: &api.Login{Password: &password}}, nil
+		return &api.Account{Primary: &api.Identity{Password: &password}}, nil
 	}
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
 		response := r.Post("/api/v1/auth", "application/json", string(data))
@@ -110,8 +106,8 @@ func TestAuthNotFound(t *testing.T) {
 	})
 
 	// Find by phone
-	authRequest.Email = ptr("")
-	authRequest.Phone = ptr("123-111-2222")
+	authRequest.Email = proto.String("")
+	authRequest.Phone = proto.String("123-111-2222")
 	data, err = json.Marshal(authRequest)
 	if err != nil {
 		t.Error(err)
@@ -122,7 +118,7 @@ func TestAuthNotFound(t *testing.T) {
 	}
 	svc.findByPhone = func(email string) (account *api.Account, err error) {
 		password := "no-match"
-		return &api.Account{Primary: &api.Login{Password: &password}}, nil
+		return &api.Account{Primary: &api.Identity{Password: &password}}, nil
 	}
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
 		response := r.Post("/api/v1/auth", "application/json", string(data))
@@ -161,15 +157,15 @@ func TestNotAMember(t *testing.T) {
 		t.Error(err)
 	}
 
-	ar := api.AuthRequest{
-		Email:    ptr("foo@bar.com"),
-		Password: ptr("test"),
+	ar := api.Identity{
+		Email:    proto.String("foo@bar.com"),
+		Password: proto.String("test"),
 	}
 
 	svc.findByEmail = func(email string) (account *api.Account, err error) {
 		password := "test"
 		Password(&password).Hash().Update()
-		return &api.Account{Primary: &api.Login{Password: &password}}, nil
+		return &api.Account{Primary: &api.Identity{Password: &password}}, nil
 	}
 
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
@@ -198,17 +194,14 @@ func TestFoundAccountAndService(t *testing.T) {
 		t.Error(err)
 	}
 
-	ar := &api.AuthRequest{
-		Email:    ptr("foo@bar.com"),
-		Password: ptr("test"),
+	ar := &api.Identity{
+		Email:    proto.String("foo@bar.com"),
+		Password: proto.String("test"),
 	}
 
 	serviceId := "test-app"
 	serviceStatus := "verified"
 	serviceAccountId := "12345"
-
-	attributeType1 := api.Attribute_STRING
-	embed := true
 	attribute1, value1 := "attribute1", "value1"
 
 	t.Log("test finding by email")
@@ -216,22 +209,22 @@ func TestFoundAccountAndService(t *testing.T) {
 		password := "test"
 		Password(&password).Hash().Update()
 		return &api.Account{
-			Primary: &api.Login{Password: &password},
+			Primary: &api.Identity{Password: proto.String(password)},
 			Services: []*api.Service{
 				&api.Service{
-					Id:        &serviceId,
-					Status:    &serviceStatus,
-					AccountId: &serviceAccountId,
+					Id:        proto.String(serviceId),
+					Status:    proto.String(serviceStatus),
+					AccountId: proto.String(serviceAccountId),
 					Scopes: []string{
 						"admin",
 						"readwrite",
 					},
 					Attributes: []*api.Attribute{
 						&api.Attribute{
-							Type:             &attributeType1,
-							Key:              &attribute1,
-							EmbedSigninToken: &embed,
-							StringValue:      &value1,
+							Type:         api.Attribute_STRING.Enum(),
+							Key:          proto.String(attribute1),
+							EmbedInToken: proto.Bool(true),
+							StringValue:  proto.String(value1),
 						},
 					},
 				},
@@ -296,9 +289,9 @@ func TestFoundAccountAndService(t *testing.T) {
 	svc.findByPhone = svc.findByEmail
 	svc.findByEmail = nil
 
-	ar = &api.AuthRequest{
-		Phone:    ptr("123-222-3333"),
-		Password: ptr("test"),
+	ar = &api.Identity{
+		Phone:    proto.String("123-222-3333"),
+		Password: proto.String("test"),
 	}
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
 		response := r.Post("/api/v1/auth", "application/json", string(to_json(ar, t)))
@@ -344,9 +337,9 @@ func TestFoundAccountButNotMatchService(t *testing.T) {
 		t.Error(err)
 	}
 
-	ar := &api.AuthRequest{
-		Email:    ptr("foo@bar.com"),
-		Password: ptr("test"),
+	ar := &api.Identity{
+		Email:    proto.String("foo@bar.com"),
+		Password: proto.String("test"),
 	}
 
 	serviceId := "test-app"
@@ -361,7 +354,7 @@ func TestFoundAccountButNotMatchService(t *testing.T) {
 		password := "test"
 		Password(&password).Hash().Update()
 		return &api.Account{
-			Primary: &api.Login{Password: &password},
+			Primary: &api.Identity{Password: &password},
 			Services: []*api.Service{
 				&api.Service{
 					Id:        &serviceId,
@@ -369,10 +362,10 @@ func TestFoundAccountButNotMatchService(t *testing.T) {
 					AccountId: &serviceAccountId,
 					Attributes: []*api.Attribute{
 						&api.Attribute{
-							Type:             &attributeType1,
-							Key:              &attribute1,
-							EmbedSigninToken: &embed,
-							StringValue:      &value1,
+							Type:         &attributeType1,
+							Key:          &attribute1,
+							EmbedInToken: &embed,
+							StringValue:  &value1,
 						},
 					},
 				},
@@ -414,13 +407,11 @@ func TestGetAccount(t *testing.T) {
 	serviceStatus := "verified"
 	serviceAccountId := "12345"
 
-	attributeType1 := api.Attribute_STRING
-	embed := true
 	attribute1, value1 := "attribute1", "value1"
 
 	svc.getAccount = func(id uuid.UUID) (account *api.Account, err error) {
 		return &api.Account{
-			Primary: &api.Login{Password: &password},
+			Primary: &api.Identity{Password: &password},
 			Services: []*api.Service{
 				&api.Service{
 					Id:        &serviceId,
@@ -428,10 +419,10 @@ func TestGetAccount(t *testing.T) {
 					AccountId: &serviceAccountId,
 					Attributes: []*api.Attribute{
 						&api.Attribute{
-							Type:             &attributeType1,
-							Key:              &attribute1,
-							EmbedSigninToken: &embed,
-							StringValue:      &value1,
+							Type:         api.Attribute_STRING.Enum(),
+							Key:          &attribute1,
+							EmbedInToken: proto.Bool(true),
+							StringValue:  &value1,
 						},
 					},
 				},
@@ -452,7 +443,7 @@ func TestGetAccount(t *testing.T) {
 
 		assert.Equal(t, serviceId, account.GetServices()[0].GetId())
 		assert.Equal(t, serviceStatus, account.GetServices()[0].GetStatus())
-		assert.Equal(t, embed, account.GetServices()[0].GetAttributes()[0].GetEmbedSigninToken())
+		assert.Equal(t, true, account.GetServices()[0].GetAttributes()[0].GetEmbedInToken())
 	})
 }
 
@@ -507,8 +498,8 @@ func TestSaveAccount(t *testing.T) {
 	attribute1, value1 := "attribute1", "value1"
 
 	input := &api.Account{
-		Primary: &api.Login{
-			Email:    ptr("test@foo.com"),
+		Primary: &api.Identity{
+			Email:    proto.String("test@foo.com"),
 			Password: &password},
 		Services: []*api.Service{
 			&api.Service{
@@ -517,10 +508,10 @@ func TestSaveAccount(t *testing.T) {
 				AccountId: &serviceAccountId,
 				Attributes: []*api.Attribute{
 					&api.Attribute{
-						Type:             &attributeType1,
-						Key:              &attribute1,
-						EmbedSigninToken: &embed,
-						StringValue:      &value1,
+						Type:         &attributeType1,
+						Key:          &attribute1,
+						EmbedInToken: &embed,
+						StringValue:  &value1,
 					},
 				},
 			},
@@ -565,9 +556,9 @@ func TestNewAccount(t *testing.T) {
 	}
 
 	input := &api.Account{
-		Primary: &api.Login{
-			Password: ptr("password"),
-			Phone:    ptr("111-222-9999"),
+		Primary: &api.Identity{
+			Password: proto.String("password"),
+			Phone:    proto.String("111-222-9999"),
 		},
 	}
 
@@ -616,7 +607,7 @@ func TestNewAccountMissingInput(t *testing.T) {
 	}
 
 	input := &api.Account{
-		Primary: &api.Login{Password: ptr("foo")},
+		Primary: &api.Identity{Password: proto.String("foo")},
 	}
 
 	var state struct {
@@ -658,9 +649,9 @@ func TestNewAccountConflict(t *testing.T) {
 	}
 
 	input := &api.Account{
-		Primary: &api.Login{
-			Password: ptr("password"),
-			Phone:    ptr("111-222-9999"),
+		Primary: &api.Identity{
+			Password: proto.String("password"),
+			Phone:    proto.String("111-222-9999"),
 		},
 	}
 
@@ -685,7 +676,7 @@ func TestNewAccountConflict(t *testing.T) {
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {
 		response := r.Post("/api/v1/account", "application/protobuf", string(to_protobuf(input, t)))
 		assert.Equal(t, 409, response.StatusCode)
-		check_error_response_reason(t, response.Body, "error-duplicate")
+		check_error_response_reason(t, response.Body, "error-conflict")
 	})
 
 	assert.Equal(t, true, state.CalledFindByPhone)
@@ -706,7 +697,7 @@ func TestSaveAccountPrimay(t *testing.T) {
 	}
 
 	input := &api.Account{
-		Primary: &api.Login{},
+		Primary: &api.Identity{},
 		Services: []*api.Service{
 			&api.Service{
 				Attributes: []*api.Attribute{
@@ -720,15 +711,15 @@ func TestSaveAccountPrimay(t *testing.T) {
 	attribute_type := api.Attribute_STRING
 
 	uid := omni_common.NewUUID()
-	input.Id = ptr(uid.String())
-	input.Primary.Password = ptr("password-1")
-	input.Services[0].Id = ptr("app-1")
-	input.Services[0].Status = ptr("verified")
-	input.Services[0].AccountId = ptr("app-account-1")
-	input.Services[0].Attributes[0].Key = ptr("key-1")
+	input.Id = proto.String(uid.String())
+	input.Primary.Password = proto.String("password-1")
+	input.Services[0].Id = proto.String("app-1")
+	input.Services[0].Status = proto.String("verified")
+	input.Services[0].AccountId = proto.String("app-account-1")
+	input.Services[0].Attributes[0].Key = proto.String("key-1")
 	input.Services[0].Attributes[0].Type = &attribute_type
-	input.Services[0].Attributes[0].EmbedSigninToken = &embed
-	input.Services[0].Attributes[0].StringValue = ptr("value-1")
+	input.Services[0].Attributes[0].EmbedInToken = &embed
+	input.Services[0].Attributes[0].StringValue = proto.String("value-1")
 
 	svc.getAccount = func(id uuid.UUID) (account *api.Account, err error) {
 		assert.Equal(t, input.GetId(), id.String())
@@ -736,9 +727,9 @@ func TestSaveAccountPrimay(t *testing.T) {
 		return input, nil
 	}
 
-	login := &api.Login{}
-	login.Password = ptr("new-password")
-	login.Phone = ptr("111-222-3333")
+	login := &api.Identity{}
+	login.Password = proto.String("new-password")
+	login.Phone = proto.String("111-222-3333")
 
 	svc.saveAccount = func(account *api.Account) (err error) {
 		assert.Equal(t, input.GetId(), account.GetId())
@@ -778,24 +769,24 @@ func TestSaveAccountService(t *testing.T) {
 
 	// initially no services
 	input := &api.Account{
-		Primary: &api.Login{},
+		Primary: &api.Identity{},
 	}
 
 	embed := true
 	attribute_type := api.Attribute_STRING
 
 	uid := omni_common.NewUUID()
-	input.Id = ptr(uid.String())
-	input.Primary.Password = ptr("password-1")
+	input.Id = proto.String(uid.String())
+	input.Primary.Password = proto.String("password-1")
 
 	service := &api.Service{Attributes: []*api.Attribute{&api.Attribute{}}}
-	service.Id = ptr(omni_common.NewUUID().String())
-	service.Status = ptr("verified")
-	service.AccountId = ptr("app-account-1")
-	service.Attributes[0].Key = ptr("key-1")
+	service.Id = proto.String(omni_common.NewUUID().String())
+	service.Status = proto.String("verified")
+	service.AccountId = proto.String("app-account-1")
+	service.Attributes[0].Key = proto.String("key-1")
 	service.Attributes[0].Type = &attribute_type
-	service.Attributes[0].EmbedSigninToken = &embed
-	service.Attributes[0].StringValue = ptr("value-1")
+	service.Attributes[0].EmbedInToken = &embed
+	service.Attributes[0].StringValue = proto.String("value-1")
 
 	svc.getAccount = func(id uuid.UUID) (account *api.Account, err error) {
 		assert.Equal(t, input.GetId(), id.String())
@@ -819,7 +810,7 @@ func TestSaveAccountService(t *testing.T) {
 
 	t.Log("using application/protobuf serialization")
 	// now we change an app's attribute
-	service.Attributes[0].StringValue = ptr("value-1-changed")
+	service.Attributes[0].StringValue = proto.String("value-1-changed")
 	svc.saveAccount = func(account *api.Account) (err error) {
 		assert.Equal(t, input.GetId(), account.GetId())
 		assert.Equal(t, 1, len(account.GetServices()))
@@ -866,23 +857,23 @@ func TestSaveAccountServiceAttribute(t *testing.T) {
 
 	// initially no services
 	input := &api.Account{
-		Primary: &api.Login{},
+		Primary: &api.Identity{},
 	}
 
 	embed := true
 	attribute_type := api.Attribute_STRING
 
-	input.Id = ptr(omni_common.NewUUID().String())
-	input.Primary.Password = ptr("password-1")
+	input.Id = proto.String(omni_common.NewUUID().String())
+	input.Primary.Password = proto.String("password-1")
 
 	service := &api.Service{Attributes: []*api.Attribute{&api.Attribute{}}}
-	service.Id = ptr(omni_common.NewUUID().String())
-	service.Status = ptr("verified")
-	service.AccountId = ptr("app-account-1")
-	service.Attributes[0].Key = ptr("key-1")
+	service.Id = proto.String(omni_common.NewUUID().String())
+	service.Status = proto.String("verified")
+	service.AccountId = proto.String("app-account-1")
+	service.Attributes[0].Key = proto.String("key-1")
 	service.Attributes[0].Type = &attribute_type
-	service.Attributes[0].EmbedSigninToken = &embed
-	service.Attributes[0].StringValue = ptr("value-1")
+	service.Attributes[0].EmbedInToken = &embed
+	service.Attributes[0].StringValue = proto.String("value-1")
 
 	svc.getAccount = func(id uuid.UUID) (account *api.Account, err error) {
 		assert.Equal(t, input.GetId(), id.String())
@@ -906,7 +897,7 @@ func TestSaveAccountServiceAttribute(t *testing.T) {
 
 	t.Log("using application/protobuf serialization")
 	attribute := service.Attributes[0]
-	attribute.StringValue = ptr("value-1-changed")
+	attribute.StringValue = proto.String("value-1-changed")
 	svc.saveAccount = func(account *api.Account) (err error) {
 		assert.Equal(t, input.GetId(), account.GetId())
 		assert.Equal(t, 1, len(account.GetServices()))
@@ -925,8 +916,8 @@ func TestSaveAccountServiceAttribute(t *testing.T) {
 	attribute2_t := api.Attribute_STRING
 	attribute2 := &api.Attribute{
 		Type:        &attribute2_t,
-		Key:         ptr("new-key"),
-		StringValue: ptr("new-value"),
+		Key:         proto.String("new-key"),
+		StringValue: proto.String("new-value"),
 	}
 
 	testflight.WithServer(endpoint, func(r *testflight.Requester) {

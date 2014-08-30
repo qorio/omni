@@ -1,34 +1,12 @@
 package passport;
 
-
-message PassportCredential {
-	optional string password = 1;
-	optional string email = 2;
-	optional string phone = 3;
-	optional string username = 4;
-}
-
-// OAuth2 identity here assumes that the
-// client has performed auth with the provider
-// and the provider has granted an access token.
-// The access token is then verified on the server
-// side via the providers server api.  Once the
-// access token is verified, another token for
-// accessing passport-authenticated systems is
-// issued.
-message OAuth2Credential {
-	required string provider = 1;
-	required string id = 2;
-	optional string access_token = 3;
-}
-
-
-message AuthResponse {
-	required string token = 1;
-}
-
-message Login {
-	optional string id = 1;
+// The type of the Identity is determined by what is
+// presented to the server.  If password is specified,
+// native passport identity by username/email/phone + password
+// is used.  If oauth2_access_token is presented, the
+// oauth2 identity is assumed.
+message Identity {
+	optional string id = 1; // system assigned
 	optional string service = 2;
 
 	message Location {
@@ -37,10 +15,37 @@ message Login {
     	}
 	optional Location location = 3;
 
-	optional PassportCredential native = 4;
-	optional OAuth2Credential oauth2 = 5;
+	// NATIVE identity
+	optional string password = 10;
+	optional string email = 11;
+	optional string phone = 12;
+	optional string username = 13;
+
+	// OAUTH2 identity here assumes that the
+	// client has performed auth with the provider
+	// and the provider has granted an access token.
+	// The access token is then verified on the server
+	// side via the providers server api.  Once the
+	// access token is verified, another token for
+	// accessing passport-authenticated systems is
+	// issued.
+	optional string oauth2_provider = 20;
+	optional string oauth2_account_id = 21;
+	optional string oauth2_access_token = 22;
 }
 
+message AuthResponse {
+	required string token = 1;
+}
+
+message Account {
+	optional string id = 1;
+	optional string status = 2;
+	optional double created_timestamp = 4; // unix seconds
+	repeated Service services = 5;
+	required Identity primary = 3;
+	repeated Identity identities = 6;
+}
 
 message Blob {
 	required string type = 1;
@@ -56,7 +61,7 @@ message Attribute {
 	}
 	required Type type = 1;
 	required string key = 2;
-	optional bool embed_signin_token = 3 [default = false];  // True to include in signin JWT token
+	optional bool embed_in_token = 3 [default = false];  // True to include in signin JWT token
 	optional string string_value = 4;
 	optional double number_value = 5;
 	optional bool bool_value = 6;
@@ -66,18 +71,10 @@ message Attribute {
 message Service {
 	required string id = 1;
 	required string status = 2;  // free-form for the service to interpret
-	required string accountId = 3;  // account key used by the service
+	required string account_id = 3;  // account key used by the service
 	repeated string scopes = 4; // oauth scopes / permissions
-	optional double startTimestamp = 5;
+	optional double start_timestamp = 5;
 	repeated Attribute attributes = 6;
-}
-
-message Account {
-	optional string id = 1;
-	optional string status = 2;
-	required Login primary = 3;
-	optional double createdTimestamp = 4; // unix seconds
-	repeated Service services = 5;
 }
 
 message AccountLogs {

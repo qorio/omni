@@ -2,6 +2,7 @@ package passport
 
 import (
 	"bytes"
+	"code.google.com/p/goprotobuf/proto"
 	"errors"
 	"fmt"
 	"github.com/bmizerany/assert"
@@ -20,15 +21,15 @@ var initialize_service_insert_passport_user_accounts = func(t *testing.T, impl *
 
 	// This is the SDK api user -- it is able to register new user and read account information.
 	user2 := &api.Account{
-		Id: ptr("api1"),
-		Primary: &api.Login{
-			Email:    ptr("api1@passport"),
-			Password: ptr("api1pass"),
+		Id: proto.String("api1"),
+		Primary: &api.Identity{
+			Email:    proto.String("api1@passport"),
+			Password: proto.String("api1pass"),
 		},
 		Services: []*api.Service{
 			&api.Service{
-				Id:        ptr("passport"),
-				AccountId: ptr("passport-user-2"),
+				Id:        proto.String("passport"),
+				AccountId: proto.String("passport-user-2"),
 				Scopes: []string{
 					api.AuthScopes[api.RegisterNewUser],
 					api.AuthScopes[api.AccountReadOnly],
@@ -41,15 +42,15 @@ var initialize_service_insert_passport_user_accounts = func(t *testing.T, impl *
 	// passport and can update passport's service accounts after its local account / use objects have
 	// been created.
 	user3 := &api.Account{
-		Id: ptr("partner-test"),
-		Primary: &api.Login{
-			Email:    ptr("partner-test@passport"),
-			Password: ptr("partner-testpass"),
+		Id: proto.String("partner-test"),
+		Primary: &api.Identity{
+			Email:    proto.String("partner-test@passport"),
+			Password: proto.String("partner-testpass"),
 		},
 		Services: []*api.Service{
 			&api.Service{
-				Id:        ptr("passport"),
-				AccountId: ptr("passport-user-3"),
+				Id:        proto.String("passport"),
+				AccountId: proto.String("passport-user-3"),
 				Scopes: []string{
 					api.AuthScopes[api.AccountUpdate],
 					api.AuthScopes[api.AccountReadOnly],
@@ -73,7 +74,7 @@ var initialize_service_insert_passport_user_accounts = func(t *testing.T, impl *
 
 // Authenticates against the endpoint and returns the access token
 func authenticate(t *testing.T, r *testflight.Requester, email, password, host *string) (token string) {
-	authRequest := api.Methods[api.AuthUser].RequestBody().(api.AuthRequest)
+	authRequest := api.Methods[api.AuthUser].RequestBody().(api.Identity)
 	authRequest.Email = email
 	authRequest.Password = password
 
@@ -143,7 +144,7 @@ func new_user() struct {
 func TestRegisterUser(t *testing.T) {
 
 	newUser := new_user()
-	var newAccountId = ptr("")
+	var newAccountId = proto.String("")
 	wait := start_server(t, "test", "new-user-registration", "/event/new-user-registration", "POST",
 		func(resp http.ResponseWriter, req *http.Request) error {
 			t.Log("The webhook got called:", req.Body)
@@ -163,7 +164,7 @@ func TestRegisterUser(t *testing.T) {
 			return nil
 		})
 
-	var registerResult *api.Login = nil
+	var registerResult *api.Identity = nil
 	testflight.WithServer(endpoint(t, default_auth_settings(t), default_settings(),
 		initialize_service_insert_passport_user_accounts),
 
@@ -174,7 +175,7 @@ func TestRegisterUser(t *testing.T) {
 			authToken := authenticate(t, r, &apiUser.Email, &apiUser.Password, nil)
 
 			// Create the login object for signing up
-			login := api.Methods[api.RegisterUser].RequestBody().(api.Login)
+			login := api.Methods[api.RegisterUser].RequestBody().(api.Identity)
 			login.Email = &newUser.Email
 			login.Password = &newUser.Password
 
@@ -186,7 +187,7 @@ func TestRegisterUser(t *testing.T) {
 
 			assert.Equal(t, 200, apiResponse.StatusCode)
 
-			o := api.Methods[api.RegisterUser].ResponseBody().(api.Login)
+			o := api.Methods[api.RegisterUser].ResponseBody().(api.Identity)
 			from_protobuf(&o, apiResponse.RawBody, t)
 			registerResult = &o
 			t.Log("Got login", registerResult.String())
@@ -256,7 +257,7 @@ func TestRegisterUserWithUpdateServiceAccountFromPartnerService(t *testing.T) {
 		[]string{"test_permission1", "test_permission2", "test_permission3"},
 	}
 
-	var newAccountId = ptr("")
+	var newAccountId = proto.String("")
 	wait := start_server(t, "test", "new-user-registration", "/event/new-user-registration", "POST",
 		func(resp http.ResponseWriter, req *http.Request) error {
 			t.Log("The webhook got called:", req.Body)
@@ -277,9 +278,9 @@ func TestRegisterUserWithUpdateServiceAccountFromPartnerService(t *testing.T) {
 			// Here we create any necessary account or user objects in our system.
 			// After it's done, we make a call back to passport to update the service record.
 			service := api.Methods[api.AddOrUpdateAccountService].RequestBody().(api.Service)
-			service.Id = ptr("test")
-			service.Status = ptr("created")
-			service.AccountId = ptr("test-service-account-" + *newAccountId)
+			service.Id = proto.String("test")
+			service.Status = proto.String("created")
+			service.AccountId = proto.String("test-service-account-" + *newAccountId)
 			service.Scopes = test_account_data.ScopesForTestService
 			// Add some interesting data that we want to have passport manage for us and include
 			// in auth token.
@@ -287,10 +288,10 @@ func TestRegisterUserWithUpdateServiceAccountFromPartnerService(t *testing.T) {
 			embed := true
 			service.Attributes = []*api.Attribute{
 				&api.Attribute{
-					Type:             &attr_type,
-					EmbedSigninToken: &embed,
-					Key:              &test_account_data.NicknameKey,
-					StringValue:      &test_account_data.NicknameValue,
+					Type:         &attr_type,
+					EmbedInToken: &embed,
+					Key:          &test_account_data.NicknameKey,
+					StringValue:  &test_account_data.NicknameValue,
 				},
 			}
 
@@ -316,12 +317,12 @@ func TestRegisterUserWithUpdateServiceAccountFromPartnerService(t *testing.T) {
 			return nil
 		})
 
-	var registerResult *api.Login = nil
+	var registerResult *api.Identity = nil
 	t.Log("Authenticate api call to passport")
 	authToken := authenticate(t, nil, &apiUser.Email, &apiUser.Password, &passport.URL)
 
 	// Create the login object for signing up
-	login := api.Methods[api.RegisterUser].RequestBody().(api.Login)
+	login := api.Methods[api.RegisterUser].RequestBody().(api.Identity)
 	login.Email = &newUser.Email
 	login.Password = &newUser.Password
 
@@ -336,7 +337,7 @@ func TestRegisterUserWithUpdateServiceAccountFromPartnerService(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, 200, apiResponse.StatusCode)
-	o := api.Methods[api.RegisterUser].ResponseBody().(api.Login)
+	o := api.Methods[api.RegisterUser].ResponseBody().(api.Identity)
 	buff, _ := ioutil.ReadAll(apiResponse.Body)
 	from_protobuf(&o, buff, t)
 	registerResult = &o

@@ -9,14 +9,12 @@ It is generated from these files:
 	passport.proto
 
 It has these top-level messages:
-	PassportCredential
-	OAuth2Credential
+	Identity
 	AuthResponse
-	Login
+	Account
 	Blob
 	Attribute
 	Service
-	Account
 	AccountLogs
 */
 package passport
@@ -67,84 +65,130 @@ func (x *Attribute_Type) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type PassportCredential struct {
-	Password         *string `protobuf:"bytes,1,opt,name=password" json:"password,omitempty"`
-	Email            *string `protobuf:"bytes,2,opt,name=email" json:"email,omitempty"`
-	Phone            *string `protobuf:"bytes,3,opt,name=phone" json:"phone,omitempty"`
-	Username         *string `protobuf:"bytes,4,opt,name=username" json:"username,omitempty"`
-	XXX_unrecognized []byte  `json:"-"`
+// The type of the Identity is determined by what is
+// presented to the server.  If password is specified,
+// native passport identity by username/email/phone + password
+// is used.  If oauth2_access_token is presented, the
+// oauth2 identity is assumed.
+type Identity struct {
+	Id       *string            `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	Service  *string            `protobuf:"bytes,2,opt,name=service" json:"service,omitempty"`
+	Location *Identity_Location `protobuf:"bytes,3,opt,name=location" json:"location,omitempty"`
+	// NATIVE identity
+	Password *string `protobuf:"bytes,10,opt,name=password" json:"password,omitempty"`
+	Email    *string `protobuf:"bytes,11,opt,name=email" json:"email,omitempty"`
+	Phone    *string `protobuf:"bytes,12,opt,name=phone" json:"phone,omitempty"`
+	Username *string `protobuf:"bytes,13,opt,name=username" json:"username,omitempty"`
+	// OAUTH2 identity here assumes that the
+	// client has performed auth with the provider
+	// and the provider has granted an access token.
+	// The access token is then verified on the server
+	// side via the providers server api.  Once the
+	// access token is verified, another token for
+	// accessing passport-authenticated systems is
+	// issued.
+	Oauth2Provider    *string `protobuf:"bytes,20,opt,name=oauth2_provider" json:"oauth2_provider,omitempty"`
+	Oauth2AccountId   *string `protobuf:"bytes,21,opt,name=oauth2_account_id" json:"oauth2_account_id,omitempty"`
+	Oauth2AccessToken *string `protobuf:"bytes,22,opt,name=oauth2_access_token" json:"oauth2_access_token,omitempty"`
+	XXX_unrecognized  []byte  `json:"-"`
 }
 
-func (m *PassportCredential) Reset()         { *m = PassportCredential{} }
-func (m *PassportCredential) String() string { return proto.CompactTextString(m) }
-func (*PassportCredential) ProtoMessage()    {}
+func (m *Identity) Reset()         { *m = Identity{} }
+func (m *Identity) String() string { return proto.CompactTextString(m) }
+func (*Identity) ProtoMessage()    {}
 
-func (m *PassportCredential) GetPassword() string {
-	if m != nil && m.Password != nil {
-		return *m.Password
-	}
-	return ""
-}
-
-func (m *PassportCredential) GetEmail() string {
-	if m != nil && m.Email != nil {
-		return *m.Email
-	}
-	return ""
-}
-
-func (m *PassportCredential) GetPhone() string {
-	if m != nil && m.Phone != nil {
-		return *m.Phone
-	}
-	return ""
-}
-
-func (m *PassportCredential) GetUsername() string {
-	if m != nil && m.Username != nil {
-		return *m.Username
-	}
-	return ""
-}
-
-// OAuth2 identity here assumes that the
-// client has performed auth with the provider
-// and the provider has granted an access token.
-// The access token is then verified on the server
-// side via the providers server api.  Once the
-// access token is verified, another token for
-// accessing passport-authenticated systems is
-// issued.
-type OAuth2Credential struct {
-	Provider         *string `protobuf:"bytes,1,req,name=provider" json:"provider,omitempty"`
-	Id               *string `protobuf:"bytes,2,req,name=id" json:"id,omitempty"`
-	AccessToken      *string `protobuf:"bytes,3,req,name=access_token" json:"access_token,omitempty"`
-	XXX_unrecognized []byte  `json:"-"`
-}
-
-func (m *OAuth2Credential) Reset()         { *m = OAuth2Credential{} }
-func (m *OAuth2Credential) String() string { return proto.CompactTextString(m) }
-func (*OAuth2Credential) ProtoMessage()    {}
-
-func (m *OAuth2Credential) GetProvider() string {
-	if m != nil && m.Provider != nil {
-		return *m.Provider
-	}
-	return ""
-}
-
-func (m *OAuth2Credential) GetId() string {
+func (m *Identity) GetId() string {
 	if m != nil && m.Id != nil {
 		return *m.Id
 	}
 	return ""
 }
 
-func (m *OAuth2Credential) GetAccessToken() string {
-	if m != nil && m.AccessToken != nil {
-		return *m.AccessToken
+func (m *Identity) GetService() string {
+	if m != nil && m.Service != nil {
+		return *m.Service
 	}
 	return ""
+}
+
+func (m *Identity) GetLocation() *Identity_Location {
+	if m != nil {
+		return m.Location
+	}
+	return nil
+}
+
+func (m *Identity) GetPassword() string {
+	if m != nil && m.Password != nil {
+		return *m.Password
+	}
+	return ""
+}
+
+func (m *Identity) GetEmail() string {
+	if m != nil && m.Email != nil {
+		return *m.Email
+	}
+	return ""
+}
+
+func (m *Identity) GetPhone() string {
+	if m != nil && m.Phone != nil {
+		return *m.Phone
+	}
+	return ""
+}
+
+func (m *Identity) GetUsername() string {
+	if m != nil && m.Username != nil {
+		return *m.Username
+	}
+	return ""
+}
+
+func (m *Identity) GetOauth2Provider() string {
+	if m != nil && m.Oauth2Provider != nil {
+		return *m.Oauth2Provider
+	}
+	return ""
+}
+
+func (m *Identity) GetOauth2AccountId() string {
+	if m != nil && m.Oauth2AccountId != nil {
+		return *m.Oauth2AccountId
+	}
+	return ""
+}
+
+func (m *Identity) GetOauth2AccessToken() string {
+	if m != nil && m.Oauth2AccessToken != nil {
+		return *m.Oauth2AccessToken
+	}
+	return ""
+}
+
+type Identity_Location struct {
+	Lon              *float64 `protobuf:"fixed64,1,req,name=lon" json:"lon,omitempty"`
+	Lat              *float64 `protobuf:"fixed64,2,req,name=lat" json:"lat,omitempty"`
+	XXX_unrecognized []byte   `json:"-"`
+}
+
+func (m *Identity_Location) Reset()         { *m = Identity_Location{} }
+func (m *Identity_Location) String() string { return proto.CompactTextString(m) }
+func (*Identity_Location) ProtoMessage()    {}
+
+func (m *Identity_Location) GetLon() float64 {
+	if m != nil && m.Lon != nil {
+		return *m.Lon
+	}
+	return 0
+}
+
+func (m *Identity_Location) GetLat() float64 {
+	if m != nil && m.Lat != nil {
+		return *m.Lat
+	}
+	return 0
 }
 
 type AuthResponse struct {
@@ -163,76 +207,60 @@ func (m *AuthResponse) GetToken() string {
 	return ""
 }
 
-type Login struct {
-	Id               *string             `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
-	Service          *string             `protobuf:"bytes,2,opt,name=service" json:"service,omitempty"`
-	Location         *Login_Location     `protobuf:"bytes,3,opt,name=location" json:"location,omitempty"`
-	Native           *PassportCredential `protobuf:"bytes,4,opt,name=native" json:"native,omitempty"`
-	Oauth2           *OAuth2Credential   `protobuf:"bytes,5,opt,name=oauth2" json:"oauth2,omitempty"`
-	XXX_unrecognized []byte              `json:"-"`
+type Account struct {
+	Id               *string     `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	Status           *string     `protobuf:"bytes,2,opt,name=status" json:"status,omitempty"`
+	CreatedTimestamp *float64    `protobuf:"fixed64,4,opt,name=created_timestamp" json:"created_timestamp,omitempty"`
+	Services         []*Service  `protobuf:"bytes,5,rep,name=services" json:"services,omitempty"`
+	Primary          *Identity   `protobuf:"bytes,3,req,name=primary" json:"primary,omitempty"`
+	Identities       []*Identity `protobuf:"bytes,6,rep,name=identities" json:"identities,omitempty"`
+	XXX_unrecognized []byte      `json:"-"`
 }
 
-func (m *Login) Reset()         { *m = Login{} }
-func (m *Login) String() string { return proto.CompactTextString(m) }
-func (*Login) ProtoMessage()    {}
+func (m *Account) Reset()         { *m = Account{} }
+func (m *Account) String() string { return proto.CompactTextString(m) }
+func (*Account) ProtoMessage()    {}
 
-func (m *Login) GetId() string {
+func (m *Account) GetId() string {
 	if m != nil && m.Id != nil {
 		return *m.Id
 	}
 	return ""
 }
 
-func (m *Login) GetService() string {
-	if m != nil && m.Service != nil {
-		return *m.Service
+func (m *Account) GetStatus() string {
+	if m != nil && m.Status != nil {
+		return *m.Status
 	}
 	return ""
 }
 
-func (m *Login) GetLocation() *Login_Location {
-	if m != nil {
-		return m.Location
-	}
-	return nil
-}
-
-func (m *Login) GetNative() *PassportCredential {
-	if m != nil {
-		return m.Native
-	}
-	return nil
-}
-
-func (m *Login) GetOauth2() *OAuth2Credential {
-	if m != nil {
-		return m.Oauth2
-	}
-	return nil
-}
-
-type Login_Location struct {
-	Lon              *float64 `protobuf:"fixed64,1,req,name=lon" json:"lon,omitempty"`
-	Lat              *float64 `protobuf:"fixed64,2,req,name=lat" json:"lat,omitempty"`
-	XXX_unrecognized []byte   `json:"-"`
-}
-
-func (m *Login_Location) Reset()         { *m = Login_Location{} }
-func (m *Login_Location) String() string { return proto.CompactTextString(m) }
-func (*Login_Location) ProtoMessage()    {}
-
-func (m *Login_Location) GetLon() float64 {
-	if m != nil && m.Lon != nil {
-		return *m.Lon
+func (m *Account) GetCreatedTimestamp() float64 {
+	if m != nil && m.CreatedTimestamp != nil {
+		return *m.CreatedTimestamp
 	}
 	return 0
 }
 
-func (m *Login_Location) GetLat() float64 {
-	if m != nil && m.Lat != nil {
-		return *m.Lat
+func (m *Account) GetServices() []*Service {
+	if m != nil {
+		return m.Services
 	}
-	return 0
+	return nil
+}
+
+func (m *Account) GetPrimary() *Identity {
+	if m != nil {
+		return m.Primary
+	}
+	return nil
+}
+
+func (m *Account) GetIdentities() []*Identity {
+	if m != nil {
+		return m.Identities
+	}
+	return nil
 }
 
 type Blob struct {
@@ -262,7 +290,7 @@ func (m *Blob) GetData() []byte {
 type Attribute struct {
 	Type             *Attribute_Type `protobuf:"varint,1,req,name=type,enum=passport.Attribute_Type" json:"type,omitempty"`
 	Key              *string         `protobuf:"bytes,2,req,name=key" json:"key,omitempty"`
-	EmbedSigninToken *bool           `protobuf:"varint,3,opt,name=embed_signin_token,def=0" json:"embed_signin_token,omitempty"`
+	EmbedInToken     *bool           `protobuf:"varint,3,opt,name=embed_in_token,def=0" json:"embed_in_token,omitempty"`
 	StringValue      *string         `protobuf:"bytes,4,opt,name=string_value" json:"string_value,omitempty"`
 	NumberValue      *float64        `protobuf:"fixed64,5,opt,name=number_value" json:"number_value,omitempty"`
 	BoolValue        *bool           `protobuf:"varint,6,opt,name=bool_value" json:"bool_value,omitempty"`
@@ -274,7 +302,7 @@ func (m *Attribute) Reset()         { *m = Attribute{} }
 func (m *Attribute) String() string { return proto.CompactTextString(m) }
 func (*Attribute) ProtoMessage()    {}
 
-const Default_Attribute_EmbedSigninToken bool = false
+const Default_Attribute_EmbedInToken bool = false
 
 func (m *Attribute) GetType() Attribute_Type {
 	if m != nil && m.Type != nil {
@@ -290,11 +318,11 @@ func (m *Attribute) GetKey() string {
 	return ""
 }
 
-func (m *Attribute) GetEmbedSigninToken() bool {
-	if m != nil && m.EmbedSigninToken != nil {
-		return *m.EmbedSigninToken
+func (m *Attribute) GetEmbedInToken() bool {
+	if m != nil && m.EmbedInToken != nil {
+		return *m.EmbedInToken
 	}
-	return Default_Attribute_EmbedSigninToken
+	return Default_Attribute_EmbedInToken
 }
 
 func (m *Attribute) GetStringValue() string {
@@ -328,9 +356,9 @@ func (m *Attribute) GetBlobValue() *Blob {
 type Service struct {
 	Id               *string      `protobuf:"bytes,1,req,name=id" json:"id,omitempty"`
 	Status           *string      `protobuf:"bytes,2,req,name=status" json:"status,omitempty"`
-	AccountId        *string      `protobuf:"bytes,3,req,name=accountId" json:"accountId,omitempty"`
+	AccountId        *string      `protobuf:"bytes,3,req,name=account_id" json:"account_id,omitempty"`
 	Scopes           []string     `protobuf:"bytes,4,rep,name=scopes" json:"scopes,omitempty"`
-	StartTimestamp   *float64     `protobuf:"fixed64,5,opt,name=startTimestamp" json:"startTimestamp,omitempty"`
+	StartTimestamp   *float64     `protobuf:"fixed64,5,opt,name=start_timestamp" json:"start_timestamp,omitempty"`
 	Attributes       []*Attribute `protobuf:"bytes,6,rep,name=attributes" json:"attributes,omitempty"`
 	XXX_unrecognized []byte       `json:"-"`
 }
@@ -377,54 +405,6 @@ func (m *Service) GetStartTimestamp() float64 {
 func (m *Service) GetAttributes() []*Attribute {
 	if m != nil {
 		return m.Attributes
-	}
-	return nil
-}
-
-type Account struct {
-	Id               *string    `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
-	Status           *string    `protobuf:"bytes,2,opt,name=status" json:"status,omitempty"`
-	Primary          *Login     `protobuf:"bytes,3,req,name=primary" json:"primary,omitempty"`
-	CreatedTimestamp *float64   `protobuf:"fixed64,4,opt,name=createdTimestamp" json:"createdTimestamp,omitempty"`
-	Services         []*Service `protobuf:"bytes,5,rep,name=services" json:"services,omitempty"`
-	XXX_unrecognized []byte     `json:"-"`
-}
-
-func (m *Account) Reset()         { *m = Account{} }
-func (m *Account) String() string { return proto.CompactTextString(m) }
-func (*Account) ProtoMessage()    {}
-
-func (m *Account) GetId() string {
-	if m != nil && m.Id != nil {
-		return *m.Id
-	}
-	return ""
-}
-
-func (m *Account) GetStatus() string {
-	if m != nil && m.Status != nil {
-		return *m.Status
-	}
-	return ""
-}
-
-func (m *Account) GetPrimary() *Login {
-	if m != nil {
-		return m.Primary
-	}
-	return nil
-}
-
-func (m *Account) GetCreatedTimestamp() float64 {
-	if m != nil && m.CreatedTimestamp != nil {
-		return *m.CreatedTimestamp
-	}
-	return 0
-}
-
-func (m *Account) GetServices() []*Service {
-	if m != nil {
-		return m.Services
 	}
 	return nil
 }
