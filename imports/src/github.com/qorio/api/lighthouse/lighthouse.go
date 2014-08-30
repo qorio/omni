@@ -2,7 +2,6 @@ package lighthouse
 
 import (
 	"github.com/qorio/api"
-	"github.com/qorio/api/passport"
 )
 
 const (
@@ -15,22 +14,6 @@ const (
 )
 
 var Methods = api.ServiceMethods{
-
-	RegisterUser: api.MethodSpec{
-		AuthScope: "*",
-		Doc: `
-Registers a user
-`,
-		UrlRoute:     "/api/v1/register",
-		HttpMethod:   "POST",
-		ContentTypes: []string{"application/protobuf", "application/json"},
-		RequestBody: func() interface{} {
-			return passport.Login{}
-		},
-		ResponseBody: func() interface{} {
-			return passport.Login{} // will include assigned id.
-		},
-	},
 
 	AddOrUpdateBeacon: api.MethodSpec{
 		AuthScope: "*",

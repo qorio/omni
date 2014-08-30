@@ -61,15 +61,15 @@ func (this *serviceImpl) dropDatabase() (err error) {
 	return this.db.DropDatabase()
 }
 
-func (this *serviceImpl) RegisterUser(l *passport.Login) (u *UserProfile, err error) {
+func (this *serviceImpl) RegisterUser(l *passport.Identity) (u *UserProfile, err error) {
 	return this.registerUser(l, false)
 }
 
-func (this *serviceImpl) RegisterAdminUser(l *passport.Login) (u *UserProfile, err error) {
+func (this *serviceImpl) RegisterAdminUser(l *passport.Identity) (u *UserProfile, err error) {
 	return this.registerUser(l, true)
 }
 
-func (this *serviceImpl) registerUser(l *passport.Login, admin bool) (u *UserProfile, err error) {
+func (this *serviceImpl) registerUser(l *passport.Identity, admin bool) (u *UserProfile, err error) {
 	userProfile := &UserProfile{
 		Id:      common.NewUUID(),
 		Login:   l,

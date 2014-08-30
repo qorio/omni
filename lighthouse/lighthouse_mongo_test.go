@@ -83,7 +83,7 @@ func TestRegisterUserAndGetUser(t *testing.T) {
 	defer service.Close()
 	t.Log("Started db client", service)
 
-	up, err := service.RegisterUser(&passport.Login{
+	up, err := service.RegisterUser(&passport.Identity{
 		Email:    ptr("foo@bar.com"),
 		Password: ptr("password"),
 		Username: ptr("foo"),

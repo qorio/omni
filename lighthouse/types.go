@@ -36,14 +36,14 @@ type BeaconProfile struct {
 }
 
 type UserProfile struct {
-	Id      uuid.UUID       `json:"id"`
-	Login   *passport.Login `json:"login"`
-	IsAdmin bool            `json:"admin_user"` // admin users are partners that distribute beacons to end users.
+	Id      uuid.UUID          `json:"id"`
+	Login   *passport.Identity `json:"login"`
+	IsAdmin bool               `json:"admin_user"` // admin users are partners that distribute beacons to end users.
 }
 
 type Service interface {
-	RegisterUser(*passport.Login) (*UserProfile, error)
-	RegisterAdminUser(*passport.Login) (*UserProfile, error)
+	RegisterUser(*passport.Identity) (*UserProfile, error)
+	RegisterAdminUser(*passport.Identity) (*UserProfile, error)
 	GetUserProfile(uuid.UUID) (*UserProfile, error)
 	SaveBeaconProfile(*BeaconProfile) error
 	GetBeaconProfile(uuid.UUID) (*BeaconProfile, error)
