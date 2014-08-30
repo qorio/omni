@@ -3,6 +3,9 @@
 WORKING=$(pwd)
 export GOPATH=$WORKING/imports:$WORKING/third_party:$GOPATH
 
+# Generate protos
+$WORKING/build-gen-proto.sh
+
 TARGETS=""
 for t in $@; do
     TARGETS="github.com/qorio/omni/$t $TARGETS"

@@ -93,6 +93,12 @@ func (this *EndPoint) auth(resp http.ResponseWriter, req *http.Request,
 		return
 	}
 
+	// a quick check
+	if request.Password == nil && request.Oauth2AccessToken == nil {
+		this.engine.HandleError(resp, req, "error-no-credentials", http.StatusUnauthorized)
+		return
+	}
+
 	account, err := this.findAccountByIdentity(&request)
 	switch {
 	case err == ERROR_NOT_FOUND:
