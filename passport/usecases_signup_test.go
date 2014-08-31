@@ -77,18 +77,22 @@ func authenticate(t *testing.T, r *testflight.Requester, email, password, host *
 	authRequest := api.Methods[api.AuthUser].RequestBody().(api.Identity)
 	authRequest.Email = email
 	authRequest.Password = password
+	token = authenticate2(t, r, &authRequest, host)
+	return
+}
 
+func authenticate2(t *testing.T, r *testflight.Requester, authRequest *api.Identity, host *string) (token string) {
 	url := "/api/v1/auth"
 	authResponse := api.Methods[api.AuthUser].ResponseBody().(api.AuthResponse)
 	if r != nil {
 		// Sign in to all the services -- including passport
-		response := r.Post(url, "application/protobuf", string(to_protobuf(&authRequest, t)))
+		response := r.Post(url, "application/protobuf", string(to_protobuf(authRequest, t)))
 		assert.Equal(t, 200, response.StatusCode)
 		from_protobuf(&authResponse, response.RawBody, t)
 	} else {
 		client := &http.Client{}
 		url = *host + url
-		post, err := http.NewRequest("POST", url, bytes.NewBuffer(to_protobuf(&authRequest, t)))
+		post, err := http.NewRequest("POST", url, bytes.NewBuffer(to_protobuf(authRequest, t)))
 		post.Header.Add("Content-Type", "application/protobuf")
 		if err != nil {
 			t.Fatal(err)
@@ -103,7 +107,6 @@ func authenticate(t *testing.T, r *testflight.Requester, email, password, host *
 		}
 		from_protobuf(&authResponse, buff, t)
 	}
-
 	t.Log("AUTH", "url=", url, "req=", authRequest.String(), "resp=", authResponse.String())
 	return authResponse.GetToken()
 }
@@ -317,6 +320,8 @@ func TestRegisterUserWithUpdateServiceAccountFromPartnerService(t *testing.T) {
 			return nil
 		})
 
+	authService := default_auth(t)
+
 	var registerResult *api.Identity = nil
 	t.Log("Authenticate api call to passport")
 	authToken := authenticate(t, nil, &apiUser.Email, &apiUser.Password, &passport.URL)
@@ -342,14 +347,17 @@ func TestRegisterUserWithUpdateServiceAccountFromPartnerService(t *testing.T) {
 	from_protobuf(&o, buff, t)
 	registerResult = &o
 	t.Log("Got login", registerResult.String())
+	assert.NotEqual(t, "", registerResult.GetId())
 	assert.Equal(t, newUser.Email, registerResult.GetEmail())
-	assert.Equal(t, "", registerResult.GetPassword())
+	assert.Equal(t, login.GetEmail(), registerResult.GetEmail())
+	assert.Equal(t, "", registerResult.GetPassword()) // Password is cleared
 	assert.Equal(t, "", registerResult.GetPhone())
 
 	t.Log("Wait for partner service 'test' to finish creating user in its system")
 	err = wait(2)
 	assert.Equal(t, nil, err)
 
+	// Read user account data
 	t.Log("Got new account id", *newAccountId)
 	if *newAccountId == "" {
 		t.Fatal("Did not get the new account id")
@@ -393,12 +401,23 @@ func TestRegisterUserWithUpdateServiceAccountFromPartnerService(t *testing.T) {
 	// Now try to authenticate as the service user
 	t.Log("Authenticate newUser to access test service via passport")
 	authToken = authenticate(t, nil, &newUser.Email, &newUser.Password, &passport.URL)
-	authService := default_auth(t)
 	token, _ := authService.Parse(authToken)
-
 	// Verify that the token contains the data the 'test' service would be interested in.
 	// This token can be used with all calls with the test service.
 	assert.Equal(t, "test-service-account-"+*newAccountId, token.GetString("test/@id"))
 	assert.Equal(t, test_account_data.ScopesForTestService, strings.Split(token.GetString("test/@scopes"), ","))
 	assert.Equal(t, test_account_data.NicknameValue, token.GetString("test/nickname"))
+
+	// The Identity returned can be reused by the client
+	registerResult.Password = &newUser.Password
+	t.Log("Reusing the Identity object returned on registration", registerResult.String())
+	authToken = authenticate2(t, nil, registerResult, &passport.URL)
+	token, _ = authService.Parse(authToken)
+	assert.NotEqual(t, "", token)
+
+	// Verify that the token contains the data the 'test' service would be interested in.
+	// This token can be used with all calls with the test service.
+	assert.Equal(t, test_account_data.ScopesForTestService, strings.Split(token.GetString("test/@scopes"), ","))
+	assert.Equal(t, test_account_data.NicknameValue, token.GetString("test/nickname"))
+
 }

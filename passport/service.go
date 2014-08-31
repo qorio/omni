@@ -2,7 +2,6 @@ package passport
 
 import (
 	"code.google.com/p/go-uuid/uuid"
-	"errors"
 	"github.com/golang/glog"
 	api "github.com/qorio/api/passport"
 	omni_common "github.com/qorio/omni/common"
@@ -11,6 +10,17 @@ import (
 	"labix.org/v2/mgo/bson"
 	"strings"
 )
+
+type Service interface {
+	FindAccountByEmail(email string) (account *api.Account, err error)
+	FindAccountByPhone(phone string) (account *api.Account, err error)
+	FindAccountByUsername(username string) (account *api.Account, err error)
+	FindAccountByOAuth2(provider, oauth2AccountId string) (account *api.Account, err error)
+	SaveAccount(account *api.Account) (err error)
+	GetAccount(id uuid.UUID) (account *api.Account, err error)
+	DeleteAccount(id uuid.UUID) (err error)
+	Close()
+}
 
 type serviceImpl struct {
 	settings Settings
@@ -142,42 +152,8 @@ func (this *serviceImpl) FindAccountByUsername(username string) (account *api.Ac
 	return &result, nil
 }
 
-func validate_login(login *api.Identity) error {
-	switch {
-	case login.Password != nil:
-		if login.Phone == nil && login.Email == nil && login.Username == nil {
-			return errors.New("missing-identifier")
-		}
-		if login.Password == nil {
-			return errors.New("missing-password")
-		}
-	case login.Oauth2AccessToken != nil:
-	}
-	return nil
-}
-
-// For removing sensitive information before sending back to client
-func sanitize(account *api.Account) *api.Account {
-	if account.Primary == nil {
-		return account
-	}
-
-	login := account.Primary
-
-	if login.GetEmail() == account.GetId() {
-		login.Email = nil
-	}
-	if login.GetPhone() == account.GetId() {
-		login.Phone = nil
-	}
-	if login.GetUsername() == account.GetId() {
-		login.Username = nil
-	}
-	if login.GetOauth2AccountId() == account.GetId() {
-		login.Oauth2AccountId = nil
-	}
-	login.Password = nil
-	return account
+func (this *serviceImpl) FindAccountByOAuth2(provider, oauth2AccountId string) (account *api.Account, err error) {
+	return
 }
 
 func (this *serviceImpl) SaveAccount(account *api.Account) (err error) {

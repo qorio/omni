@@ -1,6 +1,8 @@
 package passport
 
 import (
+	"code.google.com/p/goprotobuf/proto"
+	"errors"
 	"github.com/golang/glog"
 	api "github.com/qorio/api/passport"
 	omni_auth "github.com/qorio/omni/auth"
@@ -15,6 +17,7 @@ import (
 type EndPoint struct {
 	settings Settings
 	service  Service
+	oauth2   OAuth2Service
 	engine   omni_rest.Engine
 }
 
@@ -23,10 +26,12 @@ var ServiceId = "passport"
 func NewApiEndPoint(settings Settings,
 	auth omni_auth.Service,
 	service Service,
+	oauth2 OAuth2Service,
 	webhooks omni_rest.WebHooksService) (ep *EndPoint, err error) {
 	ep = &EndPoint{
 		settings: settings,
 		service:  service,
+		oauth2:   oauth2,
 		engine:   omni_rest.NewEngine(&api.Methods, auth, webhooks),
 	}
 
@@ -99,6 +104,7 @@ func (this *EndPoint) auth(resp http.ResponseWriter, req *http.Request,
 		return
 	}
 
+	// Check credentials
 	account, err := this.findAccountByIdentity(&request)
 	switch {
 	case err == ERROR_NOT_FOUND:
@@ -107,26 +113,27 @@ func (this *EndPoint) auth(resp http.ResponseWriter, req *http.Request,
 	case err == ERROR_MISSING_INPUT:
 		this.engine.HandleError(resp, req, err.Error(), http.StatusBadRequest)
 		return
-
 	case err != nil:
 		this.engine.HandleError(resp, req, "error-lookup-account", http.StatusInternalServerError)
 		return
 	}
+	if account == nil {
+		this.engine.HandleError(resp, req, "error-lookup-account", http.StatusInternalServerError)
+		return
+	}
 
-	// Check credentials
 	switch {
 	case request.Password != nil:
-		if request.Password == nil {
-			this.engine.HandleError(resp, req, "error-no-credentials-provided", http.StatusUnauthorized)
-			return
-		}
 		if !Password(request.Password).MatchAccount(account) {
 			this.engine.HandleError(resp, req, "error-bad-credentials", http.StatusUnauthorized)
 			return
 		}
+
 	case request.Oauth2AccessToken != nil:
+
 	}
 
+	// Now we have passed the check.
 	serviceFriendlyName := get_service_friendly_name(this, &request)
 	requestedServiceId := this.resolve_service_id(get_service_friendly_name(this, &request), req)
 
@@ -273,8 +280,8 @@ func (this *EndPoint) ApiSaveAccount(context omni_auth.Context, resp http.Respon
 		}
 	}
 
-	hasLoginId := account.GetPrimary().GetId() != ""
-	hasAccountId := account.GetId() != ""
+	hasLoginId := account.Primary.Id != nil
+	hasAccountId := account.Id != nil
 
 	switch {
 	case hasLoginId && hasAccountId:
@@ -321,22 +328,8 @@ func (this *EndPoint) ApiSaveAccount(context omni_auth.Context, resp http.Respon
 		account.Id = &uuid
 	}
 
-	if account.GetPrimary().GetId() == "" {
-
-		// If no id, then check to see if the email or phone has
-		// been taken already
-
-	} else {
-
-		if account.GetId() == "" {
-
-		}
-	}
-
-	if account.GetId() == "" {
-
-		uuid := omni_common.NewUUID().String()
-		account.Id = &uuid
+	if account.Id == nil {
+		account.Id = proto.String(omni_common.NewUUID().String())
 	}
 	err = this.service.SaveAccount(&account)
 	if err != nil {
@@ -557,10 +550,44 @@ func (this *EndPoint) ApiDeleteAccount(context omni_auth.Context, resp http.Resp
 }
 
 func (this *EndPoint) findAccountByIdentity(login *api.Identity) (account *api.Account, err error) {
+	// If id is provided then just use that
+	if login.Id != nil {
+		account, err = this.service.GetAccount(omni_common.UUIDFromString(login.GetId()))
+		return
+	}
+
+	// Otherwise, match by login username/email/phone or by oauth access token
 	switch {
 	case login.Password != nil:
 		account, err = this.findAccount(login.GetEmail(), login.GetPhone(), login.GetUsername())
+		return
 	case login.Oauth2AccessToken != nil:
+		// If a provider user account id is present, then use that to do a look up and see
+		// if we can locate an account.  If not, call the provider's api to locate some user / profile
+		// object or to get the actual user id.
+
+		oauth2_account_id := login.GetOauth2AccountId()
+
+		if login.Oauth2AccountId == nil {
+			// Use the provider's api to debug/ validate the token and get a user id back.
+			// We need to know the app id
+			if login.Oauth2AppId == nil {
+				return nil, errors.New("oauth2-app-id-missing")
+			} else {
+				v, err := this.oauth2.ValidateToken(login.GetOauth2Provider(), login.GetOauth2AppId(), login.GetOauth2AccessToken())
+				if err != nil {
+					return nil, err
+				} else {
+					// verify that the app id matches
+					if v.AppId != "" && v.AppId != login.GetOauth2AppId() {
+						return nil, errors.New("oauth2-app-id-mismatch")
+					}
+					oauth2_account_id = v.AccountId
+				}
+			}
+		}
+		account, err = this.service.FindAccountByOAuth2(login.GetOauth2Provider(), oauth2_account_id)
+		return
 	}
 	return
 }

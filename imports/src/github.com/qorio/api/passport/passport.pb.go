@@ -200,7 +200,7 @@ func (m *Identity_Location) GetLat() float64 {
 }
 
 type AuthResponse struct {
-	Token            *string `protobuf:"bytes,1,req,name=token" json:"token,omitempty"`
+	Token            *string `protobuf:"bytes,2,req,name=token" json:"token,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 

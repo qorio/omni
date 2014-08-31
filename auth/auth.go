@@ -122,7 +122,11 @@ func (this *Token) Get(key string) interface{} {
 }
 
 func (this *Token) GetString(key string) string {
-	return fmt.Sprintf("%s", this.Get(key))
+	if v := this.Get(key); v == nil {
+		return ""
+	} else {
+		return fmt.Sprintf("%s", v)
+	}
 }
 
 func (this *Token) HasKey(key string) bool {

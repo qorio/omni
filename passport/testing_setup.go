@@ -3,7 +3,6 @@ package passport
 import (
 	"code.google.com/p/goprotobuf/proto"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"github.com/bmizerany/assert"
 	"github.com/gorilla/mux"
@@ -15,10 +14,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-)
-
-var (
-	authKeyFile = flag.String("auth_public_key_file", "", "Auth public key file")
 )
 
 func from_json(o interface{}, src io.Reader, t *testing.T) interface{} {
@@ -47,6 +42,7 @@ func to_protobuf(o proto.Message, t *testing.T) []byte {
 
 func from_protobuf(o proto.Message, buff []byte, t *testing.T) interface{} {
 	if err := proto.Unmarshal(buff, o); err != nil {
+		t.Log("Protobuf bytes", string(buff))
 		t.Error(err)
 	}
 	return o
@@ -69,9 +65,9 @@ func default_settings() Settings {
 }
 
 func default_auth_settings(t *testing.T) omni_auth.Settings {
-	key, err := omni_auth.ReadPublicKey(*authKeyFile)
+	key, err := omni_auth.ReadPublicKey(*AuthKeyFileFlag)
 	if err != nil {
-		t.Log("Cannot read public key file", *authKeyFile)
+		t.Log("Cannot read public key file", *AuthKeyFileFlag)
 		t.Fatal(err)
 	}
 	return omni_auth.Settings{
@@ -97,6 +93,37 @@ func default_service(t *testing.T) *serviceImpl {
 }
 
 type serviceImplInit func(*testing.T, *serviceImpl)
+type oauth2ImplInit func(*testing.T, *oauth2Impl)
+
+func test_service(t *testing.T, authSettings omni_auth.Settings, s Settings, serviceInits ...serviceImplInit) *serviceImpl {
+	service, err := NewService(s)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, serviceInit := range serviceInits {
+		if serviceInit != nil {
+			serviceInit(t, service)
+		}
+	}
+	return service
+}
+
+func test_oauth2(t *testing.T, s Settings, o2Inits ...oauth2ImplInit) *oauth2Impl {
+	service, err := NewOAuth2Service(s)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, serviceInit := range o2Inits {
+		if serviceInit != nil {
+			serviceInit(t, service)
+		}
+	}
+	return service
+}
 
 func endpoint(t *testing.T, authSettings omni_auth.Settings, s Settings, serviceInits ...serviceImplInit) *EndPoint {
 
@@ -113,7 +140,7 @@ func endpoint(t *testing.T, authSettings omni_auth.Settings, s Settings, service
 		}
 	}
 
-	endpoint, err := NewApiEndPoint(default_settings(), auth, service, service)
+	endpoint, err := NewApiEndPoint(default_settings(), auth, service, nil, service)
 	if err != nil {
 		t.Log("Error starting endpoint:", err)
 		t.Fatal(err)

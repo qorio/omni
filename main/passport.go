@@ -26,7 +26,6 @@ var (
 	apiSocket = flag.String("api_socket", "", "File name for domain socket instead of port")
 	adminPort = flag.Int("admin_port", 7070, "Port where management server is listening on")
 
-	authKeyFile       = flag.String("auth_public_key_file", "test/authKey.pub", "Auth public key file")
 	authTokenTTLHours = flag.Int64("auth_token_ttl_hours", 24, "TTL hours for auth token")
 )
 
@@ -38,9 +37,9 @@ func main() {
 	glog.Infoln("Build", buildInfo.Number, "Commit", buildInfo.Commit, "When", buildInfo.Timestamp)
 
 	// the auth service
-	key, err := omni_auth.ReadPublicKey(*authKeyFile)
+	key, err := omni_auth.ReadPublicKey(*passport.AuthKeyFileFlag)
 	if err != nil {
-		glog.Warningln("Cannot read public key file", *authKeyFile)
+		glog.Warningln("Cannot read public key file", *passport.AuthKeyFileFlag)
 		panic(err)
 	}
 	auth := omni_auth.Init(omni_auth.Settings{
@@ -72,11 +71,22 @@ func main() {
 		},
 	}
 
+	// This service implements a number of interfaces
+	// Passport service, webhook service and oauth2 service
 	passportService, sErr := passport.NewService(passportSettings)
 	if sErr != nil {
 		panic(sErr)
 	}
-	if endpoint, err := passport.NewApiEndPoint(passportSettings, auth, passportService, passportService, auth); err == nil {
+
+	oauth2Service, oErr := passport.NewOAuth2Service(passportSettings)
+	if oErr != nil {
+		panic(oErr)
+	}
+
+	if endpoint, err := passport.NewApiEndPoint(passportSettings, auth,
+		passportService,
+		oauth2Service,
+		passportService); err == nil {
 		apiHttpServer := &http.Server{
 			Handler: endpoint,
 			Addr:    addr,
