@@ -1482,7 +1482,7 @@ func (g *Generator) generateMessage(message *Descriptor) {
 		usedNames[fieldName] = true
 		typename, wiretype := g.GoType(message, field)
 		jsonName := *field.Name
-		tag := fmt.Sprintf("protobuf:%s json:%q", g.goTag(field, wiretype), jsonName+",omitempty")
+		tag := fmt.Sprintf("protobuf:%s json:%q bson:%q", g.goTag(field, wiretype), jsonName+",omitempty", ",omitempty")
 		fieldNames[field] = fieldName
 		fieldGetterNames[field] = fieldGetterName
 		g.P(fieldName, "\t", typename, "\t`", tag, "`")
