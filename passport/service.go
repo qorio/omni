@@ -86,11 +86,11 @@ func NewService(settings Settings) (*serviceImpl, error) {
 	})
 
 	impl.accounts.EnsureIndex(mgo.Index{
-		Key:      []string{"primary.oauth2_provider_id", "primary.oauth2_account_id"},
+		Key:      []string{"primary.oauth2provider", "primary.oauth2accountid"},
 		Unique:   true,
 		DropDups: true,
 		Sparse:   true,
-		Name:     "primary.oauth2_provider_id.oauth2_account_id",
+		Name:     "primary.oauth2_provider.oauth2_account_id",
 	})
 
 	// This is for configuration of services like callback/webhooks
@@ -155,8 +155,8 @@ func (this *serviceImpl) FindAccountByUsername(username string) (account *api.Ac
 func (this *serviceImpl) FindAccountByOAuth2(provider, oauth2AccountId string) (account *api.Account, err error) {
 	result := api.Account{}
 	err = this.accounts.Find(bson.M{
-		"primary.oauth2_provider":   provider,
-		"primary.oauth2_account_id": oauth2AccountId}).One(&result)
+		"primary.oauth2provider":  provider,
+		"primary.oauth2accountid": oauth2AccountId}).One(&result)
 	switch {
 	case err == mgo.ErrNotFound:
 		return nil, ERROR_NOT_FOUND

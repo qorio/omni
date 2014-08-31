@@ -2,7 +2,6 @@ package passport
 
 import (
 	"code.google.com/p/goprotobuf/proto"
-	_ "encoding/json"
 	"errors"
 	"github.com/bmizerany/assert"
 	api "github.com/qorio/api/passport"
@@ -172,7 +171,7 @@ func TestFindByUsername(t *testing.T) {
 	assert.Equal(t, ERROR_NOT_FOUND, err3)
 }
 
-func testFindByOAuth2(t *testing.T) {
+func TestFindByOAuth2(t *testing.T) {
 	service, err := NewService(default_settings())
 	assert.Equal(t, nil, err)
 	service.dropDatabase()
@@ -188,7 +187,7 @@ func testFindByOAuth2(t *testing.T) {
 	account.Id = proto.String(uuid.String())
 	account.Primary.Oauth2Provider = proto.String("oauth2_provider-1")
 	account.Primary.Oauth2AccountId = proto.String("oauth2_account_id-1")
-	account.Primary.Email = proto.String("foouser")
+	account.Primary.Username = proto.String("foouser")
 	account.Services[0].Id = proto.String("app-1")
 	account.Services[0].Status = proto.String("verified")
 	account.Services[0].AccountId = proto.String("app-1-account-by-email-1")
@@ -198,11 +197,14 @@ func testFindByOAuth2(t *testing.T) {
 	err = service.SaveAccount(account)
 	assert.Equal(t, nil, err)
 
+	// Find by username
 	account2, err2 := service.FindAccountByUsername("foouser")
 	assert.Equal(t, nil, err2)
 	t.Log("account2", account2)
 	assert.Equal(t, account.String(), account2.String()) // compare the string representation
+	assert.Equal(t, "oauth2_account_id-1", account2.Primary.GetOauth2AccountId())
 
+	// Find by oauth2
 	account3, err3 := service.FindAccountByOAuth2("oauth2_provider-1", "oauth2_account_id-1")
 	assert.Equal(t, nil, err3)
 	t.Log("account3", account3)
@@ -240,13 +242,24 @@ func TestFindByPhoneAndUpdate(t *testing.T) {
 
 	// change the properties
 	account2.Primary.Password = proto.String("password")
+	// also add an oauth2 provider / account id
+	account2.Primary.Oauth2Provider = proto.String("facebook.com")
+	account2.Primary.Oauth2AccountId = proto.String("12345")
 	err = service.SaveAccount(account2)
 	assert.Equal(t, nil, err)
 
+	// Find by phone
 	account3, err2 := service.FindAccountByPhone("111-222-5555")
 	assert.Equal(t, nil, err2)
-	t.Log("account2", account3)
 	assert.Equal(t, "password", account3.GetPrimary().GetPassword())
+	assert.Equal(t, account2.String(), account3.String())
+
+	// Find by oauth2
+	account3, err2 = service.FindAccountByOAuth2("facebook.com", "12345")
+	assert.Equal(t, nil, err2)
+	assert.Equal(t, "facebook.com", account3.GetPrimary().GetOauth2Provider())
+	assert.Equal(t, "12345", account3.GetPrimary().GetOauth2AccountId())
+	assert.Equal(t, account2.String(), account3.String())
 
 	// insert another
 	account4 := &api.Account{}
@@ -259,13 +272,10 @@ func TestFindByPhoneAndUpdate(t *testing.T) {
 	assert.Equal(t, nil, err)
 	account5, err2 := service.FindAccountByPhone("222-333-4444")
 	assert.Equal(t, nil, err2)
-	t.Log("account5", account5)
 	assert.Equal(t, account4.String(), account5.String())
-
 }
 
 func TestWebHooks(t *testing.T) {
-
 	service, err := NewService(default_settings())
 	assert.Equal(t, nil, err)
 	service.dropDatabase()
