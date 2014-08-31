@@ -25,8 +25,8 @@ var _ = math.Inf
 
 // Generalized event schema for indexing in ElasticSearch
 type Content struct {
-	Mime             *string `protobuf:"bytes,1,req,name=mime" json:"mime,omitempty"`
-	Data             []byte  `protobuf:"bytes,2,req,name=data" json:"data,omitempty"`
+	Mime             *string `protobuf:"bytes,1,req,name=mime" json:"mime,omitempty" bson:",omitempty"`
+	Data             []byte  `protobuf:"bytes,2,req,name=data" json:"data,omitempty" bson:",omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -49,12 +49,12 @@ func (m *Content) GetData() []byte {
 }
 
 type Attribute struct {
-	Key              *string  `protobuf:"bytes,1,req,name=key" json:"key,omitempty"`
-	StringValue      *string  `protobuf:"bytes,2,opt,name=string_value" json:"string_value,omitempty"`
-	IntValue         *int64   `protobuf:"varint,3,opt,name=int_value" json:"int_value,omitempty"`
-	DoubleValue      *float64 `protobuf:"fixed64,4,opt,name=double_value" json:"double_value,omitempty"`
-	BoolValue        *bool    `protobuf:"varint,5,opt,name=bool_value" json:"bool_value,omitempty"`
-	ContentValue     *Content `protobuf:"bytes,6,opt,name=content_value" json:"content_value,omitempty"`
+	Key              *string  `protobuf:"bytes,1,req,name=key" json:"key,omitempty" bson:",omitempty"`
+	StringValue      *string  `protobuf:"bytes,2,opt,name=string_value" json:"string_value,omitempty" bson:",omitempty"`
+	IntValue         *int64   `protobuf:"varint,3,opt,name=int_value" json:"int_value,omitempty" bson:",omitempty"`
+	DoubleValue      *float64 `protobuf:"fixed64,4,opt,name=double_value" json:"double_value,omitempty" bson:",omitempty"`
+	BoolValue        *bool    `protobuf:"varint,5,opt,name=bool_value" json:"bool_value,omitempty" bson:",omitempty"`
+	ContentValue     *Content `protobuf:"bytes,6,opt,name=content_value" json:"content_value,omitempty" bson:",omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
@@ -107,8 +107,8 @@ func (m *Attribute) GetContentValue() *Content {
 // To be transformed to GeoJson - ex)  {"location" : [-71.34, 41.12]}
 // See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-geo-point-type.html
 type Location struct {
-	Lon              *float64 `protobuf:"fixed64,1,req,name=lon" json:"lon,omitempty"`
-	Lat              *float64 `protobuf:"fixed64,2,req,name=lat" json:"lat,omitempty"`
+	Lon              *float64 `protobuf:"fixed64,1,req,name=lon" json:"lon,omitempty" bson:",omitempty"`
+	Lat              *float64 `protobuf:"fixed64,2,req,name=lat" json:"lat,omitempty" bson:",omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
@@ -131,13 +131,13 @@ func (m *Location) GetLat() float64 {
 }
 
 type Event struct {
-	AppKey           *string      `protobuf:"bytes,1,req,name=appKey" json:"appKey,omitempty"`
-	Timestamp        *float64     `protobuf:"fixed64,2,req,name=timestamp" json:"timestamp,omitempty"`
-	Type             *string      `protobuf:"bytes,3,req,name=type" json:"type,omitempty"`
-	Source           *string      `protobuf:"bytes,4,req,name=source" json:"source,omitempty"`
-	Context          *string      `protobuf:"bytes,5,opt,name=context" json:"context,omitempty"`
-	Location         *Location    `protobuf:"bytes,6,opt,name=location" json:"location,omitempty"`
-	Attributes       []*Attribute `protobuf:"bytes,7,rep,name=attributes" json:"attributes,omitempty"`
+	AppKey           *string      `protobuf:"bytes,1,req,name=appKey" json:"appKey,omitempty" bson:",omitempty"`
+	Timestamp        *float64     `protobuf:"fixed64,2,req,name=timestamp" json:"timestamp,omitempty" bson:",omitempty"`
+	Type             *string      `protobuf:"bytes,3,req,name=type" json:"type,omitempty" bson:",omitempty"`
+	Source           *string      `protobuf:"bytes,4,req,name=source" json:"source,omitempty" bson:",omitempty"`
+	Context          *string      `protobuf:"bytes,5,opt,name=context" json:"context,omitempty" bson:",omitempty"`
+	Location         *Location    `protobuf:"bytes,6,opt,name=location" json:"location,omitempty" bson:",omitempty"`
+	Attributes       []*Attribute `protobuf:"bytes,7,rep,name=attributes" json:"attributes,omitempty" bson:",omitempty"`
 	XXX_unrecognized []byte       `json:"-"`
 }
 

@@ -565,12 +565,8 @@ func (this *EndPoint) findAccountByIdentity(login *api.Identity) (account *api.A
 		// If a provider user account id is present, then use that to do a look up and see
 		// if we can locate an account.  If not, call the provider's api to locate some user / profile
 		// object or to get the actual user id.
-
 		oauth2_account_id := login.GetOauth2AccountId()
-
-		if login.Oauth2AccountId == nil {
-			// Use the provider's api to debug/ validate the token and get a user id back.
-			// We need to know the app id
+		if oauth2_account_id == "" {
 			if login.Oauth2AppId == nil {
 				return nil, errors.New("oauth2-app-id-missing")
 			} else {
@@ -586,6 +582,7 @@ func (this *EndPoint) findAccountByIdentity(login *api.Identity) (account *api.A
 				}
 			}
 		}
+		// This here assumes that during registration, we have already indexed account by oauth2 account id and provider.
 		account, err = this.service.FindAccountByOAuth2(login.GetOauth2Provider(), oauth2_account_id)
 		return
 	}

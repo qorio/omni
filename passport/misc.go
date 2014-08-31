@@ -25,20 +25,8 @@ func sanitize(account *api.Account) *api.Account {
 		return account
 	}
 
-	login := account.Primary
+	account.Primary.Password = nil
+	account.Primary.Oauth2AccessToken = nil
 
-	if login.GetEmail() == account.GetId() {
-		login.Email = nil
-	}
-	if login.GetPhone() == account.GetId() {
-		login.Phone = nil
-	}
-	if login.GetUsername() == account.GetId() {
-		login.Username = nil
-	}
-	if login.GetOauth2AccountId() == account.GetId() {
-		login.Oauth2AccountId = nil
-	}
-	login.Password = nil
 	return account
 }

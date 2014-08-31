@@ -138,6 +138,77 @@ func TestFindByEmail(t *testing.T) {
 	assert.Equal(t, ERROR_NOT_FOUND, err3)
 }
 
+func TestFindByUsername(t *testing.T) {
+	service, err := NewService(default_settings())
+	assert.Equal(t, nil, err)
+	service.dropDatabase()
+
+	defer service.Close()
+	t.Log("Started db client", service)
+
+	uuid := common.NewUUID()
+	err4 := service.DeleteAccount(uuid)
+	assert.Equal(t, nil, err4)
+
+	account := test_account()
+	account.Id = proto.String(uuid.String())
+	account.Primary.Username = proto.String("foouser")
+	account.Services[0].Id = proto.String("app-1")
+	account.Services[0].Status = proto.String("verified")
+	account.Services[0].AccountId = proto.String("app-1-account-by-email-1")
+	account.Services[0].Attributes[0].Key = proto.String("key-1")
+	account.Services[0].Attributes[0].StringValue = proto.String("value-1")
+
+	err = service.SaveAccount(account)
+	assert.Equal(t, nil, err)
+
+	account2, err2 := service.FindAccountByUsername("foouser")
+	assert.Equal(t, nil, err2)
+	t.Log("account2", account2)
+	assert.Equal(t, account.String(), account2.String()) // compare the string representation
+
+	account3, err3 := service.FindAccountByUsername("notfound")
+	assert.Equal(t, (*api.Account)(nil), account3)
+	assert.Equal(t, ERROR_NOT_FOUND, err3)
+}
+
+func testFindByOAuth2(t *testing.T) {
+	service, err := NewService(default_settings())
+	assert.Equal(t, nil, err)
+	service.dropDatabase()
+
+	defer service.Close()
+	t.Log("Started db client", service)
+
+	uuid := common.NewUUID()
+	err4 := service.DeleteAccount(uuid)
+	assert.Equal(t, nil, err4)
+
+	account := test_account()
+	account.Id = proto.String(uuid.String())
+	account.Primary.Oauth2Provider = proto.String("oauth2_provider-1")
+	account.Primary.Oauth2AccountId = proto.String("oauth2_account_id-1")
+	account.Primary.Email = proto.String("foouser")
+	account.Services[0].Id = proto.String("app-1")
+	account.Services[0].Status = proto.String("verified")
+	account.Services[0].AccountId = proto.String("app-1-account-by-email-1")
+	account.Services[0].Attributes[0].Key = proto.String("key-1")
+	account.Services[0].Attributes[0].StringValue = proto.String("value-1")
+
+	err = service.SaveAccount(account)
+	assert.Equal(t, nil, err)
+
+	account2, err2 := service.FindAccountByUsername("foouser")
+	assert.Equal(t, nil, err2)
+	t.Log("account2", account2)
+	assert.Equal(t, account.String(), account2.String()) // compare the string representation
+
+	account3, err3 := service.FindAccountByOAuth2("oauth2_provider-1", "oauth2_account_id-1")
+	assert.Equal(t, nil, err3)
+	t.Log("account3", account3)
+	assert.Equal(t, account.String(), account3.String()) // compare the string representation
+}
+
 func TestFindByPhoneAndUpdate(t *testing.T) {
 	service, err := NewService(default_settings())
 	assert.Equal(t, nil, err)

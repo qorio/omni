@@ -8,8 +8,13 @@ $WORKING/build-gen-proto.sh
 
 TARGETS=""
 for t in $@; do
-    TARGETS="github.com/qorio/omni/$t $TARGETS"
+    option=$(echo $t | grep -e '^-')
+    if [[ "$option" == "" ]]; then
+	TARGETS="github.com/qorio/omni/$t $TARGETS"
+    else
+	OPTIONS="$t $OPTIONS"
+    fi
 done
 
-echo "Targets are $TARGETS"
-go test $TARGETS -v --logtostderr --auth_public_key_file=$WORKING/test/authKey.pub
+echo "Targets are $TARGETS with options $OPTIONS"
+go test $TARGETS -v --logtostderr --auth_public_key_file=$WORKING/test/authKey.pub $OPTIONS

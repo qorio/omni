@@ -5,6 +5,7 @@ import (
 	"labix.org/v2/mgo"
 	_ "labix.org/v2/mgo/bson"
 	"strings"
+	"time"
 )
 
 type OAuth2ValidationResult struct {
@@ -12,6 +13,7 @@ type OAuth2ValidationResult struct {
 	AccountId   string
 	AppId       string
 	ProfileData map[string]interface{}
+	Timestamp   time.Time
 }
 
 type OAuth2Service interface {
