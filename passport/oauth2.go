@@ -33,15 +33,6 @@ const (
 	OAuth2AppStatusDisabled
 )
 
-// Stored in the apps collection
-type OAuth2AppConfig struct {
-	Status     OAuth2AppStatus
-	Provider   string
-	AppId      string
-	AppSecret  string
-	ServiceIds []string // Whitelist of services for which this app can be used to register users.
-}
-
 type OAuth2ValidationResult struct {
 	Provider    string
 	AccountId   string
@@ -55,6 +46,26 @@ type OAuth2Service interface {
 	SaveAppConfig(config *OAuth2AppConfig) error
 	FindAppConfigByProviderAppId(provider, appId string) (*OAuth2AppConfig, error)
 	ValidateToken(provider, appId, accessToken string) (*OAuth2ValidationResult, error)
+	FindProfileByProviderAccountId(provider, accountId string) (*OAuth2Profile, error)
+}
+
+// Stored in the apps collection
+type OAuth2AppConfig struct {
+	Status     OAuth2AppStatus
+	Provider   string
+	AppId      string
+	AppSecret  string
+	ServiceIds []string // Whitelist of services for which this app can be used to register users.
+}
+
+// Stored in the profiles collection
+type OAuth2Profile struct {
+	Timestamp    time.Time
+	Provider     string
+	AppId        string
+	AccountId    string
+	ServiceIds   []string // list of services permitted to read this profile
+	OriginalData interface{}
 }
 
 type oauth2Impl struct {
@@ -62,6 +73,7 @@ type oauth2Impl struct {
 	db         *mgo.Database
 	session    *mgo.Session
 	appConfigs *mgo.Collection
+	profiles   *mgo.Collection
 }
 
 func NewOAuth2Service(settings Settings) (*oauth2Impl, error) {
@@ -88,6 +100,15 @@ func NewOAuth2Service(settings Settings) (*oauth2Impl, error) {
 		Sparse:   true,
 		Name:     "status_provider_app_id",
 	})
+
+	impl.profiles = impl.db.C("oauth2_profiles")
+	impl.profiles.EnsureIndex(mgo.Index{
+		Key:      []string{"provider", "accountid"},
+		Unique:   true,
+		DropDups: true,
+		Sparse:   true,
+		Name:     "provider_account_id",
+	})
 	glog.Infoln("OAuth2 Service MongoDb backend initialized:", impl)
 	return impl, nil
 }
@@ -111,6 +132,31 @@ func (this *oauth2Impl) SaveAppConfig(config *OAuth2AppConfig) error {
 		return nil
 	}
 	return err
+}
+
+func (this *oauth2Impl) saveProfile(profile *OAuth2Profile) error {
+	changeInfo, err := this.profiles.Upsert(bson.M{
+		"provider":  profile.Provider,
+		"accountid": profile.AccountId,
+	}, profile)
+	if changeInfo != nil && changeInfo.Updated >= 0 {
+		return nil
+	}
+	return err
+}
+
+func (this *oauth2Impl) FindProfileByProviderAccountId(provider, accountId string) (*OAuth2Profile, error) {
+	result := OAuth2Profile{}
+	err := this.profiles.Find(bson.M{
+		"provider":  provider,
+		"accountid": accountId}).One(&result)
+	switch {
+	case err == mgo.ErrNotFound:
+		return nil, ERROR_NOT_FOUND
+	case err != nil:
+		return nil, err
+	}
+	return &result, nil
 }
 
 func (this *oauth2Impl) FindAppConfigByProviderAppId(provider, appId string) (*OAuth2AppConfig, error) {
@@ -141,13 +187,34 @@ func (this *oauth2Impl) ValidateToken(provider, appId, accessToken string) (resu
 		err = errors.New("unknown-provider-cannot-validate-token")
 	}
 
-	validationResult, err := validate(config, accessToken)
+	result, err = validate(config, accessToken)
 	if err != nil {
 		return
 	}
+	if result == nil {
+		err = errors.New("internal-error-bad-validator")
+		return
+	}
 
-	if validationResult.ProfileData != nil {
+	if result.AppId != config.AppId {
+		// Something is wrong. The token is from another app registered
+		// with the OAuth provider.
+		err = errors.New("token-not-granted-for-app")
+		return
+	}
+	if result.ProfileData != nil {
 		// Save a copy of the profile
+		err = this.saveProfile(&OAuth2Profile{
+			Timestamp:    time.Now(),
+			Provider:     result.Provider,
+			AppId:        result.AppId,
+			AccountId:    result.AccountId,
+			ServiceIds:   config.ServiceIds,
+			OriginalData: result.ProfileData,
+		})
+		if err != nil {
+			return
+		}
 	}
 	return
 }
