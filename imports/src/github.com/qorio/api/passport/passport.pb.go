@@ -90,7 +90,6 @@ type Identity struct {
 	Oauth2Provider    *string `protobuf:"bytes,20,opt,name=oauth2_provider" json:"oauth2_provider,omitempty" bson:",omitempty"`
 	Oauth2AccountId   *string `protobuf:"bytes,21,opt,name=oauth2_account_id" json:"oauth2_account_id,omitempty" bson:",omitempty"`
 	Oauth2AccessToken *string `protobuf:"bytes,22,opt,name=oauth2_access_token" json:"oauth2_access_token,omitempty" bson:",omitempty"`
-	Oauth2AppId       *string `protobuf:"bytes,23,opt,name=oauth2_app_id" json:"oauth2_app_id,omitempty" bson:",omitempty"`
 	XXX_unrecognized  []byte  `json:"-"`
 }
 
@@ -164,13 +163,6 @@ func (m *Identity) GetOauth2AccountId() string {
 func (m *Identity) GetOauth2AccessToken() string {
 	if m != nil && m.Oauth2AccessToken != nil {
 		return *m.Oauth2AccessToken
-	}
-	return ""
-}
-
-func (m *Identity) GetOauth2AppId() string {
-	if m != nil && m.Oauth2AppId != nil {
-		return *m.Oauth2AppId
 	}
 	return ""
 }

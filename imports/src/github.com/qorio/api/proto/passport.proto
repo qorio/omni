@@ -32,7 +32,7 @@ message Identity {
 	optional string oauth2_provider = 20;
 	optional string oauth2_account_id = 21;
 	optional string oauth2_access_token = 22;
-	optional string oauth2_app_id = 23;
+	//optional string oauth2_app_id = 23;
 }
 
 message AuthResponse {

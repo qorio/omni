@@ -10,7 +10,7 @@ import (
 )
 
 // Function to validate the access token
-type OAuth2AccessTokenValidator func(*OAuth2AppConfig, string) (*OAuth2ValidationResult, error)
+type OAuth2AccessTokenValidator func(*OAuth2AppConfig, OAuth2TokenCache, string) (*OAuth2ValidationResult, error)
 type accessTokenValidators map[string]OAuth2AccessTokenValidator
 
 func (this accessTokenValidators) Register(provider string, f OAuth2AccessTokenValidator) {
@@ -25,6 +25,26 @@ func (this accessTokenValidators) Get(provider string) OAuth2AccessTokenValidato
 	}
 }
 
+type OAuth2ProfileFetcher func(*OAuth2AppConfig, string) (*OAuth2Profile, error)
+type profileFetchers map[string]OAuth2ProfileFetcher
+
+func (this profileFetchers) Register(provider string, f OAuth2ProfileFetcher) {
+	this[provider] = f
+}
+
+func (this profileFetchers) Get(provider string) OAuth2ProfileFetcher {
+	if f, exists := this[provider]; exists {
+		return f
+	} else {
+		return nil
+	}
+}
+
+type OAuth2TokenCache interface {
+	GetToken() (string, error) // Returns empty string and error if not found
+	PutToken(string)
+}
+
 type OAuth2AppStatus int
 
 const (
@@ -34,18 +54,30 @@ const (
 )
 
 type OAuth2ValidationResult struct {
-	Provider    string
-	AccountId   string
-	AppId       string
-	ProfileData map[string]interface{}
-	Timestamp   time.Time
+	Provider       string
+	AccountId      string
+	AppId          string
+	ProfileData    map[string]interface{}
+	Timestamp      time.Time
+	ValidatedToken string
 }
 
 type OAuth2Service interface {
 	Close()
 	SaveAppConfig(config *OAuth2AppConfig) error
+
+	/// Find the config by provider and app ids
 	FindAppConfigByProviderAppId(provider, appId string) (*OAuth2AppConfig, error)
+
+	/// Service is passport service, provider is the oauth provider
+	FindAppConfigByServiceAndProvider(serviceId, provider string) (*OAuth2AppConfig, error)
+
 	ValidateToken(provider, appId, accessToken string) (*OAuth2ValidationResult, error)
+
+	FetchProfile(provider, appId, accessToken string) (*OAuth2Profile, error)
+
+	SaveProfile(profile *OAuth2Profile) error
+
 	FindProfileByProviderAccountId(provider, accountId string) (*OAuth2Profile, error)
 }
 
@@ -100,6 +132,13 @@ func NewOAuth2Service(settings Settings) (*oauth2Impl, error) {
 		Sparse:   true,
 		Name:     "status_provider_app_id",
 	})
+	impl.appConfigs.EnsureIndex(mgo.Index{
+		Key:      []string{"status", "provider", "serviceids"},
+		Unique:   true,
+		DropDups: true,
+		Sparse:   true,
+		Name:     "status_provider_service_id",
+	})
 
 	impl.profiles = impl.db.C("oauth2_profiles")
 	impl.profiles.EnsureIndex(mgo.Index{
@@ -134,7 +173,7 @@ func (this *oauth2Impl) SaveAppConfig(config *OAuth2AppConfig) error {
 	return err
 }
 
-func (this *oauth2Impl) saveProfile(profile *OAuth2Profile) error {
+func (this *oauth2Impl) SaveProfile(profile *OAuth2Profile) error {
 	changeInfo, err := this.profiles.Upsert(bson.M{
 		"provider":  profile.Provider,
 		"accountid": profile.AccountId,
@@ -174,6 +213,42 @@ func (this *oauth2Impl) FindAppConfigByProviderAppId(provider, appId string) (*O
 	return &result, nil
 }
 
+func (this *oauth2Impl) FindAppConfigByServiceAndProvider(serviceId, provider string) (*OAuth2AppConfig, error) {
+	result := OAuth2AppConfig{}
+	err := this.appConfigs.Find(bson.M{
+		"status":     OAuth2AppStatusLive,
+		"provider":   provider,
+		"serviceids": serviceId}).One(&result)
+	switch {
+	case err == mgo.ErrNotFound:
+		return nil, ERROR_NOT_FOUND
+	case err != nil:
+		return nil, err
+	}
+	return &result, nil
+}
+
+// Implements TokenCache
+type tokenCache struct {
+	appConfig *OAuth2AppConfig
+	impl      *oauth2Impl
+}
+
+var appAccessTokenMap = make(map[string]string)
+
+func (this *tokenCache) GetToken() (token string, err error) {
+	key := this.appConfig.Provider + this.appConfig.AppId
+	if token, has := appAccessTokenMap[key]; has {
+		return token, nil
+	}
+	return "", ERROR_NOT_FOUND
+}
+
+func (this *tokenCache) PutToken(token string) {
+	key := this.appConfig.Provider + this.appConfig.AppId
+	appAccessTokenMap[key] = token
+}
+
 func (this *oauth2Impl) ValidateToken(provider, appId, accessToken string) (result *OAuth2ValidationResult, err error) {
 	config, err := this.FindAppConfigByProviderAppId(provider, appId)
 
@@ -187,7 +262,7 @@ func (this *oauth2Impl) ValidateToken(provider, appId, accessToken string) (resu
 		err = errors.New("unknown-provider-cannot-validate-token")
 	}
 
-	result, err = validate(config, accessToken)
+	result, err = validate(config, &tokenCache{appConfig: config, impl: this}, accessToken)
 	if err != nil {
 		return
 	}
@@ -202,19 +277,29 @@ func (this *oauth2Impl) ValidateToken(provider, appId, accessToken string) (resu
 		err = errors.New("token-not-granted-for-app")
 		return
 	}
-	if result.ProfileData != nil {
-		// Save a copy of the profile
-		err = this.saveProfile(&OAuth2Profile{
-			Timestamp:    time.Now(),
-			Provider:     result.Provider,
-			AppId:        result.AppId,
-			AccountId:    result.AccountId,
-			ServiceIds:   config.ServiceIds,
-			OriginalData: result.ProfileData,
-		})
-		if err != nil {
-			return
-		}
-	}
 	return
+}
+
+func (this *oauth2Impl) FetchProfile(provider, appId, accessToken string) (*OAuth2Profile, error) {
+	config, err := this.FindAppConfigByProviderAppId(provider, appId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Look up the profile fetcher
+	fetch := OAuth2ProfileFetchers.Get(config.Provider)
+	if fetch == nil {
+		err = errors.New("unknown-provider-cannot-fetch-profile")
+		return nil, err
+	}
+
+	result, err := fetch(config, accessToken)
+	if err != nil {
+		return nil, err
+	}
+	if result == nil {
+		return nil, errors.New("internal-error-bad-fetcher")
+	}
+	return result, nil
 }

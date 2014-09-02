@@ -30,3 +30,18 @@ func sanitize(account *api.Account) *api.Account {
 
 	return account
 }
+
+/// Do we have enough information in the account object to find it
+/// in our database?
+func is_account_findable(account *api.Account) bool {
+	if account.Primary == nil {
+		return false
+	}
+	if account.Primary.Email != nil || account.Primary.Username != nil || account.Primary.Phone != nil {
+		return true
+	}
+	if account.Primary.Oauth2AccountId != nil {
+		return true
+	}
+	return false
+}

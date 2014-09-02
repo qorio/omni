@@ -17,6 +17,23 @@ import (
 	"testing"
 )
 
+var (
+	partner = struct {
+		Email    string
+		Password string
+	}{
+		"partner-test@passport",
+		"partner-testpass",
+	}
+	apiUser = struct {
+		Email    string
+		Password string
+	}{
+		"api1@passport",
+		"api1pass",
+	}
+)
+
 var initialize_service_insert_passport_user_accounts = func(t *testing.T, impl *serviceImpl) {
 
 	// This is the SDK api user -- it is able to register new user and read account information.
@@ -54,6 +71,7 @@ var initialize_service_insert_passport_user_accounts = func(t *testing.T, impl *
 				Scopes: []string{
 					api.AuthScopes[api.AccountUpdate],
 					api.AuthScopes[api.AccountReadOnly],
+					api.AuthScopes[api.AccessProfile],
 				},
 			},
 		},
@@ -106,27 +124,11 @@ func authenticate2(t *testing.T, r *testflight.Requester, authRequest *api.Ident
 			t.Fatal(err)
 		}
 		from_protobuf(&authResponse, buff, t)
+		assert.Equal(t, 200, resp.StatusCode)
 	}
 	t.Log("AUTH", "url=", url, "req=", authRequest.String(), "resp=", authResponse.String())
 	return authResponse.GetToken()
 }
-
-var (
-	partner = struct {
-		Email    string
-		Password string
-	}{
-		"partner-test@passport",
-		"partner-testpass",
-	}
-	apiUser = struct {
-		Email    string
-		Password string
-	}{
-		"api1@passport",
-		"api1pass",
-	}
-)
 
 func new_user() struct {
 	Email    string

@@ -2,7 +2,6 @@ package passport
 
 import (
 	"code.google.com/p/goprotobuf/proto"
-	"errors"
 	"github.com/golang/glog"
 	api "github.com/qorio/api/passport"
 	omni_auth "github.com/qorio/omni/auth"
@@ -42,6 +41,7 @@ func NewApiEndPoint(settings Settings,
 
 	ep.engine.Bind(
 		omni_rest.SetAuthenticatedHandler(ServiceId, api.Methods[api.RegisterUser], ep.ApiRegisterUser),
+		omni_rest.SetAuthenticatedHandler(ServiceId, api.Methods[api.FetchProfile], ep.ApiGetProfile),
 	)
 
 	ep.engine.Bind(
@@ -104,8 +104,11 @@ func (this *EndPoint) auth(resp http.ResponseWriter, req *http.Request,
 		return
 	}
 
+	serviceFriendlyName := get_service_friendly_name(this, &request)
+	requestedServiceId := this.resolve_service_id(get_service_friendly_name(this, &request), req)
+
 	// Check credentials
-	account, err := this.findAccountByIdentity(&request)
+	account, err := this.findAccountByIdentity(requestedServiceId, &request)
 	switch {
 	case err == ERROR_NOT_FOUND:
 		this.engine.HandleError(resp, req, "error-account-not-found", http.StatusUnauthorized)
@@ -134,9 +137,6 @@ func (this *EndPoint) auth(resp http.ResponseWriter, req *http.Request,
 	}
 
 	// Now we have passed the check.
-	serviceFriendlyName := get_service_friendly_name(this, &request)
-	requestedServiceId := this.resolve_service_id(get_service_friendly_name(this, &request), req)
-
 	matches := 0
 	matchAll := false
 
@@ -203,7 +203,9 @@ func (this *EndPoint) auth(resp http.ResponseWriter, req *http.Request,
 }
 
 func (this *EndPoint) ApiRegisterUser(context omni_auth.Context, resp http.ResponseWriter, req *http.Request) {
-	requestedServiceId := this.resolve_service_id(this.engine.GetUrlParameter(req, "service"), req)
+	serviceFriendlyName := this.engine.GetUrlParameter(req, "service")
+	requestedServiceId := this.resolve_service_id(serviceFriendlyName, req)
+
 	if requestedServiceId == "" {
 		this.engine.HandleError(resp, req, "cannot-determine-service", http.StatusBadRequest)
 		return
@@ -216,7 +218,7 @@ func (this *EndPoint) ApiRegisterUser(context omni_auth.Context, resp http.Respo
 		return
 	}
 
-	account, err := this.findAccountByIdentity(&login)
+	account, err := this.findAccountByIdentity(requestedServiceId, &login)
 	if err != nil && err != ERROR_NOT_FOUND {
 		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
 		return
@@ -295,7 +297,7 @@ func (this *EndPoint) ApiSaveAccount(context omni_auth.Context, resp http.Respon
 
 	case !hasLoginId && hasAccountId:
 		// this is changing primary login of the account
-		existing, err := this.findAccountByIdentity(account.GetPrimary())
+		existing, err := this.service.GetAccount(omni_common.UUIDFromString(*account.Id))
 		if err != nil && err != ERROR_NOT_FOUND {
 			this.engine.HandleError(resp, req, "error-lookup", http.StatusInternalServerError)
 			return
@@ -310,16 +312,18 @@ func (this *EndPoint) ApiSaveAccount(context omni_auth.Context, resp http.Respon
 		account.GetPrimary().Id = &uuid
 
 	case !hasLoginId && !hasAccountId:
-		existing, err := this.findAccountByIdentity(account.GetPrimary())
-		if err != nil && err != ERROR_NOT_FOUND {
-			this.engine.HandleError(resp, req, "error-lookup", http.StatusInternalServerError)
-			return
+		// Look for existing account
+		if is_account_findable(&account) {
+			existing, err := this.findAccountByIdentity("", account.GetPrimary())
+			if err != nil && err != ERROR_NOT_FOUND {
+				this.engine.HandleError(resp, req, "error-lookup", http.StatusInternalServerError)
+				return
+			}
+			if existing != nil {
+				this.engine.HandleError(resp, req, "error-conflict", http.StatusConflict)
+				return
+			}
 		}
-		if existing != nil {
-			this.engine.HandleError(resp, req, "error-conflict", http.StatusConflict)
-			return
-		}
-
 		// Ok - assign new login id
 		uuid := omni_common.NewUUID().String()
 		account.GetPrimary().Id = &uuid
@@ -429,7 +433,6 @@ func (this *EndPoint) ApiSaveAccountService(context omni_auth.Context, resp http
 			account.Services = append(account.Services, &service)
 		}
 	}
-
 	err = this.service.SaveAccount(account)
 	if err != nil {
 		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
@@ -549,7 +552,51 @@ func (this *EndPoint) ApiDeleteAccount(context omni_auth.Context, resp http.Resp
 	}
 }
 
-func (this *EndPoint) findAccountByIdentity(login *api.Identity) (account *api.Account, err error) {
+func (this *EndPoint) ApiGetProfile(context omni_auth.Context, resp http.ResponseWriter, req *http.Request) {
+	id := this.engine.GetUrlParameter(req, "id")
+
+	provider := this.engine.GetUrlParameter(req, "provider")
+	service_friendly_name := this.engine.GetUrlParameter(req, "service")
+	service := this.resolve_service_id(service_friendly_name, req)
+
+	if id == "" || provider == "" || service == "" {
+		this.engine.HandleError(resp, req, "error-missing-input", http.StatusBadRequest)
+		return
+	}
+
+	account, err := this.service.GetAccount(omni_common.UUIDFromString(id))
+
+	switch {
+	case err == ERROR_NOT_FOUND:
+		this.engine.HandleError(resp, req, "error-account-not-found", http.StatusNotFound)
+		return
+	case err != nil:
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if account.Primary.Oauth2AccountId == nil {
+		this.engine.HandleError(resp, req, "error-no-oauth-account-id", http.StatusNotFound)
+		return
+	}
+
+	// TODO - Need to verify that given service can access user profile??
+	profile, err := this.oauth2.FindProfileByProviderAccountId(provider, account.Primary.GetOauth2AccountId())
+	if err != nil {
+		this.engine.HandleError(resp, req, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = this.engine.MarshalJSON(req, profile.OriginalData, resp)
+	if err != nil {
+		this.engine.HandleError(resp, req, "malformed-profile", http.StatusInternalServerError)
+		return
+	}
+}
+
+/// For OAuth registration, there is a side effect of setting OAuth account id if an account is found
+/// and wasn't set in the input login Identity.
+func (this *EndPoint) findAccountByIdentity(service string, login *api.Identity) (account *api.Account, err error) {
 	// If id is provided then just use that
 	if login.Id != nil {
 		account, err = this.service.GetAccount(omni_common.UUIDFromString(login.GetId()))
@@ -567,21 +614,45 @@ func (this *EndPoint) findAccountByIdentity(login *api.Identity) (account *api.A
 		// object or to get the actual user id.
 		oauth2_account_id := login.GetOauth2AccountId()
 		if oauth2_account_id == "" {
-			if login.Oauth2AppId == nil {
-				return nil, errors.New("oauth2-app-id-missing")
+			// Get the oauth app id associated to this service.
+			appConfig, err := this.oauth2.FindAppConfigByServiceAndProvider(service, login.GetOauth2Provider())
+			if err != nil {
+				return nil, err
+			}
+			app_id := appConfig.AppId
+			if v, err := this.oauth2.ValidateToken(login.GetOauth2Provider(), app_id, login.GetOauth2AccessToken()); err != nil {
+				return nil, err
 			} else {
-				v, err := this.oauth2.ValidateToken(login.GetOauth2Provider(), login.GetOauth2AppId(), login.GetOauth2AccessToken())
-				if err != nil {
-					return nil, err
-				} else {
-					// verify that the app id matches
-					if v.AppId != "" && v.AppId != login.GetOauth2AppId() {
-						return nil, errors.New("oauth2-app-id-mismatch")
+				oauth2_account_id = v.AccountId
+
+				var profile *OAuth2Profile
+				if v.ProfileData != nil {
+					profile = &OAuth2Profile{
+						Timestamp:    time.Now(),
+						Provider:     v.Provider,
+						AppId:        v.AppId,
+						AccountId:    v.AccountId,
+						ServiceIds:   appConfig.ServiceIds,
+						OriginalData: v.ProfileData,
 					}
-					oauth2_account_id = v.AccountId
+				} else {
+					profile, err = this.oauth2.FetchProfile(login.GetOauth2Provider(), app_id, login.GetOauth2AccessToken())
+					if err != nil {
+						return nil, err
+					}
+				}
+				// Save a copy of the profile
+				if profile != nil {
+					err = this.oauth2.SaveProfile(profile)
+					if err != nil {
+						return nil, err
+					}
 				}
 			}
 		}
+		// Update the login object
+		login.Oauth2AccountId = proto.String(oauth2_account_id)
+
 		// This here assumes that during registration, we have already indexed account by oauth2 account id and provider.
 		account, err = this.service.FindAccountByOAuth2(login.GetOauth2Provider(), oauth2_account_id)
 		return

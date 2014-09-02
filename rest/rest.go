@@ -115,6 +115,7 @@ type Engine interface {
 	GetUrlParameter(*http.Request, string) string
 	Unmarshal(*http.Request, proto.Message) error
 	Marshal(*http.Request, proto.Message, http.ResponseWriter) error
+	MarshalJSON(*http.Request, interface{}, http.ResponseWriter) error
 	HandleError(http.ResponseWriter, *http.Request, string, int) error
 	EventChannel() chan<- *EngineEvent
 }
@@ -221,6 +222,17 @@ func (this *engine) Unmarshal(req *http.Request, typed proto.Message) (err error
 		return unmarshaler(req.Body, typed)
 	} else {
 		return ERROR_UNKNOWN_CONTENT_TYPE
+	}
+}
+
+func (this *engine) MarshalJSON(req *http.Request, any interface{}, resp http.ResponseWriter) (err error) {
+	if buff, err := json.Marshal(any); err == nil {
+		omni_http.SetCORSHeaders(resp)
+		resp.Header().Add("Content-Type", "application/json")
+		resp.Write(buff)
+		return nil
+	} else {
+		return err
 	}
 }
 

@@ -8,18 +8,21 @@ const (
 	AccountUpdate api.AuthScope = iota
 	AccountReadOnly
 	RegisterNewUser
+	AccessProfile
 )
 
 var AuthScopes = api.AuthScopes{
 	AccountUpdate:   "account_update",
 	AccountReadOnly: "account_readonly",
 	RegisterNewUser: "register_user",
+	AccessProfile:   "access_social_network_profile",
 }
 
 const (
 	AuthUser api.ServiceMethod = iota
 	AuthUserForService
 	RegisterUser
+	FetchProfile
 
 	FetchAccount
 	DeleteAccount
@@ -83,6 +86,20 @@ and is registered for the particular service.
 		// Calls the url webhook of given key for given service
 		CallbackEvent:        api.EventKey("new-user-registration"),
 		CallbackBodyTemplate: `{"id": "{{.Account.Id}}" }`,
+	},
+
+	FetchProfile: api.MethodSpec{
+		AuthScope: AuthScopes[AccessProfile],
+		Doc: `
+Access a user's social network profile, if the user registered using Oauth2.
+`,
+		UrlRoute:     "/api/v1/account/{id}/profile/{service}/{provider}",
+		HttpMethod:   "GET",
+		ContentTypes: []string{"application/json"},
+		RequestBody:  nil,
+		ResponseBody: func() interface{} {
+			return make(map[string]interface{})
+		},
 	},
 
 	FetchAccount: api.MethodSpec{

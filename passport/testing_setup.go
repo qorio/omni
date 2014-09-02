@@ -95,7 +95,7 @@ func default_service(t *testing.T) *serviceImpl {
 type serviceImplInit func(*testing.T, *serviceImpl)
 type oauth2ImplInit func(*testing.T, *oauth2Impl)
 
-func test_service(t *testing.T, authSettings omni_auth.Settings, s Settings, serviceInits ...serviceImplInit) *serviceImpl {
+func test_service(t *testing.T, s Settings, serviceInits ...serviceImplInit) *serviceImpl {
 	service, err := NewService(s)
 
 	if err != nil {
@@ -125,27 +125,27 @@ func test_oauth2(t *testing.T, s Settings, o2Inits ...oauth2ImplInit) *oauth2Imp
 	return service
 }
 
-func endpoint(t *testing.T, authSettings omni_auth.Settings, s Settings, serviceInits ...serviceImplInit) *EndPoint {
-
+func test_endpoint(t *testing.T, authSettings omni_auth.Settings, service *serviceImpl, oauth2 *oauth2Impl) *EndPoint {
 	auth := omni_auth.Init(authSettings)
-	service, err := NewService(s)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	for _, serviceInit := range serviceInits {
-		if serviceInit != nil {
-			serviceInit(t, service)
-		}
-	}
-
-	endpoint, err := NewApiEndPoint(default_settings(), auth, service, nil, service)
+	endpoint, err := NewApiEndPoint(default_settings(), auth, service, oauth2, service)
 	if err != nil {
 		t.Log("Error starting endpoint:", err)
 		t.Fatal(err)
 	}
 	return endpoint
+}
+
+func endpoint(t *testing.T, authSettings omni_auth.Settings, s Settings, serviceInits ...serviceImplInit) *EndPoint {
+	service, err := NewService(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, serviceInit := range serviceInits {
+		if serviceInit != nil {
+			serviceInit(t, service)
+		}
+	}
+	return test_endpoint(t, authSettings, service, nil)
 }
 
 var test_port string
