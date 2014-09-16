@@ -21,7 +21,7 @@ machine:
     STRIPE_API_KEY: sk_test_4LSOS9XcC9KDQR4qTBuoHCmJ
     DOCKER_ACCOUNT: lab616
     DOCKER_EMAIL: davidc616@gmail.com
-    DOCKER_AUTH: bGFiNjE2OmxhYjYxNg==
+    DOCKER_AUTH: bGFiNjE2Om1obXU4MjQx
 
 ## Customize checkout
 checkout:
