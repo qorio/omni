@@ -6,8 +6,8 @@ import (
 	api "github.com/qorio/api/passport"
 	omni_common "github.com/qorio/omni/common"
 	omni_rest "github.com/qorio/omni/rest"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 	"strings"
 )
 

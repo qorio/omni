@@ -1,0 +1,70 @@
+{
+	"ImportPath": "github.com/qorio/omni",
+	"GoVersion": "go1.3.1",
+	"Packages": [
+		"main/lighthouse.go"
+	],
+	"Deps": [
+		{
+			"ImportPath": "bitbucket.org/kardianos/osext",
+			"Comment": "null-9",
+			"Rev": "364fb577de68fb646c4cb39cc0e09c887ee16376"
+		},
+		{
+			"ImportPath": "code.google.com/p/go-uuid/uuid",
+			"Comment": "null-12",
+			"Rev": "7dda39b2e7d5e265014674c5af696ba4186679e9"
+		},
+		{
+			"ImportPath": "code.google.com/p/goprotobuf/proto",
+			"Comment": "go.r60-152",
+			"Rev": "36be16571e14f67e114bb0af619e5de2c1591679"
+		},
+		{
+			"ImportPath": "github.com/dgrijalva/jwt-go",
+			"Comment": "v2.0.0-3-gc0da491",
+			"Rev": "c0da49162251c81124e34f3e7885527a091dacd5"
+		},
+		{
+			"ImportPath": "github.com/golang/glog",
+			"Rev": "d1c4472bf2efd3826f2b5bdcc02d8416798d678c"
+		},
+		{
+			"ImportPath": "github.com/gorilla/context",
+			"Rev": "708054d61e5a2918b9f4e9700000ee611dcf03f5"
+		},
+		{
+			"ImportPath": "github.com/gorilla/mux",
+			"Rev": "ea1bb06e006eada8e54ad4116dfdabcb8520862c"
+		},
+		{
+			"ImportPath": "github.com/gorilla/securecookie",
+			"Rev": "1b0c7f6e9ab3d7f500fd7d50c7ad835ff428139b"
+		},
+		{
+			"ImportPath": "github.com/inconshreveable/go-update",
+			"Rev": "276093003334bfddde2b1759b864b7c59f38b55e"
+		},
+		{
+			"ImportPath": "github.com/kr/binarydist",
+			"Rev": "9955b0ab8708602d411341e55fffd7e0700f86bd"
+		},
+		{
+			"ImportPath": "github.com/mssola/user_agent",
+			"Comment": "v0.3",
+			"Rev": "9ccf4ce0fe55cd185a148a44e6fc5c1932107713"
+		},
+		{
+			"ImportPath": "github.com/nranchev/go-libGeoIP",
+			"Rev": "c78e8bd2dd3599feb21fd30886043979e82fe948"
+		},
+		{
+			"ImportPath": "github.com/qorio/api",
+			"Rev": "9e3cffebc565a1008dbc6846626c906987933766"
+		},
+		{
+			"ImportPath": "gopkg.in/mgo.v2",
+			"Rev": "c9fd3712fbf3e92924c974dce16da2d322508fe2"
+		}
+	]
+}

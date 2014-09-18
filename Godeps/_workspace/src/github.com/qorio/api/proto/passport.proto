@@ -1,0 +1,89 @@
+package passport;
+
+// The type of the Identity is determined by what is
+// presented to the server.  If password is specified,
+// native passport identity by username/email/phone + password
+// is used.  If oauth2_access_token is presented, the
+// oauth2 identity is assumed.
+message Identity {
+	optional string id = 1; // system assigned
+	optional string service = 2;
+
+	message Location {
+    		required double lon = 1;
+    		required double lat = 2;
+    	}
+	optional Location location = 3;
+
+	// NATIVE identity
+	optional string password = 10;
+	optional string email = 11;
+	optional string phone = 12;
+	optional string username = 13;
+
+	// OAUTH2 identity here assumes that the
+	// client has performed auth with the provider
+	// and the provider has granted an access token.
+	// The access token is then verified on the server
+	// side via the providers server api.  Once the
+	// access token is verified, another token for
+	// accessing passport-authenticated systems is
+	// issued.
+	optional string oauth2_provider = 20;
+	optional string oauth2_account_id = 21;
+	optional string oauth2_access_token = 22;
+	//optional string oauth2_app_id = 23;
+}
+
+message AuthResponse {
+	required string token = 2;
+}
+
+message Account {
+	optional string id = 1;
+	optional string status = 2;
+	optional double created_timestamp = 4; // unix seconds
+	repeated Service services = 5;
+	required Identity primary = 3;
+	repeated Identity identities = 6;
+}
+
+message Blob {
+	required string type = 1;
+	required bytes data = 2;
+}
+
+message Attribute {
+	enum Type {
+	     STRING = 1;
+	     NUMBER = 2;
+	     BOOL = 3;
+	     BLOB = 4;
+	}
+	required Type type = 1;
+	required string key = 2;
+	optional bool embed_in_token = 3 [default = false];  // True to include in signin JWT token
+	optional string string_value = 4;
+	optional double number_value = 5;
+	optional bool bool_value = 6;
+	optional Blob blob_value = 7;
+}
+
+message Service {
+	required string id = 1;
+	required string status = 2;  // free-form for the service to interpret
+	required string account_id = 3;  // account key used by the service
+	repeated string scopes = 4; // oauth scopes / permissions
+	optional double start_timestamp = 5;
+	repeated Attribute attributes = 6;
+}
+
+message AccountLogs {
+	required string id = 1;
+	message Log {
+		required double timestamp = 1;
+		required string user = 2;
+		required string entry = 3;
+	}
+	repeated Log entries = 2;
+}

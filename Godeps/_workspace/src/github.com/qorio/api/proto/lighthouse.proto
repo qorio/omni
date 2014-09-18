@@ -1,0 +1,82 @@
+package lighthouse;
+
+
+// To be transformed to GeoJson - ex)  {"location" : [-71.34, 41.12]}
+// See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-geo-point-type.html
+message Location {
+    required double lon = 1;
+    required double lat = 2;
+}
+
+message Content {
+
+    // Id - not required at creation time; assigned by server
+    optional string id = 1;
+
+    // MIME type. e.g. image/jpeg, image/png, video/mp4
+    required string type = 2;
+
+    // Content data bytes
+    optional bytes data = 3;
+
+    // Or url as content - link sharing or content in cdn.
+    optional string url = 4;
+}
+
+
+message IBeacon {
+	required bytes uuid = 1;
+	optional int32 major = 2;
+	optional int32 minor = 3;
+}
+
+message BeaconAdvertisement {
+
+	// For IBeacon spec by AAPL
+	optional IBeacon ibeacon = 1;
+
+	// For supporting generic BLE mac address as id
+	optional string ble_device = 2;
+}
+
+// Hardware profile
+message DeviceProfile {
+	required double timestamp = 1;
+	required bytes hardware_id = 2;
+	required string local_name = 3;
+	required bytes password = 4;
+	required BeaconAdvertisement advertise_info = 5;
+	optional int32 tx_power = 6;
+	optional int32 tx_frequency = 7;
+}
+
+// Summary of a beacon -- this is shared with mobile client.
+message Beacon {
+
+	// Unique identifier from the hardware
+	required string hardware_id = 1;
+
+	// How this beacon advertises itself
+	required BeaconAdvertisement advertise_info = 2;
+
+	// Install date, unix time
+	required double installed_timestamp = 3;
+
+	// Where the beacon is installed
+	required Location location = 4;
+
+	// Battery level in percentage
+	optional int32 battery = 5;
+
+	// Owner of the beacon -- first user who provisioned a hardware beacon
+	// Ownership can be transferred by releasing the beacon which will cause
+	// a deletion of this record.
+	required string owner = 6;
+
+	// At least one label to establish the context of the beacon.  For v1, only 1 label.
+	repeated string labels = 7;
+
+	// For displaying the beacon icon/ logo etc.
+	optional Content avatar = 8;
+	optional Content avatar_small = 9;
+}

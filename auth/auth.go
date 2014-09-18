@@ -84,7 +84,7 @@ func (this *serviceImpl) SignedString(token *Token) (tokenString string, err err
 }
 
 func (this *serviceImpl) Parse(tokenString string) (token *Token, err error) {
-	t, err := jwt.Parse(tokenString, func(t *jwt.Token) ([]byte, error) {
+	t, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
 		return this.settings.SignKey, nil
 	})
 
