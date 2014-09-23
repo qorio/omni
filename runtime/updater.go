@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
-	"github.com/gorilla/mux"
 	"github.com/inconshreveable/go-update"
 	omni_http "github.com/qorio/omni/http"
 	"io"
@@ -20,12 +19,6 @@ type UpdateExecutableRequest struct {
 type UpdateResult struct {
 	Error        error
 	RecoverError error
-}
-
-func NewManagerEndPoint() http.Handler {
-	router := mux.NewRouter()
-	router.HandleFunc("/update", StartUpdateHandler).Methods("POST").Name("update")
-	return router
 }
 
 func StartUpdateHandler(resp http.ResponseWriter, request *http.Request) {
