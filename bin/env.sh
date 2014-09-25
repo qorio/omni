@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PROJECT="github.com/qorio/maestro"
+PROJECT="github.com/qorio/omni"
 
 if [ ! -d "$HOME/go/src/$PROJECT" ]; then
     echo "Creating $HOME/go as the root of go development and set up symlinks to point to this directory."
