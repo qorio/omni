@@ -23,20 +23,30 @@ func init() {
 	startTime = time.Now()
 }
 
-func NewManagerEndPoint() http.Handler {
+type BuildInfoProvider interface {
+	GetCommitHash() string
+	GetBuildTimestamp() string
+	GetBuildNumber() string
+}
+
+type Config struct {
+	BuildInfo BuildInfoProvider
+}
+
+func NewManagerEndPoint(config Config) http.Handler {
 	router := mux.NewRouter()
 	router.HandleFunc("/update", StartUpdateHandler).Methods("POST").Name("update")
-	router.HandleFunc("/info", InfoHandler).Methods("GET").Name("info")
+	router.HandleFunc("/info", config.InfoHandler).Methods("GET").Name("info")
 	return router
 }
 
-func InfoHandler(resp http.ResponseWriter, request *http.Request) {
+func (config *Config) InfoHandler(resp http.ResponseWriter, request *http.Request) {
 	omni_http.SetCORSHeaders(resp)
-	buildInfo := BuildInfo()
+	buildInfo := config.BuildInfo
 	info := Info{
-		Commit:         buildInfo.Commit,
-		BuildTimestamp: buildInfo.Timestamp,
-		BuildNumber:    buildInfo.Number,
+		Commit:         buildInfo.GetCommitHash(),
+		BuildTimestamp: buildInfo.GetBuildTimestamp(),
+		BuildNumber:    buildInfo.GetBuildNumber(),
 		Uptime:         time.Since(startTime).Seconds(),
 	}
 	enc := json.NewEncoder(resp)

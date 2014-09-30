@@ -20,3 +20,15 @@ func BuildInfo() Build {
 		Number:    buildNumber,
 	}
 }
+
+func (buildInfo Build) GetCommitHash() string {
+	return buildInfo.Commit
+}
+
+func (buildInfo Build) GetBuildTimestamp() string {
+	return buildInfo.Timestamp
+}
+
+func (buildInfo Build) GetBuildNumber() string {
+	return buildInfo.Number
+}
