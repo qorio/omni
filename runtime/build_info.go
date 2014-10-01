@@ -13,22 +13,22 @@ type Build struct {
 	Number    string
 }
 
-func BuildInfo() Build {
-	return Build{
+func BuildInfo() *Build {
+	return &Build{
 		Commit:    gitCommitHash,
 		Timestamp: buildTimestamp,
 		Number:    buildNumber,
 	}
 }
 
-func (buildInfo Build) GetCommitHash() string {
+func (buildInfo *Build) GetCommitHash() string {
 	return buildInfo.Commit
 }
 
-func (buildInfo Build) GetBuildTimestamp() string {
+func (buildInfo *Build) GetBuildTimestamp() string {
 	return buildInfo.Timestamp
 }
 
-func (buildInfo Build) GetBuildNumber() string {
+func (buildInfo *Build) GetBuildNumber() string {
 	return buildInfo.Number
 }

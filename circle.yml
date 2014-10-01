@@ -35,9 +35,9 @@ dependencies:
     - go version
   override:
     - ./build-gen-proto.sh
-    - ./build-x-compile.sh main/shorty.go main/dasher.go main/passport.go main/lighthouse.go main/blinker.go
+    #- ./build-x-compile.sh main/shorty.go main/dasher.go main/passport.go main/lighthouse.go main/blinker.go
   post:
-    - cp -r $BUILD_TARGET_DIR/* $CIRCLE_ARTIFACTS
+    #- cp -r $BUILD_TARGET_DIR/* $CIRCLE_ARTIFACTS
     - cp -r $BUILD_SRC_DIR/GeoLiteCity.dat $CIRCLE_ARTIFACTS
     - cp -r $BUILD_SRC_DIR/test/authKey.pub $CIRCLE_ARTIFACTS/testAuthKey.pub
 
