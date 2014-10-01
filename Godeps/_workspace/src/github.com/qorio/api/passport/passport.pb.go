@@ -71,14 +71,14 @@ func (x *Attribute_Type) UnmarshalJSON(data []byte) error {
 // is used.  If oauth2_access_token is presented, the
 // oauth2 identity is assumed.
 type Identity struct {
-	Id       *string            `protobuf:"bytes,1,opt,name=id" json:"id,omitempty" bson:",omitempty"`
-	Service  *string            `protobuf:"bytes,2,opt,name=service" json:"service,omitempty" bson:",omitempty"`
-	Location *Identity_Location `protobuf:"bytes,3,opt,name=location" json:"location,omitempty" bson:",omitempty"`
+	Id       *string            `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	Service  *string            `protobuf:"bytes,2,opt,name=service" json:"service,omitempty"`
+	Location *Identity_Location `protobuf:"bytes,3,opt,name=location" json:"location,omitempty"`
 	// NATIVE identity
-	Password *string `protobuf:"bytes,10,opt,name=password" json:"password,omitempty" bson:",omitempty"`
-	Email    *string `protobuf:"bytes,11,opt,name=email" json:"email,omitempty" bson:",omitempty"`
-	Phone    *string `protobuf:"bytes,12,opt,name=phone" json:"phone,omitempty" bson:",omitempty"`
-	Username *string `protobuf:"bytes,13,opt,name=username" json:"username,omitempty" bson:",omitempty"`
+	Password *string `protobuf:"bytes,10,opt,name=password" json:"password,omitempty"`
+	Email    *string `protobuf:"bytes,11,opt,name=email" json:"email,omitempty"`
+	Phone    *string `protobuf:"bytes,12,opt,name=phone" json:"phone,omitempty"`
+	Username *string `protobuf:"bytes,13,opt,name=username" json:"username,omitempty"`
 	// OAUTH2 identity here assumes that the
 	// client has performed auth with the provider
 	// and the provider has granted an access token.
@@ -87,9 +87,9 @@ type Identity struct {
 	// access token is verified, another token for
 	// accessing passport-authenticated systems is
 	// issued.
-	Oauth2Provider    *string `protobuf:"bytes,20,opt,name=oauth2_provider" json:"oauth2_provider,omitempty" bson:",omitempty"`
-	Oauth2AccountId   *string `protobuf:"bytes,21,opt,name=oauth2_account_id" json:"oauth2_account_id,omitempty" bson:",omitempty"`
-	Oauth2AccessToken *string `protobuf:"bytes,22,opt,name=oauth2_access_token" json:"oauth2_access_token,omitempty" bson:",omitempty"`
+	Oauth2Provider    *string `protobuf:"bytes,20,opt,name=oauth2_provider" json:"oauth2_provider,omitempty"`
+	Oauth2AccountId   *string `protobuf:"bytes,21,opt,name=oauth2_account_id" json:"oauth2_account_id,omitempty"`
+	Oauth2AccessToken *string `protobuf:"bytes,22,opt,name=oauth2_access_token" json:"oauth2_access_token,omitempty"`
 	XXX_unrecognized  []byte  `json:"-"`
 }
 
@@ -168,8 +168,8 @@ func (m *Identity) GetOauth2AccessToken() string {
 }
 
 type Identity_Location struct {
-	Lon              *float64 `protobuf:"fixed64,1,req,name=lon" json:"lon,omitempty" bson:",omitempty"`
-	Lat              *float64 `protobuf:"fixed64,2,req,name=lat" json:"lat,omitempty" bson:",omitempty"`
+	Lon              *float64 `protobuf:"fixed64,1,req,name=lon" json:"lon,omitempty"`
+	Lat              *float64 `protobuf:"fixed64,2,req,name=lat" json:"lat,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
@@ -192,7 +192,7 @@ func (m *Identity_Location) GetLat() float64 {
 }
 
 type AuthResponse struct {
-	Token            *string `protobuf:"bytes,2,req,name=token" json:"token,omitempty" bson:",omitempty"`
+	Token            *string `protobuf:"bytes,2,req,name=token" json:"token,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -208,12 +208,12 @@ func (m *AuthResponse) GetToken() string {
 }
 
 type Account struct {
-	Id               *string     `protobuf:"bytes,1,opt,name=id" json:"id,omitempty" bson:",omitempty"`
-	Status           *string     `protobuf:"bytes,2,opt,name=status" json:"status,omitempty" bson:",omitempty"`
-	CreatedTimestamp *float64    `protobuf:"fixed64,4,opt,name=created_timestamp" json:"created_timestamp,omitempty" bson:",omitempty"`
-	Services         []*Service  `protobuf:"bytes,5,rep,name=services" json:"services,omitempty" bson:",omitempty"`
-	Primary          *Identity   `protobuf:"bytes,3,req,name=primary" json:"primary,omitempty" bson:",omitempty"`
-	Identities       []*Identity `protobuf:"bytes,6,rep,name=identities" json:"identities,omitempty" bson:",omitempty"`
+	Id               *string     `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	Status           *string     `protobuf:"bytes,2,opt,name=status" json:"status,omitempty"`
+	CreatedTimestamp *float64    `protobuf:"fixed64,4,opt,name=created_timestamp" json:"created_timestamp,omitempty"`
+	Services         []*Service  `protobuf:"bytes,5,rep,name=services" json:"services,omitempty"`
+	Primary          *Identity   `protobuf:"bytes,3,req,name=primary" json:"primary,omitempty"`
+	Identities       []*Identity `protobuf:"bytes,6,rep,name=identities" json:"identities,omitempty"`
 	XXX_unrecognized []byte      `json:"-"`
 }
 
@@ -264,8 +264,8 @@ func (m *Account) GetIdentities() []*Identity {
 }
 
 type Blob struct {
-	Type             *string `protobuf:"bytes,1,req,name=type" json:"type,omitempty" bson:",omitempty"`
-	Data             []byte  `protobuf:"bytes,2,req,name=data" json:"data,omitempty" bson:",omitempty"`
+	Type             *string `protobuf:"bytes,1,req,name=type" json:"type,omitempty"`
+	Data             []byte  `protobuf:"bytes,2,req,name=data" json:"data,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -288,13 +288,13 @@ func (m *Blob) GetData() []byte {
 }
 
 type Attribute struct {
-	Type             *Attribute_Type `protobuf:"varint,1,req,name=type,enum=passport.Attribute_Type" json:"type,omitempty" bson:",omitempty"`
-	Key              *string         `protobuf:"bytes,2,req,name=key" json:"key,omitempty" bson:",omitempty"`
-	EmbedInToken     *bool           `protobuf:"varint,3,opt,name=embed_in_token,def=0" json:"embed_in_token,omitempty" bson:",omitempty"`
-	StringValue      *string         `protobuf:"bytes,4,opt,name=string_value" json:"string_value,omitempty" bson:",omitempty"`
-	NumberValue      *float64        `protobuf:"fixed64,5,opt,name=number_value" json:"number_value,omitempty" bson:",omitempty"`
-	BoolValue        *bool           `protobuf:"varint,6,opt,name=bool_value" json:"bool_value,omitempty" bson:",omitempty"`
-	BlobValue        *Blob           `protobuf:"bytes,7,opt,name=blob_value" json:"blob_value,omitempty" bson:",omitempty"`
+	Type             *Attribute_Type `protobuf:"varint,1,req,name=type,enum=passport.Attribute_Type" json:"type,omitempty"`
+	Key              *string         `protobuf:"bytes,2,req,name=key" json:"key,omitempty"`
+	EmbedInToken     *bool           `protobuf:"varint,3,opt,name=embed_in_token,def=0" json:"embed_in_token,omitempty"`
+	StringValue      *string         `protobuf:"bytes,4,opt,name=string_value" json:"string_value,omitempty"`
+	NumberValue      *float64        `protobuf:"fixed64,5,opt,name=number_value" json:"number_value,omitempty"`
+	BoolValue        *bool           `protobuf:"varint,6,opt,name=bool_value" json:"bool_value,omitempty"`
+	BlobValue        *Blob           `protobuf:"bytes,7,opt,name=blob_value" json:"blob_value,omitempty"`
 	XXX_unrecognized []byte          `json:"-"`
 }
 
@@ -354,12 +354,12 @@ func (m *Attribute) GetBlobValue() *Blob {
 }
 
 type Service struct {
-	Id               *string      `protobuf:"bytes,1,req,name=id" json:"id,omitempty" bson:",omitempty"`
-	Status           *string      `protobuf:"bytes,2,req,name=status" json:"status,omitempty" bson:",omitempty"`
-	AccountId        *string      `protobuf:"bytes,3,req,name=account_id" json:"account_id,omitempty" bson:",omitempty"`
-	Scopes           []string     `protobuf:"bytes,4,rep,name=scopes" json:"scopes,omitempty" bson:",omitempty"`
-	StartTimestamp   *float64     `protobuf:"fixed64,5,opt,name=start_timestamp" json:"start_timestamp,omitempty" bson:",omitempty"`
-	Attributes       []*Attribute `protobuf:"bytes,6,rep,name=attributes" json:"attributes,omitempty" bson:",omitempty"`
+	Id               *string      `protobuf:"bytes,1,req,name=id" json:"id,omitempty"`
+	Status           *string      `protobuf:"bytes,2,req,name=status" json:"status,omitempty"`
+	AccountId        *string      `protobuf:"bytes,3,req,name=account_id" json:"account_id,omitempty"`
+	Scopes           []string     `protobuf:"bytes,4,rep,name=scopes" json:"scopes,omitempty"`
+	StartTimestamp   *float64     `protobuf:"fixed64,5,opt,name=start_timestamp" json:"start_timestamp,omitempty"`
+	Attributes       []*Attribute `protobuf:"bytes,6,rep,name=attributes" json:"attributes,omitempty"`
 	XXX_unrecognized []byte       `json:"-"`
 }
 
@@ -410,8 +410,8 @@ func (m *Service) GetAttributes() []*Attribute {
 }
 
 type AccountLogs struct {
-	Id               *string            `protobuf:"bytes,1,req,name=id" json:"id,omitempty" bson:",omitempty"`
-	Entries          []*AccountLogs_Log `protobuf:"bytes,2,rep,name=entries" json:"entries,omitempty" bson:",omitempty"`
+	Id               *string            `protobuf:"bytes,1,req,name=id" json:"id,omitempty"`
+	Entries          []*AccountLogs_Log `protobuf:"bytes,2,rep,name=entries" json:"entries,omitempty"`
 	XXX_unrecognized []byte             `json:"-"`
 }
 
@@ -434,9 +434,9 @@ func (m *AccountLogs) GetEntries() []*AccountLogs_Log {
 }
 
 type AccountLogs_Log struct {
-	Timestamp        *float64 `protobuf:"fixed64,1,req,name=timestamp" json:"timestamp,omitempty" bson:",omitempty"`
-	User             *string  `protobuf:"bytes,2,req,name=user" json:"user,omitempty" bson:",omitempty"`
-	Entry            *string  `protobuf:"bytes,3,req,name=entry" json:"entry,omitempty" bson:",omitempty"`
+	Timestamp        *float64 `protobuf:"fixed64,1,req,name=timestamp" json:"timestamp,omitempty"`
+	User             *string  `protobuf:"bytes,2,req,name=user" json:"user,omitempty"`
+	Entry            *string  `protobuf:"bytes,3,req,name=entry" json:"entry,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 

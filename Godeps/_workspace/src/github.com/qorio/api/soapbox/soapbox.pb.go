@@ -27,8 +27,8 @@ var _ = proto.Marshal
 var _ = math.Inf
 
 type Location struct {
-	Lon              *float64 `protobuf:"fixed64,1,req,name=lon" json:"lon,omitempty" bson:",omitempty"`
-	Lat              *float64 `protobuf:"fixed64,2,req,name=lat" json:"lat,omitempty" bson:",omitempty"`
+	Lon              *float64 `protobuf:"fixed64,1,req,name=lon" json:"lon,omitempty"`
+	Lat              *float64 `protobuf:"fixed64,2,req,name=lat" json:"lat,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
@@ -52,13 +52,13 @@ func (m *Location) GetLat() float64 {
 
 type Content struct {
 	// Id - not required at creation time; assigned by server
-	Id *string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty" bson:",omitempty"`
+	Id *string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
 	// MIME type. e.g. image/jpeg, image/png, video/mp4
-	Type *string `protobuf:"bytes,2,req,name=type" json:"type,omitempty" bson:",omitempty"`
+	Type *string `protobuf:"bytes,2,req,name=type" json:"type,omitempty"`
 	// Content data bytes
-	Data []byte `protobuf:"bytes,3,opt,name=data" json:"data,omitempty" bson:",omitempty"`
+	Data []byte `protobuf:"bytes,3,opt,name=data" json:"data,omitempty"`
 	// Or url as content - link sharing or content in cdn.
-	Url              *string `protobuf:"bytes,4,opt,name=url" json:"url,omitempty" bson:",omitempty"`
+	Url              *string `protobuf:"bytes,4,opt,name=url" json:"url,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -96,17 +96,17 @@ func (m *Content) GetUrl() string {
 
 type User struct {
 	// Not required at creation time.  Assigned by server.
-	Id *string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty" bson:",omitempty"`
+	Id *string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
 	// User entered name
-	Name *string `protobuf:"bytes,2,req,name=name" json:"name,omitempty" bson:",omitempty"`
+	Name *string `protobuf:"bytes,2,req,name=name" json:"name,omitempty"`
 	// User generated status
-	Status *string `protobuf:"bytes,3,opt,name=status" json:"status,omitempty" bson:",omitempty"`
+	Status *string `protobuf:"bytes,3,opt,name=status" json:"status,omitempty"`
 	// UI display of user
-	Avatar      *Content         `protobuf:"bytes,4,opt,name=avatar" json:"avatar,omitempty" bson:",omitempty"`
-	AvatarSmall *Content         `protobuf:"bytes,5,opt,name=avatar_small" json:"avatar_small,omitempty" bson:",omitempty"`
-	Identities  []*User_Identity `protobuf:"bytes,6,rep,name=identities" json:"identities,omitempty" bson:",omitempty"`
+	Avatar      *Content         `protobuf:"bytes,4,opt,name=avatar" json:"avatar,omitempty"`
+	AvatarSmall *Content         `protobuf:"bytes,5,opt,name=avatar_small" json:"avatar_small,omitempty"`
+	Identities  []*User_Identity `protobuf:"bytes,6,rep,name=identities" json:"identities,omitempty"`
 	// What this user is interested in. String values should not include '#'
-	Interests        []string `protobuf:"bytes,7,rep,name=interests" json:"interests,omitempty" bson:",omitempty"`
+	Interests        []string `protobuf:"bytes,7,rep,name=interests" json:"interests,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
@@ -166,10 +166,10 @@ func (m *User) GetInterests() []string {
 // Other social network identities
 type User_Identity struct {
 	// Network: e.g. facebook.com, twitter.com, instagr.am
-	Network *string `protobuf:"bytes,1,req,name=network" json:"network,omitempty" bson:",omitempty"`
-	Account *string `protobuf:"bytes,2,req,name=account" json:"account,omitempty" bson:",omitempty"`
+	Network *string `protobuf:"bytes,1,req,name=network" json:"network,omitempty"`
+	Account *string `protobuf:"bytes,2,req,name=account" json:"account,omitempty"`
 	// For OAuth grants
-	Authorizations   []string `protobuf:"bytes,3,rep,name=authorizations" json:"authorizations,omitempty" bson:",omitempty"`
+	Authorizations   []string `protobuf:"bytes,3,rep,name=authorizations" json:"authorizations,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
@@ -200,10 +200,10 @@ func (m *User_Identity) GetAuthorizations() []string {
 
 // Reference handle for user
 type UserRef struct {
-	Id               *string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty" bson:",omitempty"`
-	Email            *string `protobuf:"bytes,2,opt,name=email" json:"email,omitempty" bson:",omitempty"`
-	AtName           *string `protobuf:"bytes,3,opt,name=at_name" json:"at_name,omitempty" bson:",omitempty"`
-	Phone            *string `protobuf:"bytes,4,opt,name=phone" json:"phone,omitempty" bson:",omitempty"`
+	Id               *string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	Email            *string `protobuf:"bytes,2,opt,name=email" json:"email,omitempty"`
+	AtName           *string `protobuf:"bytes,3,opt,name=at_name" json:"at_name,omitempty"`
+	Phone            *string `protobuf:"bytes,4,opt,name=phone" json:"phone,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -241,24 +241,24 @@ func (m *UserRef) GetPhone() string {
 
 type Post struct {
 	// The message id. Optional at creation time.  To be filled in by the server on commit.
-	Id *string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty" bson:",omitempty"`
+	Id *string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
 	// Fractional seconds since epoch (unix time)
-	Timestamp *float64 `protobuf:"fixed64,2,req,name=timestamp" json:"timestamp,omitempty" bson:",omitempty"`
+	Timestamp *float64 `protobuf:"fixed64,2,req,name=timestamp" json:"timestamp,omitempty"`
 	// Location as [lon,lat]
-	Location *Location `protobuf:"bytes,3,req,name=location" json:"location,omitempty" bson:",omitempty"`
-	Author   *UserRef  `protobuf:"bytes,4,req,name=author" json:"author,omitempty" bson:",omitempty"`
+	Location *Location `protobuf:"bytes,3,req,name=location" json:"location,omitempty"`
+	Author   *UserRef  `protobuf:"bytes,4,req,name=author" json:"author,omitempty"`
 	// In reference of another post. Used by comments potentially.
-	ReferencingPostId *string `protobuf:"bytes,5,opt,name=referencing_post_id" json:"referencing_post_id,omitempty" bson:",omitempty"`
+	ReferencingPostId *string `protobuf:"bytes,5,opt,name=referencing_post_id" json:"referencing_post_id,omitempty"`
 	// The content of this post.
 	// One of the following should exist for a properly formed post.
 	// It can be either actual post or comment to another post. Or an original post
 	// with content and comment entered by user.
-	Body    *Content `protobuf:"bytes,6,opt,name=body" json:"body,omitempty" bson:",omitempty"`
-	Comment *string  `protobuf:"bytes,7,opt,name=comment" json:"comment,omitempty" bson:",omitempty"`
+	Body    *Content `protobuf:"bytes,6,opt,name=body" json:"body,omitempty"`
+	Comment *string  `protobuf:"bytes,7,opt,name=comment" json:"comment,omitempty"`
 	// Hashtags, optional. For message targeting / matching - eg. #sfmuni
 	// This may be populated after extracting from user comment.
 	// Values here should exclude the '#' character.
-	Hashtags         []string `protobuf:"bytes,8,rep,name=hashtags" json:"hashtags,omitempty" bson:",omitempty"`
+	Hashtags         []string `protobuf:"bytes,8,rep,name=hashtags" json:"hashtags,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
@@ -323,12 +323,12 @@ func (m *Post) GetHashtags() []string {
 }
 
 type PostStats struct {
-	PostId           *string `protobuf:"bytes,1,req,name=post_id" json:"post_id,omitempty" bson:",omitempty"`
-	Views            *int32  `protobuf:"varint,2,req,name=views" json:"views,omitempty" bson:",omitempty"`
-	Likes            *int32  `protobuf:"varint,3,req,name=likes" json:"likes,omitempty" bson:",omitempty"`
-	Comments         *int32  `protobuf:"varint,4,req,name=comments" json:"comments,omitempty" bson:",omitempty"`
-	Blocks           *int32  `protobuf:"varint,5,req,name=blocks" json:"blocks,omitempty" bson:",omitempty"`
-	Viewers          *int32  `protobuf:"varint,6,req,name=viewers" json:"viewers,omitempty" bson:",omitempty"`
+	PostId           *string `protobuf:"bytes,1,req,name=post_id" json:"post_id,omitempty"`
+	Views            *int32  `protobuf:"varint,2,req,name=views" json:"views,omitempty"`
+	Likes            *int32  `protobuf:"varint,3,req,name=likes" json:"likes,omitempty"`
+	Comments         *int32  `protobuf:"varint,4,req,name=comments" json:"comments,omitempty"`
+	Blocks           *int32  `protobuf:"varint,5,req,name=blocks" json:"blocks,omitempty"`
+	Viewers          *int32  `protobuf:"varint,6,req,name=viewers" json:"viewers,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -379,10 +379,10 @@ func (m *PostStats) GetViewers() int32 {
 }
 
 type PostFlags struct {
-	PostId *string `protobuf:"bytes,1,req,name=post_id" json:"post_id,omitempty" bson:",omitempty"`
+	PostId *string `protobuf:"bytes,1,req,name=post_id" json:"post_id,omitempty"`
 	// Internal flags - e.g. 'spam', 'coppa-compliance', etc.
 	// Not exposed to outside
-	Flags            []string `protobuf:"bytes,2,rep,name=flags" json:"flags,omitempty" bson:",omitempty"`
+	Flags            []string `protobuf:"bytes,2,rep,name=flags" json:"flags,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 

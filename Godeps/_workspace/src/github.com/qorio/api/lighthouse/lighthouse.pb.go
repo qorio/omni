@@ -28,8 +28,8 @@ var _ = math.Inf
 // To be transformed to GeoJson - ex)  {"location" : [-71.34, 41.12]}
 // See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-geo-point-type.html
 type Location struct {
-	Lon              *float64 `protobuf:"fixed64,1,req,name=lon" json:"lon,omitempty" bson:",omitempty"`
-	Lat              *float64 `protobuf:"fixed64,2,req,name=lat" json:"lat,omitempty" bson:",omitempty"`
+	Lon              *float64 `protobuf:"fixed64,1,req,name=lon" json:"lon,omitempty"`
+	Lat              *float64 `protobuf:"fixed64,2,req,name=lat" json:"lat,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
@@ -53,13 +53,13 @@ func (m *Location) GetLat() float64 {
 
 type Content struct {
 	// Id - not required at creation time; assigned by server
-	Id *string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty" bson:",omitempty"`
+	Id *string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
 	// MIME type. e.g. image/jpeg, image/png, video/mp4
-	Type *string `protobuf:"bytes,2,req,name=type" json:"type,omitempty" bson:",omitempty"`
+	Type *string `protobuf:"bytes,2,req,name=type" json:"type,omitempty"`
 	// Content data bytes
-	Data []byte `protobuf:"bytes,3,opt,name=data" json:"data,omitempty" bson:",omitempty"`
+	Data []byte `protobuf:"bytes,3,opt,name=data" json:"data,omitempty"`
 	// Or url as content - link sharing or content in cdn.
-	Url              *string `protobuf:"bytes,4,opt,name=url" json:"url,omitempty" bson:",omitempty"`
+	Url              *string `protobuf:"bytes,4,opt,name=url" json:"url,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -96,9 +96,9 @@ func (m *Content) GetUrl() string {
 }
 
 type IBeacon struct {
-	Uuid             []byte `protobuf:"bytes,1,req,name=uuid" json:"uuid,omitempty" bson:",omitempty"`
-	Major            *int32 `protobuf:"varint,2,opt,name=major" json:"major,omitempty" bson:",omitempty"`
-	Minor            *int32 `protobuf:"varint,3,opt,name=minor" json:"minor,omitempty" bson:",omitempty"`
+	Uuid             []byte `protobuf:"bytes,1,req,name=uuid" json:"uuid,omitempty"`
+	Major            *int32 `protobuf:"varint,2,opt,name=major" json:"major,omitempty"`
+	Minor            *int32 `protobuf:"varint,3,opt,name=minor" json:"minor,omitempty"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
@@ -129,9 +129,9 @@ func (m *IBeacon) GetMinor() int32 {
 
 type BeaconAdvertisement struct {
 	// For IBeacon spec by AAPL
-	Ibeacon *IBeacon `protobuf:"bytes,1,opt,name=ibeacon" json:"ibeacon,omitempty" bson:",omitempty"`
+	Ibeacon *IBeacon `protobuf:"bytes,1,opt,name=ibeacon" json:"ibeacon,omitempty"`
 	// For supporting generic BLE mac address as id
-	BleDevice        *string `protobuf:"bytes,2,opt,name=ble_device" json:"ble_device,omitempty" bson:",omitempty"`
+	BleDevice        *string `protobuf:"bytes,2,opt,name=ble_device" json:"ble_device,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -155,13 +155,13 @@ func (m *BeaconAdvertisement) GetBleDevice() string {
 
 // Hardware profile
 type DeviceProfile struct {
-	Timestamp        *float64             `protobuf:"fixed64,1,req,name=timestamp" json:"timestamp,omitempty" bson:",omitempty"`
-	HardwareId       []byte               `protobuf:"bytes,2,req,name=hardware_id" json:"hardware_id,omitempty" bson:",omitempty"`
-	LocalName        *string              `protobuf:"bytes,3,req,name=local_name" json:"local_name,omitempty" bson:",omitempty"`
-	Password         []byte               `protobuf:"bytes,4,req,name=password" json:"password,omitempty" bson:",omitempty"`
-	AdvertiseInfo    *BeaconAdvertisement `protobuf:"bytes,5,req,name=advertise_info" json:"advertise_info,omitempty" bson:",omitempty"`
-	TxPower          *int32               `protobuf:"varint,6,opt,name=tx_power" json:"tx_power,omitempty" bson:",omitempty"`
-	TxFrequency      *int32               `protobuf:"varint,7,opt,name=tx_frequency" json:"tx_frequency,omitempty" bson:",omitempty"`
+	Timestamp        *float64             `protobuf:"fixed64,1,req,name=timestamp" json:"timestamp,omitempty"`
+	HardwareId       []byte               `protobuf:"bytes,2,req,name=hardware_id" json:"hardware_id,omitempty"`
+	LocalName        *string              `protobuf:"bytes,3,req,name=local_name" json:"local_name,omitempty"`
+	Password         []byte               `protobuf:"bytes,4,req,name=password" json:"password,omitempty"`
+	AdvertiseInfo    *BeaconAdvertisement `protobuf:"bytes,5,req,name=advertise_info" json:"advertise_info,omitempty"`
+	TxPower          *int32               `protobuf:"varint,6,opt,name=tx_power" json:"tx_power,omitempty"`
+	TxFrequency      *int32               `protobuf:"varint,7,opt,name=tx_frequency" json:"tx_frequency,omitempty"`
 	XXX_unrecognized []byte               `json:"-"`
 }
 
@@ -221,24 +221,24 @@ func (m *DeviceProfile) GetTxFrequency() int32 {
 // Summary of a beacon -- this is shared with mobile client.
 type Beacon struct {
 	// Unique identifier from the hardware
-	HardwareId *string `protobuf:"bytes,1,req,name=hardware_id" json:"hardware_id,omitempty" bson:",omitempty"`
+	HardwareId *string `protobuf:"bytes,1,req,name=hardware_id" json:"hardware_id,omitempty"`
 	// How this beacon advertises itself
-	AdvertiseInfo *BeaconAdvertisement `protobuf:"bytes,2,req,name=advertise_info" json:"advertise_info,omitempty" bson:",omitempty"`
+	AdvertiseInfo *BeaconAdvertisement `protobuf:"bytes,2,req,name=advertise_info" json:"advertise_info,omitempty"`
 	// Install date, unix time
-	InstalledTimestamp *float64 `protobuf:"fixed64,3,req,name=installed_timestamp" json:"installed_timestamp,omitempty" bson:",omitempty"`
+	InstalledTimestamp *float64 `protobuf:"fixed64,3,req,name=installed_timestamp" json:"installed_timestamp,omitempty"`
 	// Where the beacon is installed
-	Location *Location `protobuf:"bytes,4,req,name=location" json:"location,omitempty" bson:",omitempty"`
+	Location *Location `protobuf:"bytes,4,req,name=location" json:"location,omitempty"`
 	// Battery level in percentage
-	Battery *int32 `protobuf:"varint,5,opt,name=battery" json:"battery,omitempty" bson:",omitempty"`
+	Battery *int32 `protobuf:"varint,5,opt,name=battery" json:"battery,omitempty"`
 	// Owner of the beacon -- first user who provisioned a hardware beacon
 	// Ownership can be transferred by releasing the beacon which will cause
 	// a deletion of this record.
-	Owner *string `protobuf:"bytes,6,req,name=owner" json:"owner,omitempty" bson:",omitempty"`
+	Owner *string `protobuf:"bytes,6,req,name=owner" json:"owner,omitempty"`
 	// At least one label to establish the context of the beacon.  For v1, only 1 label.
-	Labels []string `protobuf:"bytes,7,rep,name=labels" json:"labels,omitempty" bson:",omitempty"`
+	Labels []string `protobuf:"bytes,7,rep,name=labels" json:"labels,omitempty"`
 	// For displaying the beacon icon/ logo etc.
-	Avatar           *Content `protobuf:"bytes,8,opt,name=avatar" json:"avatar,omitempty" bson:",omitempty"`
-	AvatarSmall      *Content `protobuf:"bytes,9,opt,name=avatar_small" json:"avatar_small,omitempty" bson:",omitempty"`
+	Avatar           *Content `protobuf:"bytes,8,opt,name=avatar" json:"avatar,omitempty"`
+	AvatarSmall      *Content `protobuf:"bytes,9,opt,name=avatar_small" json:"avatar_small,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
