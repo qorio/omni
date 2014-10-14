@@ -41,5 +41,5 @@ dependencies:
 test:
   override:
     - godep go test github.com/qorio/omni/rest
-    - godep go test github.com/qorio/omni/auth --auth_public_key_file=./test/authKey.pub
+    - godep go test github.com/qorio/omni/auth --auth_public_key_file=$PWD/test/authKey.pub
     - godep go test github.com/qorio/omni/stripe
