@@ -172,8 +172,6 @@ func (this *engine) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
 	}()
 
 	this.router.ServeHTTP(resp, request)
-	glog.Infoln("Stopping event channel")
-	this.done_chan <- true
 }
 
 func (this *engine) GetUrlParameter(req *http.Request, key string) string {
