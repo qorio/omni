@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-var hooks = Webhooks{
+var hooks = WebhookMap{
 	"service1": EventKeyUrlMap{
 		"event1": Webhook{
 			Url: "http://foo.com/bar/callback1",
@@ -26,7 +26,7 @@ var hooks = Webhooks{
 
 type impl int
 
-func (this *impl) Load() *Webhooks {
+func (this *impl) Load() *WebhookMap {
 	return &hooks
 }
 
@@ -36,15 +36,11 @@ func TestWebhookSerialization(t *testing.T) {
 	assert.NotEqual(t, nil, bytes)
 	assert.NotEqual(t, 0, len(bytes))
 
-	hooks2 := Webhooks{}
+	hooks2 := WebhookMap{}
 
 	hooks2.FromJSON(bytes)
 
 	assert.Equal(t, hooks, hooks2)
 
 	t.Log("json", string(hooks2.ToJSON()))
-}
-
-func TestWebhooksManager(t *testing.T) {
-
 }
