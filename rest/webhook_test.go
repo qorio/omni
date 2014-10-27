@@ -5,20 +5,20 @@ import (
 	"testing"
 )
 
-var hooks = WebHooks{
+var hooks = Webhooks{
 	"service1": EventKeyUrlMap{
-		"event1": WebHook{
+		"event1": Webhook{
 			Url: "http://foo.com/bar/callback1",
 		},
-		"event2": WebHook{
+		"event2": Webhook{
 			Url: "http://foo.com/bar/callback2",
 		},
 	},
 	"service2": EventKeyUrlMap{
-		"event1": WebHook{
+		"event1": Webhook{
 			Url: "http://bar.com/bar/callback1",
 		},
-		"event2": WebHook{
+		"event2": Webhook{
 			Url: "http://bar.com/bar/callback2",
 		},
 	},
@@ -26,17 +26,17 @@ var hooks = WebHooks{
 
 type impl int
 
-func (this *impl) Load() *WebHooks {
+func (this *impl) Load() *Webhooks {
 	return &hooks
 }
 
-func TestWebHookSerialization(t *testing.T) {
+func TestWebhookSerialization(t *testing.T) {
 
 	bytes := hooks.ToJSON()
 	assert.NotEqual(t, nil, bytes)
 	assert.NotEqual(t, 0, len(bytes))
 
-	hooks2 := WebHooks{}
+	hooks2 := Webhooks{}
 
 	hooks2.FromJSON(bytes)
 
@@ -45,6 +45,6 @@ func TestWebHookSerialization(t *testing.T) {
 	t.Log("json", string(hooks2.ToJSON()))
 }
 
-func TestWebHooksService(t *testing.T) {
+func TestWebhooksManager(t *testing.T) {
 
 }

@@ -126,10 +126,10 @@ type engine struct {
 	auth       auth.Service
 	event_chan chan *EngineEvent
 	done_chan  chan bool
-	webhooks   WebHooksService
+	webhooks   WebhookManager
 }
 
-func NewEngine(spec *api.ServiceMethods, auth auth.Service, webhooks WebHooksService) *engine {
+func NewEngine(spec *api.ServiceMethods, auth auth.Service, webhooks WebhookManager) *engine {
 	e := &engine{
 		spec:       spec,
 		router:     mux.NewRouter(),

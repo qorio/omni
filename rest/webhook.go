@@ -14,30 +14,30 @@ var (
 	ERROR_NO_SERVICE_DEFINED = errors.New("no-service-defined")
 	ERROR_NO_WEBHOOK_DEFINED = errors.New("no-webhook-defined")
 
-	WebHookHmacHeader = "X-Passport-Hmac"
+	WebhookHmacHeader = "X-Passport-Hmac"
 )
 
 // Webhook callbacks
-type EventKeyUrlMap map[string]WebHook
-type WebHook struct {
+type EventKeyUrlMap map[string]Webhook
+type Webhook struct {
 	Url string `json:"destination_url"`
 }
-type WebHooks map[string]EventKeyUrlMap
+type WebhookMap map[string]EventKeyUrlMap
 
-type WebHooksService interface {
+type WebhookManager interface {
 	Send(string, string, interface{}, string) error
-	RegisterWebHooks(string, EventKeyUrlMap) error
-	RemoveWebHooks(string) error
+	RegisterWebhooks(string, EventKeyUrlMap) error
+	RemoveWebhooks(string) error
 }
 
-func (this *WebHooks) ToJSON() []byte {
+func (this *WebhookMap) ToJSON() []byte {
 	if buff, err := json.Marshal(this); err == nil {
 		return buff
 	}
 	return nil
 }
 
-func (this *WebHooks) FromJSON(s []byte) error {
+func (this *WebhookMap) FromJSON(s []byte) error {
 	dec := json.NewDecoder(bytes.NewBuffer(s))
 	return dec.Decode(this)
 }
@@ -55,7 +55,7 @@ func (this *EventKeyUrlMap) FromJSON(s []byte) error {
 }
 
 // Default in-memory implementation
-func (this WebHooks) Send(serviceKey, eventKey string, message interface{}, templateString string) error {
+func (this WebhookMap) Send(serviceKey, eventKey string, message interface{}, templateString string) error {
 	m := this[serviceKey]
 	if m == nil {
 		return ERROR_NO_SERVICE_DEFINED
@@ -67,17 +67,17 @@ func (this WebHooks) Send(serviceKey, eventKey string, message interface{}, temp
 	return hook.Send(message, templateString)
 }
 
-func (this WebHooks) RegisterWebHooks(serviceKey string, ekum EventKeyUrlMap) error {
+func (this WebhookMap) RegisterWebhooks(serviceKey string, ekum EventKeyUrlMap) error {
 	this[serviceKey] = ekum
 	return nil
 }
 
-func (this WebHooks) RemoveWebHooks(serviceKey string) error {
+func (this WebhookMap) RemoveWebhooks(serviceKey string) error {
 	delete(this, serviceKey)
 	return nil
 }
 
-func (hook *WebHook) Send(message interface{}, templateString string) error {
+func (hook *Webhook) Send(message interface{}, templateString string) error {
 	url, err := url.Parse(hook.Url)
 	if err != nil {
 		return err
@@ -100,7 +100,7 @@ func (hook *WebHook) Send(message interface{}, templateString string) error {
 		// Determine where to send the event.
 		client := &http.Client{}
 		post, err := http.NewRequest("POST", url.String(), &buffer)
-		post.Header.Add(WebHookHmacHeader, "TO DO: compute a HMAC here")
+		post.Header.Add(WebhookHmacHeader, "TO DO: compute a HMAC here")
 		resp, err := client.Do(post)
 		if err != nil {
 			glog.Warningln("Cannot deliver callback to", url, "error:", err)
@@ -109,5 +109,4 @@ func (hook *WebHook) Send(message interface{}, templateString string) error {
 		}
 	}()
 	return nil
-
 }
