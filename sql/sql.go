@@ -7,109 +7,107 @@ import (
 	"github.com/golang/glog"
 )
 
-type Schema struct {
-	CreateTables       map[string]string
-	CreateIndexes      []string
-	PreparedStatements map[StatementKey]Statement
-	statements         map[StatementKey]*sql.Stmt
+type Platform string
+
+const (
+	POSTGRES Platform = Platform("postgres")
+)
+
+var (
+	ErrNotConnected   = errors.New("not-connected")
+	ErrSchemaMismatch = errors.New("schemas-mismatch")
+	ErrNotFound       = errors.New("not-found")
+	ErrNoChange       = errors.New("no-change")
+
+	platform_schemas = make(map[Platform]*Schema, 0)
+)
+
+func init() {
+	platform_schemas[POSTGRES] = postgres_schema
 }
 
-type StatementKey int
-type Statement struct {
-	Query string
-	Args  func(...interface{}) ([]interface{}, error)
-}
+const (
+	kSelectVersionInfoBySchemaName StatementKey = iota
+)
 
-func (this *Schema) Initialize(db *sql.DB) (err error) {
-	if this.statements == nil {
-		this.statements = make(map[StatementKey]*sql.Stmt, 0)
+func sync_schemas(db *sql.DB, schemas []*Schema, create, update bool) error {
+	if db == nil {
+		return ErrNotConnected
 	}
 
-	tx, err := db.Begin()
-	if err != nil {
-		return
-	}
+	creates := []*Schema{}
+	updates := []*Schema{}
 
-	for _, stmt := range this.CreateTables {
-		if _, err := db.Exec(stmt); err != nil {
-			return tx.Rollback()
-		}
-	}
-	for _, stmt := range this.CreateIndexes {
-		if _, err := db.Exec(stmt); err != nil {
-			glog.Warningln(stmt, "err:", err)
-		}
-	}
-	for key, p := range this.PreparedStatements {
-		if s, err := db.Prepare(p.Query); err != nil {
+	for _, schema := range schemas {
+		version, hash, err := schema.CurrentVersion(db)
+		glog.Infoln(schema.Name, schema.Version, " -- curent db:", err, version, hash)
+		switch {
+		case err == ErrNotFound:
+			glog.Warningln(schema.Name, " -- is not in db")
+			creates = append(creates, schema)
+		case version < schema.Version:
+			glog.Warningln(schema.Name, " -- current db version", version, hash,
+				"needs update to", schema.Version)
+			updates = append(updates, schema)
+		case version >= schema.Version:
+			glog.Infoln(schema.Name, " -- current db version", version, hash,
+				"is newer than", schema.Version)
+		case err != nil:
 			return err
+		}
+	}
+
+	if len(creates) > 0 {
+		if create {
+			for _, s := range creates {
+				err := s.Initialize(db)
+				if err != nil {
+					return nil
+				}
+			}
 		} else {
-			this.statements[key] = s
+			// Dump out the create tables to stdout
+			for _, s := range creates {
+				for t, ct := range s.CreateTables {
+					fmt.Println("-- Table", t)
+					fmt.Println(ct)
+					fmt.Println()
+				}
+				for i, index := range s.CreateIndexes {
+					fmt.Println("-- Index", i)
+					fmt.Println(index)
+					fmt.Println()
+				}
+			}
 		}
 	}
-
-	return tx.Commit()
-}
-
-func (this *Schema) Exec(db *sql.DB, key StatementKey, params ...interface{}) (sql.Result, error) {
-	s, stmt, err := this.statement(key)
-	if err != nil {
-		return nil, err
-	}
-	args := params
-	if s.Args != nil {
-		args, err = s.Args(params...)
-		if err != nil {
-			return nil, err
+	if len(updates) > 0 {
+		if update {
+			for _, s := range updates {
+				err := s.Update(db)
+				if err != nil {
+					return nil
+				}
+			}
+		} else {
+			// Dump out the create tables to stdout
+			for _, s := range updates {
+				for t, ct := range s.AlterTables {
+					fmt.Println("-- Table", t)
+					fmt.Println(ct)
+					fmt.Println()
+				}
+				for i, index := range s.UpdateIndexes {
+					fmt.Println("-- Update index", i)
+					fmt.Println(index)
+					fmt.Println()
+				}
+			}
 		}
 	}
-	return stmt.Exec(args...)
-}
-
-func (this *Schema) Query(db *sql.DB, key StatementKey, params ...interface{}) (*sql.Rows, error) {
-	s, stmt, err := this.statement(key)
-	if err != nil {
-		return nil, err
+	// Then crash
+	if len(creates) > 0 || len(updates) > 0 {
+		panic(ErrSchemaMismatch)
 	}
-	args := params
-	if s.Args != nil {
-		args, err = s.Args(params...)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return stmt.Query(args...)
-}
-
-func (this *Schema) QueryRow(db *sql.DB, key StatementKey, params ...interface{}) (*sql.Row, error) {
-	s, stmt, err := this.statement(key)
-	if err != nil {
-		return nil, err
-	}
-	args := params
-	if s.Args != nil {
-		args, err = s.Args(params...)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return stmt.QueryRow(args...), nil
-}
-
-func (this *Schema) DropTables(db *sql.DB) error {
-	var err error
-	for table, _ := range this.CreateTables {
-		_, err = db.Exec("drop table " + table)
-	}
-	return err
-}
-
-func (this *Schema) statement(key StatementKey) (*Statement, *sql.Stmt, error) {
-	stmt, has1 := this.statements[key]
-	s, has2 := this.PreparedStatements[key]
-
-	if !has1 || !has2 {
-		return nil, nil, errors.New(fmt.Sprintf("no-statement-for-key: %s", key))
-	}
-	return &s, stmt, nil
+	return nil
 }

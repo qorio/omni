@@ -6,11 +6,6 @@ import (
 	"errors"
 )
 
-var (
-	ErrNotFound = errors.New("not-found")
-	ErrNoChange = errors.New("no-change")
-)
-
 func (this *Schema) Upsert(db *sql.DB, update, insert StatementKey, args ...interface{}) error {
 	// Do update first...
 	result, err := this.Exec(db, update, args...)
