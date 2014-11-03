@@ -3,7 +3,6 @@ package sql
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 )
 
 func (this *Schema) Upsert(db *sql.DB, update, insert StatementKey, args ...interface{}) error {
@@ -25,7 +24,7 @@ func (this *Schema) Upsert(db *sql.DB, update, insert StatementKey, args ...inte
 			return err
 		}
 		if inserted == 0 {
-			return errors.New("not-saved")
+			return ErrNoChange
 		}
 	}
 	return nil

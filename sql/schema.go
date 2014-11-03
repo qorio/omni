@@ -11,6 +11,7 @@ type Schema struct {
 	Platform           Platform
 	Name               string
 	Version            int
+	CommitHash         string
 	CreateTables       map[string]string
 	CreateIndexes      []string
 	PreparedStatements map[StatementKey]Statement
@@ -51,7 +52,7 @@ func (this *Schema) CurrentVersion(db *sql.DB) (int, string, error) {
 	case err != nil:
 		return version, hash, err
 	}
-	glog.Infoln("Checked ", this.Name, this.Version, "Found", version, hash)
+	glog.Infoln("Checking", this.Name, this.Version, "but finds in db:", version, hash)
 	return version, hash, err
 }
 
@@ -62,26 +63,29 @@ func (this *Schema) Initialize(db *sql.DB) (err error) {
 
 	tx, err := db.Begin()
 	if err != nil {
-		return
+		return err
 	}
 
 	for _, stmt := range this.CreateTables {
+		glog.Infoln(this.Name, "exec:", stmt)
 		if _, err := db.Exec(stmt); err != nil {
-			return tx.Rollback()
+			tx.Rollback()
+			return err
 		}
 	}
 	for _, stmt := range this.CreateIndexes {
+		glog.Infoln(this.Name, "exec:", stmt)
 		if _, err := db.Exec(stmt); err != nil {
 			glog.Warningln(stmt, "err:", err)
 		}
 	}
-	for key, p := range this.PreparedStatements {
-		if s, err := db.Prepare(p.Query); err != nil {
-			return err
-		} else {
-			this.statements[key] = s
-		}
+
+	err = update_schema_version(db, this)
+	if err != nil {
+		tx.Rollback()
+		return err
 	}
+
 	return tx.Commit()
 }
 
@@ -105,6 +109,20 @@ func (this *Schema) Update(db *sql.DB) (err error) {
 			glog.Warningln(stmt, "err:", err)
 		}
 	}
+
+	err = update_schema_version(db, this)
+	if err != nil {
+		tx.Rollback()
+		return
+	}
+	return tx.Commit()
+}
+
+func (this *Schema) PrepareStatements(db *sql.DB) error {
+	if this.statements == nil {
+		this.statements = make(map[StatementKey]*sql.Stmt, 0)
+	}
+
 	for key, p := range this.PreparedStatements {
 		if s, err := db.Prepare(p.Query); err != nil {
 			return err
@@ -112,7 +130,7 @@ func (this *Schema) Update(db *sql.DB) (err error) {
 			this.statements[key] = s
 		}
 	}
-	return tx.Commit()
+	return nil
 }
 
 func (this *Schema) Exec(db *sql.DB, key StatementKey, params ...interface{}) (sql.Result, error) {
@@ -161,9 +179,29 @@ func (this *Schema) QueryRow(db *sql.DB, key StatementKey, params ...interface{}
 }
 
 func (this *Schema) DropTables(db *sql.DB) error {
+	system, has := platform_schemas[this.Platform]
+	if !has {
+		panic(errors.New("no-systems-versions"))
+	}
 	var err error
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
 	for table, _ := range this.CreateTables {
 		_, err = db.Exec("drop table " + table)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	// remove from the systems info
+	err = system.Delete(db, kDeleteVersionInfo, this.Name)
+	if err != nil {
+		tx.Rollback()
+		return err
+	} else {
+		tx.Commit()
 	}
 	return err
 }
