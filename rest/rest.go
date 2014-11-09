@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/qorio/api"
+	"github.com/qorio/omni/api"
 	"github.com/qorio/omni/auth"
 	omni_http "github.com/qorio/omni/http"
 	"io"
@@ -17,9 +17,9 @@ import (
 )
 
 var (
-	ERROR_MISSING_INPUT        = errors.New("error-missing-input")
-	ERROR_UNKNOWN_CONTENT_TYPE = errors.New("error-no-content-type")
-	ERROR_UNKNOWN_METHOD       = errors.New("error-unknown-method")
+	ErrMissingInput       = errors.New("error-missing-input")
+	ErrUnknownContentType = errors.New("error-no-content-type")
+	ErrUnknownMethod      = errors.New("error-unknown-method")
 )
 
 var (
@@ -190,13 +190,13 @@ func (this *engine) Bind(endpoints ...*ServiceMethodImpl) {
 	for i, ep := range endpoints {
 		switch {
 		case ep.Handler != nil:
-			this.router.HandleFunc(ep.Api.UrlRoute, ep.Handler).Methods(ep.Api.HttpMethod)
+			this.router.HandleFunc(ep.Api.UrlRoute, ep.Handler).Methods(string(ep.Api.HttpMethod))
 
 		case ep.AuthenticatedHandler != nil:
 			this.router.HandleFunc(ep.Api.UrlRoute,
 				this.auth.RequiresAuth(ep.Api.AuthScope, func(token *auth.Token) []string {
 					return strings.Split(token.GetString(ep.ServiceId+"/@scopes"), ",")
-				}, ep.AuthenticatedHandler)).Methods(ep.Api.HttpMethod)
+				}, ep.AuthenticatedHandler)).Methods(string(ep.Api.HttpMethod))
 
 		case ep.Handler == nil && ep.AuthenticatedHandler == nil:
 			panic(errors.New(fmt.Sprintf("No implementation for REST endpoint[%d]: %s", i, ep)))
@@ -219,7 +219,7 @@ func (this *engine) Unmarshal(req *http.Request, typed proto.Message) (err error
 	if unmarshaler, has := unmarshalers[contentType]; has {
 		return unmarshaler(req.Body, typed)
 	} else {
-		return ERROR_UNKNOWN_CONTENT_TYPE
+		return ErrUnknownContentType
 	}
 }
 
@@ -242,7 +242,7 @@ func (this *engine) Marshal(req *http.Request, typed proto.Message, resp http.Re
 	if marshaler, has := marshalers[contentType]; has {
 		return marshaler(contentType, resp, typed)
 	} else {
-		return ERROR_UNKNOWN_CONTENT_TYPE
+		return ErrUnknownContentType
 	}
 }
 
@@ -266,5 +266,5 @@ func (this *engine) do_callback(message *EngineEvent) error {
 			return this.webhooks.Send(message.Service, string(m.CallbackEvent), message.Body, m.CallbackBodyTemplate)
 		}
 	}
-	return ERROR_UNKNOWN_METHOD
+	return ErrUnknownMethod
 }
