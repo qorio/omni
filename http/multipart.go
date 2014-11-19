@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bufio"
 	"errors"
 	"io"
 	"net/http"
@@ -8,8 +9,9 @@ import (
 	"path/filepath"
 )
 
-type PartCheck func(part int, formName, fileName string, peek io.Reader) error
+type PartCheck func(part int, formName, fileName string, peek *bufio.Reader) error
 type PartSink func(part int, formName, fileName string) (io.WriteCloser, error)
+type PartComplete func(part int, formName, fileName string, length int64)
 
 var (
 	ErrMissingInput error = errors.New("missing-input")
@@ -31,7 +33,8 @@ func FileSystemSink(rootDir string) PartSink {
 	}
 }
 
-func ProcessMultiPartUpload(resp http.ResponseWriter, req *http.Request, check PartCheck, sink PartSink) (err error) {
+func ProcessMultiPartUpload(resp http.ResponseWriter, req *http.Request,
+	check PartCheck, sink PartSink, completion PartComplete) (err error) {
 
 	//get the multipart reader for the request.
 	reader, err := req.MultipartReader()
@@ -46,8 +49,11 @@ func ProcessMultiPartUpload(resp http.ResponseWriter, req *http.Request, check P
 			break
 		}
 
+		// use bufio reader so we can peek
+		buf_reader := bufio.NewReader(part)
+
 		if check != nil {
-			err := check(i, part.FormName(), part.FileName(), part)
+			err := check(i, part.FormName(), part.FileName(), buf_reader)
 			if err != nil {
 				return err
 			}
@@ -60,8 +66,13 @@ func ProcessMultiPartUpload(resp http.ResponseWriter, req *http.Request, check P
 				return err
 			}
 
-			if _, err := io.Copy(dst, part); err != nil {
+			if size, err := io.Copy(dst, buf_reader); err != nil {
 				return err
+			} else {
+				// update the size
+				if completion != nil {
+					completion(i, part.FormName(), part.FileName(), size)
+				}
 			}
 		}
 	}
