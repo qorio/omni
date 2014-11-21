@@ -55,8 +55,14 @@ func (this *Postgres) Open() error {
 		// bootstrap the system schema
 		err1 := postgres_schema.Initialize(db)
 		glog.Infoln("Initialized system schema:", err1)
+		if err1 != nil {
+			panic(err1)
+		}
 		err2 := postgres_schema.PrepareStatements(db)
 		glog.Infoln("Prepared statements:", err2)
+		if err2 != nil {
+			panic(err2)
+		}
 	})
 	err = sync_schemas(this.conn, this.Schemas, this.DoCreateSchemas, this.DoUpdateSchemas)
 	if err != nil {
