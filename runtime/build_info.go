@@ -7,6 +7,14 @@ const (
 	buildNumber      = "@@BUILD_NUMBER@@"
 )
 
+var (
+	build_info = &Build{
+		Commit:    gitCommitHash,
+		Timestamp: buildTimestamp,
+		Number:    buildNumber,
+	}
+)
+
 type Build struct {
 	Commit    string
 	Timestamp string
@@ -14,11 +22,11 @@ type Build struct {
 }
 
 func BuildInfo() *Build {
-	return &Build{
-		Commit:    gitCommitHash,
-		Timestamp: buildTimestamp,
-		Number:    buildNumber,
-	}
+	return build_info
+}
+
+func SetBuildInfo(b *Build) {
+	build_info = b
 }
 
 func (buildInfo *Build) GetCommitHash() string {
