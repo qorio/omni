@@ -47,12 +47,16 @@ func update_schema_version(db *sql.DB, schema *Schema) error {
 	if hash == "" {
 		hash = runtime.BuildInfo().GetCommitHash()
 	}
+	repo := schema.RepoUrl
+	if repo == "" {
+		repo = runtime.BuildInfo().GetRepoUrl()
+	}
 
 	err := system.PrepareStatements(db)
 	if err != nil {
 		return err
 	}
-	return system.Upsert(db, kUpdateVersionInfo, kInsertVersionInfo, schema.Name, schema.Version, hash)
+	return system.Upsert(db, kUpdateVersionInfo, kInsertVersionInfo, schema.Name, schema.Version, repo, hash)
 }
 
 func check_schema(s *Schema) {

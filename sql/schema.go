@@ -11,6 +11,7 @@ type Schema struct {
 	Platform           Platform
 	Name               string
 	Version            int
+	RepoUrl            string
 	CommitHash         string
 	CreateTables       map[string]string
 	CreateIndexes      []string
