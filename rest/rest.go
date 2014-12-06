@@ -25,7 +25,6 @@ var (
 var (
 	json_marshaler = func(contentType string, resp http.ResponseWriter, typed proto.Message) error {
 		if buff, err := json.Marshal(typed); err == nil {
-			omni_http.SetCORSHeaders(resp)
 			resp.Header().Add("Content-Type", contentType)
 			resp.Write(buff)
 			return nil
@@ -41,7 +40,6 @@ var (
 
 	proto_marshaler = func(contentType string, resp http.ResponseWriter, typed proto.Message) error {
 		if buff, err := proto.Marshal(typed); err == nil {
-			omni_http.SetCORSHeaders(resp)
 			resp.Header().Add("Content-Type", contentType)
 			resp.Write(buff)
 			return nil
@@ -225,7 +223,6 @@ func (this *engine) Unmarshal(req *http.Request, typed proto.Message) (err error
 
 func (this *engine) MarshalJSON(req *http.Request, any interface{}, resp http.ResponseWriter) (err error) {
 	if buff, err := json.Marshal(any); err == nil {
-		omni_http.SetCORSHeaders(resp)
 		resp.Header().Add("Content-Type", "application/json")
 		resp.Write(buff)
 		return nil
