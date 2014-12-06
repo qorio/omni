@@ -9,7 +9,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/qorio/omni/api"
 	"github.com/qorio/omni/auth"
-	omni_http "github.com/qorio/omni/http"
 	"io"
 	"io/ioutil"
 	"net/http"
