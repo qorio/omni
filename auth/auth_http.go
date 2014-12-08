@@ -82,7 +82,6 @@ func (service *serviceImpl) RequiresAuth(scope string, get_scopes GetScopesFromT
 		}
 
 		if authed {
-			glog.Infoln("Authed with context ", info)
 			handler(info, resp, req)
 			return
 		} else {
