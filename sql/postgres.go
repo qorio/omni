@@ -3,10 +3,16 @@ package sql
 import (
 	"database/sql"
 	"errors"
+	"flag"
 	"fmt"
 	"github.com/golang/glog"
 	_ "github.com/lib/pq"
 	"sync"
+)
+
+var (
+	maxOpenConns = flag.Int("sql_max_open_conn", 0, "Max number of open connections, 0 is no limit")
+	maxIdleConns = flag.Int("sql_max_idle_conn", 10, "Max number of open connections")
 )
 
 func NewPostgres() *Postgres {
@@ -48,6 +54,9 @@ func (this *Postgres) Open() error {
 	if err != nil {
 		return err
 	}
+
+	db.SetMaxIdleConns(*maxIdleConns)
+	db.SetMaxOpenConns(*maxOpenConns)
 
 	this.conn = db
 	glog.Infoln("Connected:", this.conn)
