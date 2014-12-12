@@ -9,7 +9,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/qorio/omni/api"
 	"github.com/qorio/omni/auth"
-	omni_http "github.com/qorio/omni/http"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -26,7 +25,6 @@ var (
 var (
 	json_marshaler = func(contentType string, resp http.ResponseWriter, typed interface{}) error {
 		if buff, err := json.Marshal(typed); err == nil {
-			omni_http.SetCORSHeaders(resp)
 			resp.Header().Add("Content-Type", contentType)
 			resp.Write(buff)
 			return nil
@@ -46,7 +44,6 @@ var (
 			return ErrIncompatibleType
 		}
 		if buff, err := proto.Marshal(typed); err == nil {
-			omni_http.SetCORSHeaders(resp)
 			resp.Header().Add("Content-Type", contentType)
 			resp.Write(buff)
 			return nil
@@ -260,7 +257,6 @@ func (this *engine) UnmarshalJSON(req *http.Request, any interface{}) (err error
 
 func (this *engine) MarshalJSON(req *http.Request, any interface{}, resp http.ResponseWriter) (err error) {
 	if buff, err := json.Marshal(any); err == nil {
-		omni_http.SetCORSHeaders(resp)
 		resp.Header().Add("Content-Type", "application/json")
 		resp.Write(buff)
 		return nil

@@ -11,6 +11,7 @@ type Schema struct {
 	Platform           Platform
 	Name               string
 	Version            int
+	RepoUrl            string
 	CommitHash         string
 	CreateTables       map[string]string
 	CreateIndexes      []string
@@ -67,14 +68,12 @@ func (this *Schema) Initialize(db *sql.DB) (err error) {
 	}
 
 	for _, stmt := range this.CreateTables {
-		glog.Infoln(this.Name, "exec:", stmt)
 		if _, err := db.Exec(stmt); err != nil {
 			tx.Rollback()
 			return err
 		}
 	}
 	for _, stmt := range this.CreateIndexes {
-		glog.Infoln(this.Name, "exec:", stmt)
 		if _, err := db.Exec(stmt); err != nil {
 			glog.Warningln(stmt, "err:", err)
 		}

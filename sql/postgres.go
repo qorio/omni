@@ -149,6 +149,7 @@ var postgres_schema = &Schema{
 create table if not exists system_schema_versions (
     schema_name varchar,
     version     integer,
+    repo_url    varchar,
     commit_hash varchar null
 )
 		`,
@@ -178,11 +179,11 @@ delete from system_schema_versions where schema_name=$1
 		},
 		kInsertVersionInfo: Statement{
 			Query: `
-insert into system_schema_versions (schema_name, version, commit_hash)
-values ($1, $2, $3)
+insert into system_schema_versions (schema_name, version, repo_url, commit_hash)
+values ($1, $2, $3, $4)
 `,
 			Args: func(args ...interface{}) ([]interface{}, error) {
-				if len(args) != 3 {
+				if len(args) != 4 {
 					return nil, errors.New("args-mismatch")
 				}
 				schema_name, ok := args[0].(string)
@@ -193,13 +194,18 @@ values ($1, $2, $3)
 				if !ok {
 					return nil, errors.New("bad-version")
 				}
-				commit_hash, ok := args[2].(string)
+				repo, ok := args[2].(string)
+				if !ok {
+					return nil, errors.New("bad-repo")
+				}
+				commit_hash, ok := args[3].(string)
 				if !ok {
 					return nil, errors.New("bad-commit-hash")
 				}
 				return []interface{}{
 					schema_name,
 					version,
+					repo,
 					commit_hash,
 				}, nil
 			},
@@ -207,11 +213,11 @@ values ($1, $2, $3)
 		kUpdateVersionInfo: Statement{
 			Query: `
 update system_schema_versions
-set version=$1, commit_hash=$2
-where schema_name=$3
+set version=$1, repo_url=$2, commit_hash=$3
+where schema_name=$4
 `,
 			Args: func(args ...interface{}) ([]interface{}, error) {
-				if len(args) != 3 {
+				if len(args) != 4 {
 					return nil, errors.New("args-mismatch")
 				}
 				schema_name, ok := args[0].(string)
@@ -222,12 +228,17 @@ where schema_name=$3
 				if !ok {
 					return nil, errors.New("bad-version")
 				}
-				commit_hash, ok := args[2].(string)
+				repo, ok := args[2].(string)
+				if !ok {
+					return nil, errors.New("bad-repo")
+				}
+				commit_hash, ok := args[3].(string)
 				if !ok {
 					return nil, errors.New("bad-commit-hash")
 				}
 				return []interface{}{
 					version,
+					repo,
 					commit_hash,
 					schema_name,
 				}, nil
