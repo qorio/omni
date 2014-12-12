@@ -20,10 +20,11 @@ var (
 	ErrMissingInput       = errors.New("error-missing-input")
 	ErrUnknownContentType = errors.New("error-no-content-type")
 	ErrUnknownMethod      = errors.New("error-unknown-method")
+	ErrIncompatibleType   = errors.New("error-incompatible-type")
 )
 
 var (
-	json_marshaler = func(contentType string, resp http.ResponseWriter, typed proto.Message) error {
+	json_marshaler = func(contentType string, resp http.ResponseWriter, typed interface{}) error {
 		if buff, err := json.Marshal(typed); err == nil {
 			omni_http.SetCORSHeaders(resp)
 			resp.Header().Add("Content-Type", contentType)
@@ -34,12 +35,16 @@ var (
 		}
 	}
 
-	json_unmarshaler = func(body io.ReadCloser, typed proto.Message) error {
+	json_unmarshaler = func(body io.ReadCloser, typed interface{}) error {
 		dec := json.NewDecoder(body)
 		return dec.Decode(typed)
 	}
 
-	proto_marshaler = func(contentType string, resp http.ResponseWriter, typed proto.Message) error {
+	proto_marshaler = func(contentType string, resp http.ResponseWriter, any interface{}) error {
+		typed, ok := any.(proto.Message)
+		if !ok {
+			return ErrIncompatibleType
+		}
 		if buff, err := proto.Marshal(typed); err == nil {
 			omni_http.SetCORSHeaders(resp)
 			resp.Header().Add("Content-Type", contentType)
@@ -50,7 +55,11 @@ var (
 		}
 	}
 
-	proto_unmarshaler = func(body io.ReadCloser, typed proto.Message) error {
+	proto_unmarshaler = func(body io.ReadCloser, any interface{}) error {
+		typed, ok := any.(proto.Message)
+		if !ok {
+			return ErrIncompatibleType
+		}
 		buff, err := ioutil.ReadAll(body)
 		if err != nil {
 			return err
@@ -58,13 +67,13 @@ var (
 		return proto.Unmarshal(buff, typed)
 	}
 
-	marshalers = map[string]func(string, http.ResponseWriter, proto.Message) error{
+	marshalers = map[string]func(string, http.ResponseWriter, interface{}) error{
 		"":                     json_marshaler,
 		"application/json":     json_marshaler,
 		"application/protobuf": proto_marshaler,
 	}
 
-	unmarshalers = map[string]func(io.ReadCloser, proto.Message) error{
+	unmarshalers = map[string]func(io.ReadCloser, interface{}) error{
 		"":                     json_unmarshaler,
 		"application/json":     json_unmarshaler,
 		"application/protobuf": proto_unmarshaler,
@@ -115,6 +124,7 @@ type Engine interface {
 	GetUrlParameter(*http.Request, string) string
 	Unmarshal(*http.Request, proto.Message) error
 	Marshal(*http.Request, proto.Message, http.ResponseWriter) error
+	UnmarshalJSON(*http.Request, interface{}) error
 	MarshalJSON(*http.Request, interface{}, http.ResponseWriter) error
 	HandleError(http.ResponseWriter, *http.Request, string, int) error
 	EventChannel() chan<- *EngineEvent
@@ -214,10 +224,35 @@ func (this *engine) Bind(endpoints ...*ServiceMethodImpl) {
 	}
 }
 
+func content_type_from_request(req *http.Request) (t string) {
+	if t = req.Header.Get("Accept"); t == "" {
+		return req.Header.Get("Content-Type")
+	}
+	return
+}
+
 func (this *engine) Unmarshal(req *http.Request, typed proto.Message) (err error) {
-	contentType := req.Header.Get("Content-Type")
+	contentType := content_type_from_request(req)
 	if unmarshaler, has := unmarshalers[contentType]; has {
 		return unmarshaler(req.Body, typed)
+	} else {
+		return ErrUnknownContentType
+	}
+}
+
+func (this *engine) Marshal(req *http.Request, typed proto.Message, resp http.ResponseWriter) (err error) {
+	contentType := content_type_from_request(req)
+	if marshaler, has := marshalers[contentType]; has {
+		return marshaler(contentType, resp, typed)
+	} else {
+		return ErrUnknownContentType
+	}
+}
+
+func (this *engine) UnmarshalJSON(req *http.Request, any interface{}) (err error) {
+	contentType := content_type_from_request(req)
+	if unmarshaler, has := unmarshalers[contentType]; has {
+		return unmarshaler(req.Body, any)
 	} else {
 		return ErrUnknownContentType
 	}
@@ -231,18 +266,6 @@ func (this *engine) MarshalJSON(req *http.Request, any interface{}, resp http.Re
 		return nil
 	} else {
 		return err
-	}
-}
-
-func (this *engine) Marshal(req *http.Request, typed proto.Message, resp http.ResponseWriter) (err error) {
-	contentType := req.Header.Get("Content-Type") // Usually the case when a client POSTs
-	if contentType == "" {
-		contentType = req.Header.Get("Accept") // Usually the case with GET
-	}
-	if marshaler, has := marshalers[contentType]; has {
-		return marshaler(contentType, resp, typed)
-	} else {
-		return ErrUnknownContentType
 	}
 }
 
@@ -260,7 +283,6 @@ func (this *engine) do_callback(message *EngineEvent) error {
 	if this.webhooks == nil {
 		return nil
 	}
-	//methods := *this.spec
 	if m, has := (*this.spec)[message.ServiceMethod]; has {
 		if m.CallbackEvent != api.EventKey("") {
 			return this.webhooks.Send(message.Service, string(m.CallbackEvent), message.Body, m.CallbackBodyTemplate)
