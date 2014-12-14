@@ -102,7 +102,7 @@ func sync_schemas(db *sql.DB, schemas []*Schema, create, update bool) error {
 			for _, s := range creates {
 				err := s.Initialize(db)
 				if err != nil {
-					return nil
+					return err
 				}
 			}
 		} else {
