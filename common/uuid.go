@@ -4,14 +4,20 @@ import (
 	"code.google.com/p/go-uuid/uuid"
 )
 
-func NewUUID() uuid.UUID {
-	return uuid.NewUUID()
+type UUID uuid.UUID
+
+func NewUUID() UUID {
+	return UUID(uuid.NewUUID())
 }
 
-func UUIDFromString(s string) uuid.UUID {
-	return uuid.Parse(s)
+func UUIDFromString(s string) UUID {
+	return UUID(uuid.Parse(s))
 }
 
-func Equals(uuid1, uuid2 uuid.UUID) bool {
-	return uuid.Equal(uuid1, uuid2)
+func (i UUID) String() string {
+	return uuid.UUID(i).String()
+}
+
+func Equals(uuid1, uuid2 UUID) bool {
+	return uuid.Equal(uuid.UUID(uuid1), uuid.UUID(uuid2))
 }
