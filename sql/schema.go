@@ -68,12 +68,14 @@ func (this *Schema) Initialize(db *sql.DB) (err error) {
 	}
 
 	for _, stmt := range this.CreateTables {
+		glog.V(40).Infoln(stmt)
 		if _, err := db.Exec(stmt); err != nil {
 			tx.Rollback()
 			return err
 		}
 	}
 	for _, stmt := range this.CreateIndexes {
+		glog.V(40).Infoln(stmt)
 		if _, err := db.Exec(stmt); err != nil {
 			glog.Warningln(stmt, "err:", err)
 		}
