@@ -11,6 +11,7 @@ type Context interface {
 	HasKey(key string) bool
 	GetString(key string) string
 	Get(key string) interface{}
+	GetStringFromService(service, key string) string
 }
 
 type context struct {
@@ -23,6 +24,10 @@ func (this *context) HasKey(key string) bool {
 
 func (this *context) GetString(key string) string {
 	return this.token.GetString(key)
+}
+
+func (this *context) GetStringFromService(service, key string) string {
+	return this.token.GetString(fmt.Sprintf("%s/%s", service, key))
 }
 
 func (this *context) Get(key string) interface{} {
