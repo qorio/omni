@@ -1,17 +1,23 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
 	"net/http"
 	"strings"
+)
+
+var (
+	ErrNoAuthToken = errors.New("no-auth-token")
 )
 
 type Context interface {
 	HasKey(key string) bool
 	GetString(key string) string
 	Get(key string) interface{}
-	GetStringFromService(service, key string) string
+	GetStringForService(service, key string) string
 }
 
 type context struct {
@@ -26,12 +32,30 @@ func (this *context) GetString(key string) string {
 	return this.token.GetString(key)
 }
 
-func (this *context) GetStringFromService(service, key string) string {
+func (this *context) GetStringForService(service, key string) string {
 	return this.token.GetString(fmt.Sprintf("%s/%s", service, key))
 }
 
 func (this *context) Get(key string) interface{} {
 	return this.token.Get(key)
+}
+
+func (service *serviceImpl) get_token_from_header(req *http.Request) (*Token, error) {
+	// Format:  Authorization: Bearer|token|Oauth + ' ' + <token>
+	header := req.Header.Get("Authorization")
+	if header == "" {
+		return nil, ErrNoAuthToken
+	}
+	tokenString := strings.Trim(strings.SplitAfterN(header, " ", 2)[1], " ")
+	return service.Parse(tokenString)
+}
+
+func (this *serviceImpl) get_token_from_header_query_param(req *http.Request) (*Token, error) {
+	t, err := jwt.ParseFromRequest(req, this.KeyFunc)
+	if err != nil {
+		return nil, err
+	}
+	return this.check_token(t)
 }
 
 func (service *serviceImpl) RequiresAuth(scope string, get_scopes GetScopesFromToken, handler HttpHandler) func(http.ResponseWriter, *http.Request) {
@@ -46,18 +70,7 @@ func (service *serviceImpl) RequiresAuth(scope string, get_scopes GetScopesFromT
 
 		authed := false
 		if checkAuth {
-
-			// Format:  Authorization: Bearer|token|Oauth + ' ' + <token>
-
-			// Get the auth header
-			header := req.Header.Get("Authorization")
-			if header == "" {
-				renderError(resp, req, "Missing auth token", http.StatusUnauthorized)
-				return
-			}
-
-			tokenString := strings.SplitAfterN(header, " ", 2)[1]
-			token, err := service.Parse(tokenString)
+			token, err := service.get_token_from_header_query_param(req)
 			if err != nil {
 				glog.Warningln("auth-error", err)
 				renderError(resp, req, err.Error(), http.StatusUnauthorized)

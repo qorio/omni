@@ -47,6 +47,7 @@ type serviceImpl struct {
 	GetTime    func() time.Time
 	IsAuthOn   IsAuthOn
 	CheckScope CheckScope
+	KeyFunc    func(t *jwt.Token) (interface{}, error)
 }
 
 type Token struct {
@@ -67,6 +68,9 @@ func Init(settings Settings) *serviceImpl {
 		GetTime:    func() time.Time { return time.Now() },
 		IsAuthOn:   settings.IsAuthOn,
 		CheckScope: settings.CheckScope,
+		KeyFunc: func(t *jwt.Token) (interface{}, error) {
+			return settings.SignKey, nil
+		},
 	}
 }
 
@@ -83,30 +87,33 @@ func (this *serviceImpl) SignedString(token *Token) (tokenString string, err err
 	return
 }
 
-func (this *serviceImpl) Parse(tokenString string) (token *Token, err error) {
-	t, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
-		return this.settings.SignKey, nil
-	})
-
-	if err == nil && t.Valid {
-		// Check expiration if there is one
-		if expClaim, has := t.Claims["exp"]; has {
-			exp, ok := expClaim.(float64)
-			if !ok {
-				err = InvalidToken
-				return
-			}
-			if this.GetTime().After(time.Unix(int64(exp), 0)) {
-				err = ExpiredToken
-				return
-			}
-		}
-		token = &Token{token: t}
-		return
-	} else {
-		err = InvalidToken
+func (this *serviceImpl) check_token(t *jwt.Token) (*Token, error) {
+	if t == nil || !t.Valid {
+		return nil, InvalidToken
 	}
-	return
+	// Check expiration if there is one
+	if expClaim, has := t.Claims["exp"]; has {
+		exp, ok := expClaim.(float64)
+		if !ok {
+			return nil, InvalidToken
+		}
+		if this.GetTime().After(time.Unix(int64(exp), 0)) {
+			return nil, ExpiredToken
+		}
+	}
+	return &Token{token: t}, nil
+}
+
+func (this *serviceImpl) Parse(tokenString string) (token *Token, err error) {
+	// t, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
+	// 	return this.settings.SignKey, nil
+	// })
+
+	t, err := jwt.Parse(tokenString, this.KeyFunc)
+	if err != nil {
+		return nil, err
+	}
+	return this.check_token(t)
 }
 
 func (this *Token) Add(key string, value interface{}) *Token {
