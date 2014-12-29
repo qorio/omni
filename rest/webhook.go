@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	ERROR_NO_SERVICE_DEFINED = errors.New("no-service-defined")
-	ERROR_NO_WEBHOOK_DEFINED = errors.New("no-webhook-defined")
+	ErrNoServiceDefined = errors.New("no-service-defined")
+	ErrNoWebhookDefined = errors.New("no-webhook-defined")
 
 	WebhookHmacHeader = "X-Passport-Hmac"
 )
@@ -58,11 +58,11 @@ func (this *EventKeyUrlMap) FromJSON(s []byte) error {
 func (this WebhookMap) Send(domain, serviceKey, eventKey string, message interface{}, templateString string) error {
 	m := this[serviceKey]
 	if m == nil {
-		return ERROR_NO_SERVICE_DEFINED
+		return ErrNoServiceDefined
 	}
 	hook, has := m[eventKey]
 	if !has {
-		return ERROR_NO_WEBHOOK_DEFINED
+		return ErrNoWebhookDefined
 	}
 	return hook.Send(message, templateString)
 }
