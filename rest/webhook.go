@@ -25,9 +25,9 @@ type Webhook struct {
 type WebhookMap map[string]EventKeyUrlMap
 
 type WebhookManager interface {
-	Send(string, string, interface{}, string) error
-	RegisterWebhooks(string, EventKeyUrlMap) error
-	RemoveWebhooks(string) error
+	Send(domain string, service string, event string, message interface{}, templateString string) error
+	RegisterWebhooks(domain string, service string, ekum EventKeyUrlMap) error
+	RemoveWebhooks(domain string, service string) error
 }
 
 func (this *WebhookMap) ToJSON() []byte {
@@ -55,7 +55,7 @@ func (this *EventKeyUrlMap) FromJSON(s []byte) error {
 }
 
 // Default in-memory implementation
-func (this WebhookMap) Send(serviceKey, eventKey string, message interface{}, templateString string) error {
+func (this WebhookMap) Send(domain, serviceKey, eventKey string, message interface{}, templateString string) error {
 	m := this[serviceKey]
 	if m == nil {
 		return ERROR_NO_SERVICE_DEFINED
@@ -67,12 +67,12 @@ func (this WebhookMap) Send(serviceKey, eventKey string, message interface{}, te
 	return hook.Send(message, templateString)
 }
 
-func (this WebhookMap) RegisterWebhooks(serviceKey string, ekum EventKeyUrlMap) error {
+func (this WebhookMap) RegisterWebhooks(domain, serviceKey string, ekum EventKeyUrlMap) error {
 	this[serviceKey] = ekum
 	return nil
 }
 
-func (this WebhookMap) RemoveWebhooks(serviceKey string) error {
+func (this WebhookMap) RemoveWebhooks(domain, serviceKey string) error {
 	delete(this, serviceKey)
 	return nil
 }

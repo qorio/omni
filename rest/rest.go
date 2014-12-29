@@ -108,6 +108,7 @@ func SetAuthenticatedHandler(serviceId string, m api.MethodSpec, h auth.HttpHand
 }
 
 type EngineEvent struct {
+	Domain        string
 	Service       string
 	ServiceMethod api.ServiceMethod
 	Body          interface{}
@@ -281,7 +282,7 @@ func (this *engine) do_callback(message *EngineEvent) error {
 	}
 	if m, has := (*this.spec)[message.ServiceMethod]; has {
 		if m.CallbackEvent != api.EventKey("") {
-			return this.webhooks.Send(message.Service, string(m.CallbackEvent), message.Body, m.CallbackBodyTemplate)
+			return this.webhooks.Send(message.Domain, message.Service, string(m.CallbackEvent), message.Body, m.CallbackBodyTemplate)
 		}
 	}
 	return ErrUnknownMethod
