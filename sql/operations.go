@@ -5,6 +5,21 @@ import (
 	"encoding/json"
 )
 
+func (this *Schema) Insert(db *sql.DB, insert StatementKey, args ...interface{}) error {
+	result, err := this.Exec(db, insert, args...)
+	if err != nil {
+		return err
+	}
+	inserted, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if inserted == 0 {
+		return ErrNoChange
+	}
+	return nil
+}
+
 func (this *Schema) Upsert(db *sql.DB, update, insert StatementKey, args ...interface{}) error {
 	// Do update first...
 	result, err := this.Exec(db, update, args...)

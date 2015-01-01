@@ -87,6 +87,10 @@ func (this *Postgres) Open() error {
 	return nil
 }
 
+func (this *Postgres) Insert(schema *Schema, insert StatementKey, args ...interface{}) error {
+	return schema.Insert(this.conn, insert, args...)
+}
+
 func (this *Postgres) Upsert(schema *Schema, update, insert StatementKey, args ...interface{}) error {
 	return schema.Upsert(this.conn, update, insert, args...)
 }
