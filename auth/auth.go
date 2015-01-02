@@ -44,7 +44,7 @@ type GetScopesFromToken func(*Token) []string
 
 type Service interface {
 	NewToken() (token *Token)
-	SignedString(token *Token) (tokenString string, err error)
+	SignedString(token *Token, args ...interface{}) (tokenString string, err error)
 	Parse(tokenString string) (token *Token, err error)
 	RequiresAuth(scope string, get_scopes GetScopesFromToken, handler HttpHandler) func(http.ResponseWriter, *http.Request)
 }
