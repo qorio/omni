@@ -13,7 +13,10 @@ var (
 
 func TestNewToken(t *testing.T) {
 
-	auth := Init(Settings{SignKey: []byte("test"), TTLHours: 0})
+	auth := Init(Settings{
+		SignKey:   func(args ...interface{}) []byte { return []byte("test") },
+		VerifyKey: func() []byte { return []byte("test") },
+		TTLHours:  0})
 
 	token := auth.NewToken()
 	token.Add("foo1", "foo1").Add("foo2", "foo2").Add("count", 2)
@@ -46,7 +49,10 @@ func TestNewToken(t *testing.T) {
 
 func TestTokenExpiration(t *testing.T) {
 
-	auth := Init(Settings{SignKey: []byte("test"), TTLHours: 1})
+	auth := Init(Settings{
+		SignKey:   func(args ...interface{}) []byte { return []byte("test") },
+		VerifyKey: func() []byte { return []byte("test") },
+		TTLHours:  1})
 	auth.GetTime = func() time.Time {
 		return time.Now().Add(time.Hour * 2)
 	}
@@ -70,7 +76,10 @@ func TestGetAppTokenAuthRsaKey(t *testing.T) {
 	}
 
 	id := UUID("1234")
-	auth := Init(Settings{SignKey: key, TTLHours: 0})
+	auth := Init(Settings{
+		SignKey:   func(args ...interface{}) []byte { return key },
+		VerifyKey: func() []byte { return key },
+		TTLHours:  0})
 
 	token := auth.NewToken().Add("appKey", id)
 	encoded, err := auth.SignedString(token)

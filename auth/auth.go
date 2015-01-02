@@ -25,8 +25,15 @@ type IsAuthOn func() bool
 
 type CheckScope func(string, []string) bool
 
+// NOTE:
+// The SignKey and KeyFunc functions are for encoding and decoding token respectively.
+// We let the SignKey function be parameterized and the KeyFunc decoding be non-parametric.
+// This is to support partner-specific sign keys so that the issuer of the token (the signer)
+// can pick different key for different acceptor of the token (who would have a fixed key for
+// verification of the signature).
 type Settings struct {
-	SignKey    []byte
+	SignKey    func(args ...interface{}) []byte
+	VerifyKey  func() []byte
 	TTLHours   time.Duration
 	IsAuthOn   IsAuthOn
 	CheckScope CheckScope
@@ -69,7 +76,7 @@ func Init(settings Settings) *serviceImpl {
 		IsAuthOn:   settings.IsAuthOn,
 		CheckScope: settings.CheckScope,
 		KeyFunc: func(t *jwt.Token) (interface{}, error) {
-			return settings.SignKey, nil
+			return settings.VerifyKey(), nil
 		},
 	}
 }
@@ -82,8 +89,8 @@ func (this *serviceImpl) NewToken() (token *Token) {
 	return
 }
 
-func (this *serviceImpl) SignedString(token *Token) (tokenString string, err error) {
-	tokenString, err = token.token.SignedString(this.settings.SignKey)
+func (this *serviceImpl) SignedString(token *Token, args ...interface{}) (tokenString string, err error) {
+	tokenString, err = token.token.SignedString(this.settings.SignKey(args...))
 	return
 }
 
@@ -105,10 +112,6 @@ func (this *serviceImpl) check_token(t *jwt.Token) (*Token, error) {
 }
 
 func (this *serviceImpl) Parse(tokenString string) (token *Token, err error) {
-	// t, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
-	// 	return this.settings.SignKey, nil
-	// })
-
 	t, err := jwt.Parse(tokenString, this.KeyFunc)
 	if err != nil {
 		return nil, err
