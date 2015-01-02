@@ -117,8 +117,8 @@ type EngineEvent struct {
 type Engine interface {
 	Bind(...*ServiceMethodImpl)
 	ServeHTTP(http.ResponseWriter, *http.Request)
-	NewAuthToken() *auth.Token
-	SignedString(*auth.Token) (string, error)
+	// NewAuthToken() *auth.Token
+	// SignedStringForHttpRequest(*auth.Token, *http.Request) (string, error)
 	GetUrlParameter(*http.Request, string) string
 	Unmarshal(*http.Request, proto.Message) error
 	Marshal(*http.Request, proto.Message, http.ResponseWriter) error
@@ -153,13 +153,13 @@ func (this *engine) Router() *mux.Router {
 	return this.router
 }
 
-func (this *engine) NewAuthToken() *auth.Token {
-	return this.auth.NewToken()
-}
+// func (this *engine) NewAuthToken() *auth.Token {
+// 	return this.auth.NewToken()
+// }
 
-func (this *engine) SignedString(token *auth.Token) (string, error) {
-	return this.auth.SignedString(token)
-}
+// func (this *engine) SignedStringForHttpRequest(token *auth.Token, req *http.Request) (string, error) {
+// 	return this.auth.SignedStringForHttpRequest(token, req)
+// }
 
 func (this *engine) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
 	// Also start listening on the event channel for any webhook calls

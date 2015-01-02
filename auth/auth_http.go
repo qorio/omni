@@ -41,21 +41,46 @@ func (this *context) Get(key string) interface{} {
 }
 
 func (service *serviceImpl) get_token_from_header(req *http.Request) (*Token, error) {
+	if service.settings.VerifyKeyFromHttpRequest == nil {
+		return nil, ErrNoVerifyKey
+	}
 	// Format:  Authorization: Bearer|token|Oauth + ' ' + <token>
 	header := req.Header.Get("Authorization")
 	if header == "" {
 		return nil, ErrNoAuthToken
 	}
 	tokenString := strings.Trim(strings.SplitAfterN(header, " ", 2)[1], " ")
-	return service.Parse(tokenString)
+	return service.Parse(tokenString, func() []byte {
+		return service.settings.VerifyKeyFromHttpRequest(req)
+	})
 }
 
+// This is the preferred implemented using a method provided in the jwt library directly.
 func (this *serviceImpl) get_token_from_header_query_param(req *http.Request) (*Token, error) {
-	t, err := jwt.ParseFromRequest(req, this.KeyFunc)
+	if this.settings.VerifyKeyFromHttpRequest == nil {
+		return nil, ErrNoVerifyKey
+	}
+	t, err := jwt.ParseFromRequest(req, func(*jwt.Token) (interface{}, error) {
+		return this.settings.VerifyKeyFromHttpRequest(req), nil
+	})
 	if err != nil {
 		return nil, err
 	}
 	return this.check_token(t)
+}
+
+func (this *serviceImpl) ParseForHttpRequest(tokenString string, req *http.Request) (token *Token, err error) {
+	if this.settings.SignKeyFromHttpRequest == nil {
+		return nil, ErrNoVerifyKey
+	}
+	return this.Parse(tokenString, func() []byte { return this.settings.VerifyKeyFromHttpRequest(req) })
+}
+
+func (this *serviceImpl) SignedStringForHttpRequest(token *Token, req *http.Request) (tokenString string, err error) {
+	if this.settings.SignKeyFromHttpRequest == nil {
+		return "", ErrNoSignKey
+	}
+	return this.SignedString(token, func() []byte { return this.settings.SignKeyFromHttpRequest(req) })
 }
 
 func (service *serviceImpl) RequiresAuth(scope string, get_scopes GetScopesFromToken, handler HttpHandler) func(http.ResponseWriter, *http.Request) {

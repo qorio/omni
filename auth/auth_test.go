@@ -13,21 +13,21 @@ var (
 
 func TestNewToken(t *testing.T) {
 
-	auth := Init(Settings{
-		SignKey:   func(args ...interface{}) []byte { return []byte("test") },
-		VerifyKey: func() []byte { return []byte("test") },
-		TTLHours:  0})
+	SignKey := func() []byte { return []byte("test") }
+	VerifyKey := func() []byte { return []byte("test") }
+
+	auth := Init(Settings{TTLHours: 0})
 
 	token := auth.NewToken()
 	token.Add("foo1", "foo1").Add("foo2", "foo2").Add("count", 2)
 
-	signedString, err := auth.SignedString(token)
+	signedString, err := auth.SignedString(token, SignKey)
 	if err != nil {
 		t.Error(err)
 	}
 
 	t.Log("token=", signedString)
-	parsed, err := auth.Parse(signedString)
+	parsed, err := auth.Parse(signedString, VerifyKey)
 	if err != nil {
 		t.Error(err)
 	}
@@ -49,19 +49,18 @@ func TestNewToken(t *testing.T) {
 
 func TestTokenExpiration(t *testing.T) {
 
-	auth := Init(Settings{
-		SignKey:   func(args ...interface{}) []byte { return []byte("test") },
-		VerifyKey: func() []byte { return []byte("test") },
-		TTLHours:  1})
+	SignKey := func() []byte { return []byte("test") }
+	VerifyKey := func() []byte { return []byte("test") }
+	auth := Init(Settings{TTLHours: 1})
 	auth.GetTime = func() time.Time {
 		return time.Now().Add(time.Hour * 2)
 	}
 
 	token := auth.NewToken()
-	encoded, err := auth.SignedString(token)
+	encoded, err := auth.SignedString(token, SignKey)
 
 	// decode
-	_, err = auth.Parse(encoded)
+	_, err = auth.Parse(encoded, VerifyKey)
 
 	if err != ExpiredToken {
 		t.Error("expecting", ExpiredToken, "but got", err)
@@ -75,17 +74,16 @@ func TestGetAppTokenAuthRsaKey(t *testing.T) {
 		t.Fatal(e)
 	}
 
+	SignKey := func() []byte { return key }
+	VerifyKey := func() []byte { return key }
 	id := UUID("1234")
-	auth := Init(Settings{
-		SignKey:   func(args ...interface{}) []byte { return key },
-		VerifyKey: func() []byte { return key },
-		TTLHours:  0})
+	auth := Init(Settings{TTLHours: 0})
 
 	token := auth.NewToken().Add("appKey", id)
-	encoded, err := auth.SignedString(token)
+	encoded, err := auth.SignedString(token, SignKey)
 
 	// decode
-	parsed, err := auth.Parse(encoded)
+	parsed, err := auth.Parse(encoded, VerifyKey)
 	if err != nil {
 		t.Error(err)
 	}

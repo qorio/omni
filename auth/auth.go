@@ -15,6 +15,9 @@ var (
 
 	InvalidToken error = errors.New("invalid-token")
 	ExpiredToken error = errors.New("token-expired")
+
+	ErrNoSignKey   = errors.New("no-sign-key")
+	ErrNoVerifyKey = errors.New("no-verify-key")
 )
 
 type UUID string
@@ -25,18 +28,16 @@ type IsAuthOn func() bool
 
 type CheckScope func(string, []string) bool
 
-// NOTE:
-// The SignKey and KeyFunc functions are for encoding and decoding token respectively.
-// We let the SignKey function be parameterized and the KeyFunc decoding be non-parametric.
-// This is to support partner-specific sign keys so that the issuer of the token (the signer)
-// can pick different key for different acceptor of the token (who would have a fixed key for
-// verification of the signature).
+type SignKey func() []byte
+type VerifyKey func() []byte
+
+// Sign keys and verifcation keys are both function of the input which is the http request.
 type Settings struct {
-	SignKey    func(args ...interface{}) []byte
-	VerifyKey  func() []byte
-	TTLHours   time.Duration
-	IsAuthOn   IsAuthOn
-	CheckScope CheckScope
+	TTLHours                 time.Duration
+	IsAuthOn                 IsAuthOn
+	CheckScope               CheckScope
+	SignKeyFromHttpRequest   func(*http.Request) []byte
+	VerifyKeyFromHttpRequest func(*http.Request) []byte
 }
 
 type HttpHandler func(auth Context, resp http.ResponseWriter, req *http.Request)
@@ -44,8 +45,10 @@ type GetScopesFromToken func(*Token) []string
 
 type Service interface {
 	NewToken() (token *Token)
-	SignedString(token *Token, args ...interface{}) (tokenString string, err error)
-	Parse(tokenString string) (token *Token, err error)
+	SignedStringForHttpRequest(token *Token, req *http.Request) (tokenString string, err error)
+	SignedString(token *Token, f SignKey) (tokenString string, err error)
+	Parse(tokenString string, f VerifyKey) (token *Token, err error)
+	ParseForHttpRequest(tokenString string, req *http.Request) (token *Token, err error)
 	RequiresAuth(scope string, get_scopes GetScopesFromToken, handler HttpHandler) func(http.ResponseWriter, *http.Request)
 }
 
@@ -54,7 +57,6 @@ type serviceImpl struct {
 	GetTime    func() time.Time
 	IsAuthOn   IsAuthOn
 	CheckScope CheckScope
-	KeyFunc    func(t *jwt.Token) (interface{}, error)
 }
 
 type Token struct {
@@ -75,9 +77,6 @@ func Init(settings Settings) *serviceImpl {
 		GetTime:    func() time.Time { return time.Now() },
 		IsAuthOn:   settings.IsAuthOn,
 		CheckScope: settings.CheckScope,
-		KeyFunc: func(t *jwt.Token) (interface{}, error) {
-			return settings.VerifyKey(), nil
-		},
 	}
 }
 
@@ -89,8 +88,11 @@ func (this *serviceImpl) NewToken() (token *Token) {
 	return
 }
 
-func (this *serviceImpl) SignedString(token *Token, args ...interface{}) (tokenString string, err error) {
-	tokenString, err = token.token.SignedString(this.settings.SignKey(args...))
+func (this *serviceImpl) SignedString(token *Token, f SignKey) (tokenString string, err error) {
+	if f == nil {
+		return "", ErrNoSignKey
+	}
+	tokenString, err = token.token.SignedString(f())
 	return
 }
 
@@ -111,8 +113,13 @@ func (this *serviceImpl) check_token(t *jwt.Token) (*Token, error) {
 	return &Token{token: t}, nil
 }
 
-func (this *serviceImpl) Parse(tokenString string) (token *Token, err error) {
-	t, err := jwt.Parse(tokenString, this.KeyFunc)
+func (this *serviceImpl) Parse(tokenString string, f VerifyKey) (token *Token, err error) {
+	if f == nil {
+		return nil, ErrNoVerifyKey
+	}
+	t, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
+		return f(), nil
+	})
 	if err != nil {
 		return nil, err
 	}
