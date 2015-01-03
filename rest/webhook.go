@@ -20,7 +20,8 @@ var (
 // Webhook callbacks
 type EventKeyUrlMap map[string]Webhook
 type Webhook struct {
-	Url string `json:"destination_url"`
+	Url       string `json:"destination_url"`
+	AuthToken string `json:"auth_token,omitempty"`
 }
 type WebhookMap map[string]EventKeyUrlMap
 
@@ -101,6 +102,9 @@ func (hook *Webhook) Send(message interface{}, templateString string) error {
 		client := &http.Client{}
 		post, err := http.NewRequest("POST", url.String(), &buffer)
 		post.Header.Add(WebhookHmacHeader, "TO DO: compute a HMAC here")
+		if hook.AuthToken != "" {
+			post.Header.Add("Authorization", "Bearer "+hook.AuthToken)
+		}
 		resp, err := client.Do(post)
 		if err != nil {
 			glog.Warningln("Cannot deliver callback to", url, "error:", err)
