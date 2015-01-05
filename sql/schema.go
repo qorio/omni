@@ -30,6 +30,8 @@ type Statement struct {
 
 var (
 	ErrNoSystemSchema = errors.New("no-system-schema")
+	ErrOptIsNull      = errors.New("options-is-null")
+	ErrNoCollect      = errors.New("no-collect")
 )
 
 func (this *Schema) CurrentVersion(db *sql.DB) (int, string, error) {

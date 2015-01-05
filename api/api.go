@@ -9,6 +9,8 @@ type EventKey string
 type ObjectFactory func() interface{}
 
 type HttpMethod string
+type QueryDefault interface{}
+type UrlQueries map[string]QueryDefault
 
 var (
 	GET       HttpMethod = HttpMethod("GET")
@@ -22,6 +24,7 @@ type MethodSpec struct {
 	Doc                  string
 	UrlRoute             string
 	HttpMethod           HttpMethod
+	UrlQueries           UrlQueries
 	ContentTypes         []string
 	RequestBody          ObjectFactory
 	ResponseBody         ObjectFactory

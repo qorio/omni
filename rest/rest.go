@@ -12,14 +12,17 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"reflect"
+	"strconv"
 	"strings"
 )
 
 var (
-	ErrMissingInput       = errors.New("error-missing-input")
-	ErrUnknownContentType = errors.New("error-no-content-type")
-	ErrUnknownMethod      = errors.New("error-unknown-method")
-	ErrIncompatibleType   = errors.New("error-incompatible-type")
+	ErrMissingInput                 = errors.New("error-missing-input")
+	ErrUnknownContentType           = errors.New("error-no-content-type")
+	ErrUnknownMethod                = errors.New("error-unknown-method")
+	ErrIncompatibleType             = errors.New("error-incompatible-type")
+	ErrNotSupportedUrlParameterType = errors.New("error-not-supported-url-query-param-type")
 )
 
 var (
@@ -117,9 +120,8 @@ type EngineEvent struct {
 type Engine interface {
 	Bind(...*ServiceMethodImpl)
 	ServeHTTP(http.ResponseWriter, *http.Request)
-	// NewAuthToken() *auth.Token
-	// SignedStringForHttpRequest(*auth.Token, *http.Request) (string, error)
 	GetUrlParameter(*http.Request, string) string
+	GetUrlQueries(*http.Request, api.UrlQueries) (api.UrlQueries, error)
 	Unmarshal(*http.Request, proto.Message) error
 	Marshal(*http.Request, proto.Message, http.ResponseWriter) error
 	UnmarshalJSON(*http.Request, interface{}) error
@@ -192,6 +194,50 @@ func (this *engine) GetUrlParameter(req *http.Request, key string) string {
 		}
 	}
 	return ""
+}
+
+func (this *engine) GetUrlQueries(req *http.Request, m api.UrlQueries) (api.UrlQueries, error) {
+	result := make(api.UrlQueries)
+	for key, default_value := range m {
+		actual := this.GetUrlParameter(req, key)
+		if actual != "" {
+			// Check the type and do conversion
+			switch reflect.TypeOf(default_value).Kind() {
+			case reflect.Bool:
+				if v, err := strconv.ParseBool(actual); err != nil {
+					return nil, err
+				} else {
+					result[key] = v
+				}
+			case reflect.String:
+				result[key] = actual
+			case reflect.Int:
+				if v, err := strconv.Atoi(actual); err != nil {
+					return nil, err
+				} else {
+					result[key] = v
+				}
+			case reflect.Float32:
+				if v, err := strconv.ParseFloat(actual, 32); err != nil {
+					return nil, err
+				} else {
+					result[key] = v
+				}
+			case reflect.Float64:
+				if v, err := strconv.ParseFloat(actual, 64); err != nil {
+					return nil, err
+				} else {
+					result[key] = v
+				}
+			default:
+				return nil, ErrNotSupportedUrlParameterType
+			}
+
+		} else {
+			result[key] = default_value
+		}
+	}
+	return result, nil
 }
 
 func (this *engine) Bind(endpoints ...*ServiceMethodImpl) {

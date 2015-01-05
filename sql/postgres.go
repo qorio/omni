@@ -103,6 +103,10 @@ func (this *Postgres) GetOne(schema *Schema, get StatementKey, opt *Options, arg
 	return schema.GetOne(this.conn, get, opt, args...)
 }
 
+func (this *Postgres) GetAll(schema *Schema, get StatementKey, opt *Options, c Collect, args ...interface{}) error {
+	return schema.GetAll(this.conn, get, opt, c, args...)
+}
+
 func (this *Postgres) Close() error {
 	if this.conn == nil {
 		return ErrNotConnected

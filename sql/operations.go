@@ -65,17 +65,22 @@ func (this *Schema) Delete(db *sql.DB, delete StatementKey, args ...interface{})
 type Options struct {
 	Found         interface{}
 	Version       interface{}
+	Alloc         func() interface{}
 	NotFoundError error
 }
 
 func (this *Schema) GetOne(db *sql.DB, get StatementKey, opt *Options, args ...interface{}) error {
+	if opt == nil {
+		return ErrOptIsNull
+	}
+
 	row, err := this.QueryRow(db, get, args...)
 	if err != nil {
 		return err
 	}
 
 	buff := ""
-	if opt != nil && opt.Version != nil {
+	if opt.Version != nil {
 		err = row.Scan(&buff, opt.Version)
 	} else {
 		err = row.Scan(&buff)
@@ -83,7 +88,7 @@ func (this *Schema) GetOne(db *sql.DB, get StatementKey, opt *Options, args ...i
 
 	switch {
 	case err == sql.ErrNoRows:
-		if opt != nil && opt.NotFoundError != nil {
+		if opt.NotFoundError != nil {
 			return opt.NotFoundError
 		} else {
 			return ErrNotFound
@@ -91,8 +96,51 @@ func (this *Schema) GetOne(db *sql.DB, get StatementKey, opt *Options, args ...i
 	case err != nil:
 		return err
 	}
-	if opt != nil && opt.Found != nil {
+	if opt.Found != nil {
 		err = json.Unmarshal([]byte(buff), opt.Found)
 	}
 	return err
+}
+
+// Returns false to stop
+type Collect func(interface{}) bool
+
+func (this *Schema) GetAll(db *sql.DB, get StatementKey, opt *Options, collect Collect, args ...interface{}) error {
+	if opt == nil {
+		return ErrOptIsNull
+	}
+	if collect == nil {
+		return ErrNoCollect
+	}
+
+	rows, err := this.Query(db, get, args...)
+	if err != nil {
+		return err
+	}
+
+	for rows.Next() {
+		buff := ""
+		if opt.Version != nil {
+			err = rows.Scan(&buff, opt.Version)
+		} else {
+			err = rows.Scan(&buff)
+		}
+		switch {
+		case err == sql.ErrNoRows:
+			break
+		case err != nil:
+			return err
+		}
+		if opt.Alloc != nil {
+			obj := opt.Alloc()
+			err = json.Unmarshal([]byte(buff), obj)
+			if err != nil {
+				return err
+			}
+			if !collect(obj) {
+				return nil
+			}
+		}
+	}
+	return nil
 }
