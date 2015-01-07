@@ -11,6 +11,7 @@ type ObjectFactory func() interface{}
 type HttpMethod string
 type QueryDefault interface{}
 type UrlQueries map[string]QueryDefault
+type HttpHeaders map[string]string
 
 var (
 	GET       HttpMethod = HttpMethod("GET")
@@ -23,6 +24,7 @@ var (
 type MethodSpec struct {
 	Doc                  string
 	UrlRoute             string
+	HttpHeaders          HttpHeaders
 	HttpMethod           HttpMethod
 	UrlQueries           UrlQueries
 	ContentTypes         []string

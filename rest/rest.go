@@ -23,6 +23,7 @@ var (
 	ErrUnknownMethod                = errors.New("error-unknown-method")
 	ErrIncompatibleType             = errors.New("error-incompatible-type")
 	ErrNotSupportedUrlParameterType = errors.New("error-not-supported-url-query-param-type")
+	ErrNoHttpHeaderSpec             = errors.New("error-no-http-header-spec")
 )
 
 var (
@@ -121,6 +122,7 @@ type Engine interface {
 	Bind(...*ServiceMethodImpl)
 	ServeHTTP(http.ResponseWriter, *http.Request)
 	GetUrlParameter(*http.Request, string) string
+	GetHttpHeaders(*http.Request, api.HttpHeaders) (map[string][]string, error)
 	GetUrlQueries(*http.Request, api.UrlQueries) (api.UrlQueries, error)
 	Unmarshal(*http.Request, proto.Message) error
 	Marshal(*http.Request, proto.Message, http.ResponseWriter) error
@@ -155,14 +157,6 @@ func (this *engine) Router() *mux.Router {
 	return this.router
 }
 
-// func (this *engine) NewAuthToken() *auth.Token {
-// 	return this.auth.NewToken()
-// }
-
-// func (this *engine) SignedStringForHttpRequest(token *auth.Token, req *http.Request) (string, error) {
-// 	return this.auth.SignedStringForHttpRequest(token, req)
-// }
-
 func (this *engine) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
 	// Also start listening on the event channel for any webhook calls
 	go func() {
@@ -194,6 +188,19 @@ func (this *engine) GetUrlParameter(req *http.Request, key string) string {
 		}
 	}
 	return ""
+}
+
+func (this *engine) GetHttpHeaders(req *http.Request, m api.HttpHeaders) (map[string][]string, error) {
+	if m == nil {
+		return nil, ErrNoHttpHeaderSpec
+	}
+	q := make(map[string][]string)
+	for k, h := range m {
+		if l, ok := req.Header[h]; ok {
+			q[k] = l
+		}
+	}
+	return q, nil
 }
 
 func (this *engine) GetUrlQueries(req *http.Request, m api.UrlQueries) (api.UrlQueries, error) {
