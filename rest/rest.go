@@ -197,7 +197,12 @@ func (this *engine) GetHttpHeaders(req *http.Request, m api.HttpHeaders) (map[st
 	q := make(map[string][]string)
 	for k, h := range m {
 		if l, ok := req.Header[h]; ok {
-			q[k] = l
+			// Really strange -- you can have a 1 element list with value that's actually comma-delimited.
+			if len(l) == 1 {
+				q[k] = strings.Split(l[0], ", ")
+			} else {
+				q[k] = l
+			}
 		}
 	}
 	return q, nil
