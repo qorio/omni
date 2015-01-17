@@ -3,14 +3,15 @@ package runtime
 import (
 	"fmt"
 	"github.com/golang/glog"
+	"github.com/qorio/omni/version"
 	"io"
 	"net/http"
 	"os"
 	"sync"
 )
 
-func StandardContainer(port int, buildInfo *Build, endpoint func() http.Handler, shutdown func() error) {
-
+func StandardContainer(port int, endpoint func() http.Handler, shutdown func() error) {
+	buildInfo := version.BuildInfo()
 	shutdownc := make(chan io.Closer, 1)
 	go HandleSignals(shutdownc)
 
