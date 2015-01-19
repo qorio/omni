@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/golang/glog"
-	"github.com/qorio/omni/runtime"
+	"github.com/qorio/omni/version"
 )
 
 type Platform string
@@ -45,11 +45,11 @@ func update_schema_version(db *sql.DB, schema *Schema) error {
 	}
 	hash := schema.CommitHash
 	if hash == "" {
-		hash = runtime.BuildInfo().GetCommitHash()
+		hash = version.BuildInfo().GetCommitHash()
 	}
 	repo := schema.RepoUrl
 	if repo == "" {
-		repo = runtime.BuildInfo().GetRepoUrl()
+		repo = version.BuildInfo().GetRepoUrl()
 	}
 
 	err := system.PrepareStatements(db)
