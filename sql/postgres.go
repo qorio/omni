@@ -68,6 +68,7 @@ func (this *Postgres) Open() error {
 	mutex1.Unlock()
 
 	once.Do(func() {
+		glog.Infoln("Connecting to db:", conn_string)
 		db, err := sql.Open(string(POSTGRES), conn_string)
 		if err != nil {
 			panic(err)
@@ -75,6 +76,7 @@ func (this *Postgres) Open() error {
 		db.SetMaxIdleConns(*maxIdleConns)
 		db.SetMaxOpenConns(*maxOpenConns)
 		conn_by_connection_string[conn_string] = db
+		glog.Infoln("Connected to db:", conn_string, "caching the connection handle")
 	})
 
 	this.conn, has = conn_by_connection_string[conn_string]
