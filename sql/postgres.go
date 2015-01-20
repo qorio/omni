@@ -43,37 +43,60 @@ var (
 	initialize_system sync.Once
 )
 
+var (
+	mutex1                    sync.Mutex
+	sync_by_connection_string = make(map[string]sync.Once, 0)
+	conn_by_connection_string = make(map[string]*sql.DB, 0)
+)
+
 func (this *Postgres) Conn() *sql.DB {
 	return this.conn
 }
 
 func (this *Postgres) Open() error {
-	glog.Infoln("Postgres connection string:", this.connection_string())
 
-	db, err := sql.Open(string(POSTGRES), this.connection_string())
-	if err != nil {
-		return err
+	conn_string := this.connection_string()
+
+	glog.Infoln("Postgres connection string:", conn_string)
+
+	mutex1.Lock()
+	once, has := sync_by_connection_string[conn_string]
+	if !has {
+		once = sync.Once{}
+		sync_by_connection_string[conn_string] = once
+	}
+	mutex1.Unlock()
+
+	once.Do(func() {
+		db, err := sql.Open(string(POSTGRES), conn_string)
+		if err != nil {
+			panic(err)
+		}
+		db.SetMaxIdleConns(*maxIdleConns)
+		db.SetMaxOpenConns(*maxOpenConns)
+		conn_by_connection_string[conn_string] = db
+	})
+
+	this.conn, has = conn_by_connection_string[conn_string]
+	if !has {
+		panic(errors.New("error-no-initialized-db-connections"))
 	}
 
-	db.SetMaxIdleConns(*maxIdleConns)
-	db.SetMaxOpenConns(*maxOpenConns)
-
-	this.conn = db
 	glog.Infoln("Connected:", this.conn)
 	initialize_system.Do(func() {
 		// bootstrap the system schema
-		err1 := postgres_schema.Initialize(db)
+		err1 := postgres_schema.Initialize(this.conn)
 		glog.Infoln("Initialized system schema:", err1)
 		if err1 != nil {
 			panic(err1)
 		}
-		err2 := postgres_schema.PrepareStatements(db)
+		err2 := postgres_schema.PrepareStatements(this.conn)
 		glog.Infoln("Prepared statements:", err2)
 		if err2 != nil {
 			panic(err2)
 		}
 	})
-	err = sync_schemas(this.conn, this.Schemas, this.DoCreateSchemas, this.DoUpdateSchemas)
+	err := sync_schemas(this.conn, this.Schemas, this.DoCreateSchemas, this.DoUpdateSchemas)
 	if err != nil {
 		return err
 	}
