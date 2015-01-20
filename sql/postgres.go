@@ -35,8 +35,9 @@ type Postgres struct {
 	DoCreateSchemas bool
 	DoUpdateSchemas bool
 
-	Ssl  bool
-	conn *sql.DB
+	Ssl         bool
+	conn        *sql.DB
+	conn_string string
 }
 
 var (
@@ -56,6 +57,7 @@ func (this *Postgres) Conn() *sql.DB {
 func (this *Postgres) Open() error {
 
 	conn_string := this.connection_string()
+	this.conn_string = conn_string
 
 	glog.Infoln("Postgres connection string:", conn_string)
 
@@ -136,10 +138,23 @@ func (this *Postgres) GetAll(schema *Schema, get StatementKey, opt *Options, c C
 }
 
 func (this *Postgres) Close() error {
+	// HAKK -- this avoids db connections from getting closed during test tear downs.
+	return nil
+}
+
+func (this *Postgres) ReallyClose() error {
 	if this.conn == nil {
 		return ErrNotConnected
 	}
-	return this.conn.Close()
+	err := this.conn.Close()
+	// Remove the entry in the global maps by connection string.
+	// This way, we will connect again when Open is called.
+	mutex1.Lock()
+	glog.Infoln("Removing sync / db handles for", this.conn_string)
+	delete(sync_by_connection_string, this.conn_string)
+	delete(conn_by_connection_string, this.conn_string)
+	mutex1.Unlock()
+	return err
 }
 
 func (this *Postgres) DropAll() error {
