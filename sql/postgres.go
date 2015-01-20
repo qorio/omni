@@ -45,7 +45,7 @@ var (
 
 var (
 	mutex1                    sync.Mutex
-	sync_by_connection_string = make(map[string]sync.Once, 0)
+	sync_by_connection_string = make(map[string]*sync.Once, 0)
 	conn_by_connection_string = make(map[string]*sql.DB, 0)
 )
 
@@ -62,7 +62,7 @@ func (this *Postgres) Open() error {
 	mutex1.Lock()
 	once, has := sync_by_connection_string[conn_string]
 	if !has {
-		once = sync.Once{}
+		once = &sync.Once{}
 		sync_by_connection_string[conn_string] = once
 	}
 	mutex1.Unlock()
@@ -84,7 +84,10 @@ func (this *Postgres) Open() error {
 		panic(errors.New("error-no-initialized-db-connections"))
 	}
 
-	glog.Infoln("Connected:", this.conn)
+	if this.conn == nil {
+		panic(errors.New("error-db-connection-is-nil"))
+	}
+	glog.Infoln("Connected (PING):", this.conn.Ping())
 	initialize_system.Do(func() {
 		// bootstrap the system schema
 		err1 := postgres_schema.Initialize(this.conn)
