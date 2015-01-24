@@ -10,8 +10,18 @@ import (
 	"sync"
 )
 
+func MinimalContainer(port int, endpoint func() http.Handler, shutdown func() error) {
+	start_container(port, endpoint, shutdown, false)
+}
+
 func StandardContainer(port int, endpoint func() http.Handler, shutdown func() error) {
+	start_container(port, endpoint, shutdown, true)
+}
+
+func start_container(port int, endpoint func() http.Handler, shutdown func() error, runManager bool) {
 	buildInfo := version.BuildInfo()
+
+	var wg sync.WaitGroup
 	shutdownc := make(chan io.Closer, 1)
 	go HandleSignals(shutdownc)
 
@@ -22,21 +32,6 @@ func StandardContainer(port int, endpoint func() http.Handler, shutdown func() e
 		Handler: endpoint(),
 		Addr:    fmt.Sprintf(":%d", port),
 	}, apiDone)
-
-	// *** The Manager endpoint ***
-	glog.Infoln("Starting manager endpoint")
-	managerDone := make(chan bool)
-	RunServer(&http.Server{
-		Handler: NewManagerEndPoint(Config{
-			BuildInfo: buildInfo,
-		}),
-		Addr: fmt.Sprintf(":%d", port+1),
-	}, managerDone)
-
-	// Save pid
-	pid, pidErr := SavePidFile(fmt.Sprintf("%d", port))
-
-	var wg sync.WaitGroup
 
 	// Here is a list of shutdown hooks to execute when receiving the OS signal
 	shutdown_tasks := ShutdownSequence{
@@ -52,12 +47,33 @@ func StandardContainer(port int, endpoint func() http.Handler, shutdown func() e
 			wg.Done()
 			return nil
 		}),
-		ShutdownHook(func() error {
-			managerDone <- true
-			glog.Infoln("Stopped manager endpoint")
-			wg.Done()
-			return nil
-		}),
+	}
+
+	if runManager {
+		// *** The Manager endpoint ***
+		glog.Infoln("Starting manager endpoint")
+		managerDone := make(chan bool)
+		RunServer(&http.Server{
+			Handler: NewManagerEndPoint(Config{
+				BuildInfo: buildInfo,
+			}),
+			Addr: fmt.Sprintf(":%d", port+1),
+		}, managerDone)
+
+		shutdown_tasks = append(shutdown_tasks,
+			ShutdownHook(func() error {
+				if runManager {
+					managerDone <- true
+					glog.Infoln("Stopped manager endpoint")
+					wg.Done()
+				}
+				return nil
+			}))
+	}
+
+	// Pid file
+	pid, pidErr := SavePidFile(fmt.Sprintf("%d", port))
+	shutdown_tasks = append(shutdown_tasks,
 		ShutdownHook(func() error {
 			if pidErr == nil {
 				os.Remove(pid)
@@ -65,8 +81,7 @@ func StandardContainer(port int, endpoint func() http.Handler, shutdown func() e
 			}
 			wg.Done()
 			return nil
-		}),
-	}
+		}))
 
 	shutdownc <- shutdown_tasks
 	wg.Add(len(shutdown_tasks))
