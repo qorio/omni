@@ -280,15 +280,29 @@ func (this *engine) Bind(endpoints ...*ServiceMethodImpl) {
 	}
 }
 
-func content_type_from_request(req *http.Request) (t string) {
-	if t = req.Header.Get("Accept"); t == "" {
-		return req.Header.Get("Content-Type")
+func content_type_for_request(req *http.Request) string {
+	t := "application/json"
+	if req.Method == "POST" || req.Method == "PUT" {
+		t = req.Header.Get("Content-Type")
 	}
-	return
+	if t == "*/*" || t == "" {
+		return "application/json" // default
+	} else {
+		return t
+	}
+}
+
+func content_type_for_response(req *http.Request) string {
+	t := req.Header.Get("Accept")
+	if t == "*/*" || t == "" {
+		return "application/json" // default
+	} else {
+		return t
+	}
 }
 
 func (this *engine) Unmarshal(req *http.Request, typed proto.Message) (err error) {
-	contentType := content_type_from_request(req)
+	contentType := content_type_for_request(req)
 	if unmarshaler, has := unmarshalers[contentType]; has {
 		return unmarshaler(req.Body, typed)
 	} else {
@@ -297,7 +311,7 @@ func (this *engine) Unmarshal(req *http.Request, typed proto.Message) (err error
 }
 
 func (this *engine) Marshal(req *http.Request, typed proto.Message, resp http.ResponseWriter) (err error) {
-	contentType := content_type_from_request(req)
+	contentType := content_type_for_response(req)
 	if marshaler, has := marshalers[contentType]; has {
 		return marshaler(contentType, resp, typed)
 	} else {
@@ -306,7 +320,7 @@ func (this *engine) Marshal(req *http.Request, typed proto.Message, resp http.Re
 }
 
 func (this *engine) UnmarshalJSON(req *http.Request, any interface{}) (err error) {
-	contentType := content_type_from_request(req)
+	contentType := content_type_for_request(req)
 	if unmarshaler, has := unmarshalers[contentType]; has {
 		return unmarshaler(req.Body, any)
 	} else {
