@@ -284,6 +284,15 @@ func JSONContentType(req *http.Request) bool {
 	return "application/json" == content_type_for_request(req)
 }
 
+func GetContentType(req *http.Request) *string {
+	if req == nil {
+		return nil
+	} else {
+		t := content_type_for_request(req)
+		return &t
+	}
+}
+
 func content_type_for_request(req *http.Request) string {
 	t := "application/json"
 
