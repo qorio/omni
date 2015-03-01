@@ -282,22 +282,44 @@ func (this *engine) Bind(endpoints ...*ServiceMethodImpl) {
 
 func content_type_for_request(req *http.Request) string {
 	t := "application/json"
+
 	if req.Method == "POST" || req.Method == "PUT" {
 		t = req.Header.Get("Content-Type")
 	}
-	if t == "*/*" || t == "" {
-		return "application/json" // default
-	} else {
+	switch t {
+	case "*/*":
+		return "application/json"
+	case "":
+		return "application/json"
+	default:
 		return t
 	}
 }
 
 func content_type_for_response(req *http.Request) string {
 	t := req.Header.Get("Accept")
-	if t == "*/*" || t == "" {
-		return "application/json" // default
-	} else {
+	switch t {
+	case "*/*":
+		return "application/json"
+	case "":
+		return "application/json"
+	default:
 		return t
+	}
+}
+
+var ErrorRenderer = func(resp http.ResponseWriter, req *http.Request, message string, code int) (err error) {
+	// First look for accept content type in the header
+	ct := content_type_for_response(req)
+	switch ct {
+	case "application/json":
+		resp.Write([]byte(fmt.Sprintf("{ \"error\": \"%s\" }", message)))
+		return
+	case "application/protobuf":
+		return
+	default:
+		resp.Write([]byte(fmt.Sprintf("<html><body>Error: %s </body></html>", message)))
+		return
 	}
 }
 

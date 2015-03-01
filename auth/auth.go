@@ -38,6 +38,7 @@ type Settings struct {
 	CheckScope               CheckScope
 	SignKeyFromHttpRequest   func(*http.Request) []byte
 	VerifyKeyFromHttpRequest func(*http.Request) []byte
+	ErrorRenderer            func(http.ResponseWriter, *http.Request, string, int) error
 }
 
 type HttpHandler func(auth Context, resp http.ResponseWriter, req *http.Request)

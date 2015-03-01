@@ -129,12 +129,17 @@ func (service *serviceImpl) RequiresAuth(scope string, get_scopes GetScopesFromT
 			return
 		} else {
 			// error
-			renderError(resp, req, "not-permitted", http.StatusUnauthorized)
+			if service.settings.ErrorRenderer != nil {
+				service.settings.ErrorRenderer(resp, req, "not-permitted", http.StatusUnauthorized)
+			} else {
+				renderError(resp, req, "not-permitted", http.StatusUnauthorized)
+			}
 			return
 		}
 	}
 }
 
+// The default renderer
 func renderError(resp http.ResponseWriter, req *http.Request, message string, code int) (err error) {
 	resp.WriteHeader(code)
 	resp.Write([]byte(fmt.Sprintf("<html><body>Error: %s </body></html>", message)))
