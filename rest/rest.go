@@ -280,6 +280,10 @@ func (this *engine) Bind(endpoints ...*ServiceMethodImpl) {
 	}
 }
 
+func JSONContentType(req *http.Request) bool {
+	return "application/json" == content_type_for_request(req)
+}
+
 func content_type_for_request(req *http.Request) string {
 	t := "application/json"
 
