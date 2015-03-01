@@ -315,7 +315,7 @@ func content_type_for_response(req *http.Request) string {
 	case "*/*":
 		return "application/json"
 	case "":
-		return "application/json"
+		return content_type_for_request(req) // use the same content type as the request if no accept header
 	default:
 		return t
 	}
