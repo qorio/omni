@@ -1,12 +1,16 @@
 package api
 
+import (
+	"net/http"
+)
+
 type AuthScope int
 type AuthScopes map[AuthScope]string
 
 type ServiceMethod int
 type EventKey string
 
-type ObjectFactory func() interface{}
+type ObjectFactory func(*http.Request) interface{}
 
 type HttpMethod string
 type QueryDefault interface{}
