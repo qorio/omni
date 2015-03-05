@@ -48,6 +48,7 @@ AuthToken=a2675a4266b1f27ebd0cd528fc136227
 */
 const (
 	TwilioMessageEndpoint = "https://api.twilio.com/2010-04-01/Accounts/{{.AccountSid}}/Messages.json"
+	TwilioTimeFormat      = time.RFC1123Z //"Mon, 02 Jan 2006 15:04:05 -0700"
 )
 
 var (
@@ -67,6 +68,7 @@ type Twilio struct {
 }
 
 type Phone string
+type TwilioTime time.Time
 
 type Message struct {
 	To      Phone       `json:"to"`
@@ -74,17 +76,17 @@ type Message struct {
 }
 
 type Response struct {
-	Id           string    `json:"id"`
-	Created      time.Time `json:"date_created"`
-	Updated      time.Time `json:"date_updated"`
-	Sent         time.Time `json:"date_sent"`
-	To           Phone     `json:"to"`
-	From         Phone     `json:"from"`
-	Body         string    `json:"body"`
-	Status       string    `json:"status"`
-	ErrorCode    string    `json:"error_code"`
-	ErrorMessage string    `json:"error_message"`
-	Uri          string    `json:"uri"`
+	Id           string `json:"id"`
+	Created      string `json:"date_created"`
+	Updated      string `json:"date_updated"`
+	Sent         string `json:"date_sent"`
+	To           Phone  `json:"to"`
+	From         Phone  `json:"from"`
+	Body         string `json:"body"`
+	Status       string `json:"status"`
+	ErrorCode    string `json:"error_code"`
+	ErrorMessage string `json:"error_message"`
+	Uri          string `json:"uri"`
 }
 
 var (
@@ -95,6 +97,20 @@ var (
 
 func (p Phone) IsZero() bool {
 	return "" == string(p)
+}
+
+func (p Phone) UnmarshalJSON(d []byte) error {
+	p = Phone(string(d))
+	return nil
+}
+
+func (t TwilioTime) UnmarshalJSON(d []byte) error {
+	tt, err := time.Parse(TwilioTimeFormat, string(d))
+	if err != nil {
+		return err
+	}
+	t = TwilioTime(tt)
+	return nil
 }
 
 func (t *Twilio) SendMessage(message *Message) (*Response, error) {
