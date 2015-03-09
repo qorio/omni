@@ -59,11 +59,14 @@ func init() {
 	TwilioEndpointTemplate = template.Must(template.New("twilio-endpoint").Parse(TwilioMessageEndpoint))
 }
 
-type Twilio struct {
+type TwilioAccount struct {
 	AccountSid string `json:"account_sid"`
 	AuthToken  string `json:"auth_token"`
+}
+type Twilio struct {
+	TwilioAccount
 
-	FromPhone    func(*Message) Phone
+	From         func(*Message) Phone
 	BodyTemplate func(*Message) string
 }
 
@@ -90,8 +93,8 @@ type Response struct {
 }
 
 var (
-	ErrNoFromPhone    = errors.New("error-from-missing")
-	ErrNoToPhone      = errors.New("error-to-missing")
+	ErrNoFrom         = errors.New("error-from-missing")
+	ErrNoTo           = errors.New("error-to-missing")
 	ErrNoBodyTemplate = errors.New("error-no-body-template")
 )
 
@@ -117,11 +120,11 @@ func (t *Twilio) SendMessage(message *Message) (*Response, error) {
 	if t.BodyTemplate == nil {
 		return nil, ErrNoBodyTemplate
 	}
-	if t.FromPhone == nil {
-		return nil, ErrNoFromPhone
+	if t.From == nil {
+		return nil, ErrNoFrom
 	}
 	if message.To.IsZero() {
-		return nil, ErrNoToPhone
+		return nil, ErrNoTo
 	}
 	bt, err := template.New("sms-body").Parse(t.BodyTemplate(message))
 	if err != nil {
@@ -139,7 +142,7 @@ func (t *Twilio) SendMessage(message *Message) (*Response, error) {
 	client := &http.Client{}
 
 	data := url.Values{}
-	data.Set("From", string(t.FromPhone(message)))
+	data.Set("From", string(t.From(message)))
 	data.Set("To", string(message.To))
 	data.Set("Body", buff.String())
 	post, err := http.NewRequest("POST", endpoint.String(), bytes.NewBufferString(data.Encode()))
