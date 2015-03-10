@@ -34,14 +34,14 @@ func init() {
 	MailgunEndpointTemplate = template.Must(template.New("twilio-endpoint").Parse(MailgunMessageEndpoint))
 }
 
-type EmailAddress string
+type Address string
 
-func (email EmailAddress) IsZero() bool {
+func (email Address) IsZero() bool {
 	return "" == string(email)
 }
 
-func (email EmailAddress) UnmarshalJSON(d []byte) error {
-	email = EmailAddress(string(d))
+func (email Address) UnmarshalJSON(d []byte) error {
+	email = Address(string(d))
 	return nil
 }
 
@@ -53,15 +53,15 @@ type MailgunAccount struct {
 type Mailgun struct {
 	MailgunAccount
 
-	From         func(*Message) EmailAddress
+	From         func(*Message) Address
 	BodyTemplate func(*Message) string
 	ContentType  string
 }
 
 type Message struct {
-	To      EmailAddress `json:"to"`
-	Subject string       `json:"subject"`
-	Context interface{}  `json:"context"` // For apply template
+	To      Address     `json:"to"`
+	Subject string      `json:"subject"`
+	Context interface{} `json:"context"` // For apply template
 }
 
 type Response struct {
@@ -75,7 +75,7 @@ var (
 	ErrNoBodyTemplate = errors.New("error-no-body-template")
 )
 
-func (this *Mailgun) SendMessage(message *Message) (*Response, error) {
+func (this *Mailgun) Send(message *Message) (*Response, error) {
 	if this.BodyTemplate == nil {
 		return nil, ErrNoBodyTemplate
 	}

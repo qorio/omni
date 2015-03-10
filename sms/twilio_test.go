@@ -35,7 +35,7 @@ func (suite *SmsTests) TestSendMessage(c *C) {
 		},
 	}
 
-	resp, err := t.SendMessage(&Message{
+	resp, err := t.Send(&Message{
 		To: Phone("4155097294"),
 		Context: map[string]string{
 			"Username": "David",

@@ -116,7 +116,7 @@ func (t TwilioTime) UnmarshalJSON(d []byte) error {
 	return nil
 }
 
-func (t *Twilio) SendMessage(message *Message) (*Response, error) {
+func (t *Twilio) Send(message *Message) (*Response, error) {
 	if t.BodyTemplate == nil {
 		return nil, ErrNoBodyTemplate
 	}

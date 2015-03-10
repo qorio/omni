@@ -28,16 +28,16 @@ func (suite *EmailTests) TestSendMessage(c *C) {
 			ApiKey:     "key-c29c589f369ecd184e69b4df89cb149d",
 		},
 
-		From: func(*Message) EmailAddress {
-			return EmailAddress("ops@qoriolabs.com")
+		From: func(*Message) Address {
+			return Address("ops@qoriolabs.com")
 		},
 		BodyTemplate: func(*Message) string {
 			return "Hello {{.Username}}, here is the link where you can reset your password: {{.Link}}."
 		},
 	}
 
-	resp, err := t.SendMessage(&Message{
-		To:      EmailAddress("dchung+test@qoriolabs.com"),
+	resp, err := t.Send(&Message{
+		To:      Address("dchung+test@qoriolabs.com"),
 		Subject: "TESTING - Password reset",
 		Context: map[string]string{
 			"Username": "David",

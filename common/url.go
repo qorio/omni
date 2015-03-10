@@ -25,3 +25,7 @@ func (u *Url) UnmarshalJSON(s []byte) error {
 func (u *Url) MarshalJSON() ([]byte, error) {
 	return []byte((*url.URL)(u).String()), nil
 }
+
+func (u *Url) String() string {
+	return (*url.URL)(u).String()
+}
