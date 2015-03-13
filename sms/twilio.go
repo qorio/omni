@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"github.com/golang/glog"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -157,8 +156,6 @@ func (t *Twilio) Send(message *Message) (*Response, error) {
 	}
 	content, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
-
-	glog.Infoln("Got response:", string(content))
 
 	r := new(Response)
 	err = json.Unmarshal(content, r)
