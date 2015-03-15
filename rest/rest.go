@@ -72,12 +72,14 @@ var (
 		"":                     json_marshaler,
 		"application/json":     json_marshaler,
 		"application/protobuf": proto_marshaler,
+		"text/html":            nil,
 	}
 
 	unmarshalers = map[string]func(io.ReadCloser, interface{}) error{
 		"":                     json_unmarshaler,
 		"application/json":     json_unmarshaler,
 		"application/protobuf": proto_unmarshaler,
+		"text/html":            nil,
 	}
 )
 

@@ -110,6 +110,7 @@ func (service *serviceImpl) RequiresAuth(scope string, get_scopes GetScopesFromT
 			} else {
 				scopes = strings.Split(info.token.GetString("@scopes"), ",")
 			}
+
 			if service.CheckScope != nil {
 				authed = service.CheckScope(scope, scopes)
 			} else {

@@ -46,7 +46,6 @@ type GetScopesFromToken func(*Token) []string
 
 type Service interface {
 	NewToken() (token *Token)
-	NewTokenWithExpiration(d time.Duration) (token *Token)
 	SignedStringForHttpRequest(token *Token, req *http.Request) (tokenString string, err error)
 	SignedString(token *Token, f SignKey) (tokenString string, err error)
 	Parse(tokenString string, f VerifyKey) (token *Token, err error)
@@ -83,15 +82,15 @@ func Init(settings Settings) *serviceImpl {
 }
 
 func (this *serviceImpl) NewToken() (token *Token) {
-	return this.NewTokenWithExpiration(time.Hour * this.settings.TTLHours)
+	token = &Token{token: jwt.New(jwt.GetSigningMethod("HS256"))}
+	token.SetExpiration(time.Hour * this.settings.TTLHours)
+	return token
 }
 
-func (this *serviceImpl) NewTokenWithExpiration(d time.Duration) (token *Token) {
-	token = &Token{token: jwt.New(jwt.GetSigningMethod("HS256"))}
-	if this.settings.TTLHours > 0 {
-		token.token.Claims["exp"] = time.Now().Add(d).Unix()
+func (this *Token) SetExpiration(d time.Duration) {
+	if d > 0 {
+		this.token.Claims["exp"] = time.Now().Add(d).Unix()
 	}
-	return
 }
 
 func (this *serviceImpl) SignedString(token *Token, f SignKey) (tokenString string, err error) {
