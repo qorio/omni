@@ -122,6 +122,7 @@ type EngineEvent struct {
 
 type Engine interface {
 	Bind(...*ServiceMethodImpl)
+	Handle(string, http.Handler)
 	ServeHTTP(http.ResponseWriter, *http.Request)
 	GetUrlParameter(*http.Request, string) string
 	GetHttpHeaders(*http.Request, api.HttpHeaders) (map[string][]string, error)
@@ -252,6 +253,10 @@ func (this *engine) GetUrlQueries(req *http.Request, m api.UrlQueries) (api.UrlQ
 		}
 	}
 	return result, nil
+}
+
+func (this *engine) Handle(path string, handler http.Handler) {
+	this.router.Handle(path, handler)
 }
 
 func (this *engine) Bind(endpoints ...*ServiceMethodImpl) {
