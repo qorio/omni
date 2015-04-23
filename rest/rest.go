@@ -1,7 +1,7 @@
 package rest
 
 import (
-	"code.google.com/p/goprotobuf/proto"
+	"github.com/golang/protobuf"
 	"encoding/json"
 	"errors"
 	"fmt"
