@@ -106,7 +106,8 @@ func updateDomainSocketPermissions(filename string) (err error) {
 // in that when a 'true' is sent to the stop channel, the listener is closed to force a clean shutdown.
 func RunServer(server *http.Server, stop chan bool) (stopped chan bool) {
 	protocol := "tcp"
-	if match, _ := regexp.MatchString("[a-zA-Z0-9\\.]*:[0-9]{4,}", server.Addr); !match {
+	// e.g. 0.0.0.0:80 or :80 or :8080
+	if match, _ := regexp.MatchString("[a-zA-Z0-9\\.]*:[0-9]{2,}", server.Addr); !match {
 		protocol = "unix"
 	}
 
