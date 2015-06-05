@@ -39,6 +39,7 @@ type Settings struct {
 	SignKeyFromHttpRequest   func(*http.Request) []byte
 	VerifyKeyFromHttpRequest func(*http.Request) []byte
 	ErrorRenderer            func(http.ResponseWriter, *http.Request, string, int) error
+	AuthIntercept            func(bool, Context) (bool, Context)
 }
 
 type HttpHandler func(auth Context, resp http.ResponseWriter, req *http.Request)

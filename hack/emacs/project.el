@@ -118,8 +118,10 @@ it blindly to other people's files can cause enormously messy diffs!"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; go mode
 (setq top-path (getenv "PWD"))
-(setq load-path (cons "/usr/local/go/misc/emacs" load-path))
-(require 'go-mode)
+;(setq load-path (concat top-path "/hack/emacs/go-mode.el"))
+(load (concat top-path "/hack/emacs/go-mode.el"))
+(load (concat top-path "/hack/emacs/go-mode-autoloads.el"))
+(require 'go-mode-autoloads)
 (add-hook 'before-save-hook #'gofmt-before-save)
 (add-hook 'go-mode-hook '(lambda ()
   (local-set-key (kbd "C-c C-r") 'go-remove-unused-imports)))
@@ -127,13 +129,15 @@ it blindly to other people's files can cause enormously messy diffs!"
   (local-set-key (kbd "C-c C-g") 'go-goto-imports)))
 (add-hook 'go-mode-hook '(lambda ()
   (local-set-key (kbd "C-c C-k") 'godoc)))
-(load (concat top-path "/third_party/src/code.google.com/p/go.tools/cmd/oracle/oracle.el"))
-;; (defcustom go-oracle-command (concat top-path "third_party/bin/oracle")
-;;   "The Go oracle command; the default is $GOROOT/bin/oracle."
-;;   :type 'string
-;;   :group 'go-oracle)
-
-(add-hook 'go-mode-hook 'go-oracle-mode)
+(load (concat top-path "/hack/emacs/oracle.el"))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; yaml
+(load (concat top-path "/hack/emacs/yaml-mode.el"))
+(require 'yaml-mode)
+    (add-to-list 'auto-mode-alist '("\\.yml$" . yaml-mode))
+(add-hook 'yaml-mode-hook
+      '(lambda ()
+        (define-key yaml-mode-map "\C-m" 'newline-and-indent)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 

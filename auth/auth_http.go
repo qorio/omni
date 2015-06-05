@@ -85,7 +85,7 @@ func (this *serviceImpl) SignedStringForHttpRequest(token *Token, req *http.Requ
 
 func (service *serviceImpl) RequiresAuth(scope string, get_scopes GetScopesFromToken, handler HttpHandler) func(http.ResponseWriter, *http.Request) {
 	return func(resp http.ResponseWriter, req *http.Request) {
-		info := &context{}
+		info := context{}
 		checkAuth := true
 		if service.IsAuthOn != nil {
 			checkAuth = service.IsAuthOn()
@@ -125,8 +125,13 @@ func (service *serviceImpl) RequiresAuth(scope string, get_scopes GetScopesFromT
 			authed = true
 		}
 
+		var ctx Context = &info
+		if service.settings.AuthIntercept != nil {
+			authed, ctx = service.settings.AuthIntercept(authed, &info)
+		}
+
 		if authed {
-			handler(info, resp, req)
+			handler(ctx, resp, req)
 			return
 		} else {
 			// error
