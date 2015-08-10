@@ -1,11 +1,11 @@
 package rest
 
 import (
-	"github.com/golang/protobuf/proto"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/golang/glog"
+	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/mux"
 	"github.com/qorio/omni/api"
 	"github.com/qorio/omni/auth"
@@ -27,6 +27,29 @@ var (
 )
 
 var (
+	string_marshaler = func(contentType string, resp http.ResponseWriter, typed interface{}) error {
+		if str, ok := typed.(*string); ok {
+			resp.Header().Add("Content-Type", contentType)
+			resp.Write([]byte(*str))
+			return nil
+		} else {
+			return errors.New("wrong-time-expects-string-ptr")
+		}
+	}
+
+	string_unmarshaler = func(body io.ReadCloser, typed interface{}) error {
+		if _, ok := typed.(*string); !ok {
+			return errors.New("wrong-type-expects-str-ptr")
+		}
+		if buff, err := ioutil.ReadAll(body); err == nil {
+			ptr := typed.(*string)
+			*ptr = string(buff)
+			return nil
+		} else {
+			return err
+		}
+	}
+
 	json_marshaler = func(contentType string, resp http.ResponseWriter, typed interface{}) error {
 		if buff, err := json.Marshal(typed); err == nil {
 			resp.Header().Add("Content-Type", contentType)
@@ -72,6 +95,7 @@ var (
 		"":                     json_marshaler,
 		"application/json":     json_marshaler,
 		"application/protobuf": proto_marshaler,
+		"text/plain":           string_marshaler,
 		"text/html":            nil,
 	}
 
@@ -79,6 +103,7 @@ var (
 		"":                     json_unmarshaler,
 		"application/json":     json_unmarshaler,
 		"application/protobuf": proto_unmarshaler,
+		"text/plain":           string_unmarshaler,
 		"text/html":            nil,
 	}
 )
