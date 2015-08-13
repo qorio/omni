@@ -416,7 +416,9 @@ func (this *engine) MarshalJSON(req *http.Request, any interface{}, resp http.Re
 
 func (this *engine) HandleError(resp http.ResponseWriter, req *http.Request, message string, code int) (err error) {
 	resp.WriteHeader(code)
-	resp.Write([]byte(fmt.Sprintf("{\"error\":\"%s\"}", message)))
+	if len(message) > 0 {
+		resp.Write([]byte(fmt.Sprintf("{\"error\":\"%s\"}", message)))
+	}
 	return
 }
 
