@@ -18,6 +18,8 @@ type UrlQueries map[string]QueryDefault
 type HttpHeaders map[string]string
 
 var (
+	HEAD      HttpMethod = HttpMethod("HEAD")
+	PATCH     HttpMethod = HttpMethod("PATCH")
 	GET       HttpMethod = HttpMethod("GET")
 	POST      HttpMethod = HttpMethod("POST")
 	PUT       HttpMethod = HttpMethod("PUT")
@@ -30,6 +32,7 @@ type MethodSpec struct {
 	UrlRoute             string
 	HttpHeaders          HttpHeaders
 	HttpMethod           HttpMethod
+	HttpMethods          []HttpMethod
 	UrlQueries           UrlQueries
 	ContentTypes         []string
 	RequestBody          ObjectFactory

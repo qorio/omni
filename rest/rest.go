@@ -300,10 +300,20 @@ func (this *engine) Bind(endpoints ...*ServiceMethodImpl) {
 			this.router.HandleFunc(ep.Api.UrlRoute, ep.Handler).Methods(string(ep.Api.HttpMethod))
 
 		case ep.AuthenticatedHandler != nil:
-			this.router.HandleFunc(ep.Api.UrlRoute,
+			h := this.router.HandleFunc(ep.Api.UrlRoute,
 				this.auth.RequiresAuth(ep.Api.AuthScope, func(token *auth.Token) []string {
 					return strings.Split(token.GetString(ep.ServiceId+"/@scopes"), ",")
-				}, ep.AuthenticatedHandler)).Methods(string(ep.Api.HttpMethod))
+				}, ep.AuthenticatedHandler))
+			if ep.Api.HttpMethod != "" {
+				h.Methods(string(ep.Api.HttpMethod))
+			}
+			if len(ep.Api.HttpMethods) > 0 {
+				s := []string{}
+				for _, m := range ep.Api.HttpMethods {
+					s = append(s, string(m))
+				}
+				h.Methods(s...)
+			}
 
 		case ep.Handler == nil && ep.AuthenticatedHandler == nil:
 			panic(errors.New(fmt.Sprintf("No implementation for REST endpoint[%d]: %s", i, ep)))
