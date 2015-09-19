@@ -15,25 +15,25 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
+)
+
+type nht int
+
+const (
+	no_header nht = 1
 )
 
 var (
-	ErrMissingInput                 = errors.New("error-missing-input")
-	ErrUnknownContentType           = errors.New("error-no-content-type")
-	ErrUnknownMethod                = errors.New("error-unknown-method")
-	ErrIncompatibleType             = errors.New("error-incompatible-type")
-	ErrNotSupportedUrlParameterType = errors.New("error-not-supported-url-query-param-type")
-	ErrNoHttpHeaderSpec             = errors.New("error-no-http-header-spec")
-)
-
-var (
-	string_marshaler = func(contentType string, resp http.ResponseWriter, typed interface{}) error {
+	string_marshaler = func(contentType string, resp http.ResponseWriter, typed interface{}, noHeader ...nht) error {
 		if str, ok := typed.(*string); ok {
-			resp.Header().Add("Content-Type", contentType)
+			if len(noHeader) == 0 {
+				resp.Header().Add("Content-Type", contentType)
+			}
 			resp.Write([]byte(*str))
 			return nil
 		} else {
-			return errors.New("wrong-time-expects-string-ptr")
+			return errors.New("wrong-type-expects-str-ptr")
 		}
 	}
 
@@ -50,9 +50,11 @@ var (
 		}
 	}
 
-	json_marshaler = func(contentType string, resp http.ResponseWriter, typed interface{}) error {
+	json_marshaler = func(contentType string, resp http.ResponseWriter, typed interface{}, noHeader ...nht) error {
 		if buff, err := json.Marshal(typed); err == nil {
-			resp.Header().Add("Content-Type", contentType)
+			if len(noHeader) == 0 {
+				resp.Header().Add("Content-Type", contentType)
+			}
 			resp.Write(buff)
 			return nil
 		} else {
@@ -74,7 +76,7 @@ var (
 		return json.Unmarshal(buff, typed)
 	}
 
-	proto_marshaler = func(contentType string, resp http.ResponseWriter, any interface{}) error {
+	proto_marshaler = func(contentType string, resp http.ResponseWriter, any interface{}, noHeader ...nht) error {
 		typed, ok := any.(proto.Message)
 		if !ok {
 			return ErrIncompatibleType
@@ -100,7 +102,7 @@ var (
 		return proto.Unmarshal(buff, typed)
 	}
 
-	marshalers = map[string]func(string, http.ResponseWriter, interface{}) error{
+	marshalers = map[string]func(string, http.ResponseWriter, interface{}, ...nht) error{
 		"":                     json_marshaler,
 		"application/json":     json_marshaler,
 		"application/protobuf": proto_marshaler,
@@ -116,8 +118,6 @@ var (
 		"text/html":            nil,
 	}
 )
-
-type Handler func(http.ResponseWriter, *http.Request)
 
 type ServiceMethodImpl struct {
 	Api                  api.MethodSpec // note this is by copy -- so that behavior is deterministic after initialization
@@ -147,51 +147,28 @@ func SetAuthenticatedHandler(serviceId string, m api.MethodSpec, h auth.HttpHand
 	}
 }
 
-type EngineEvent struct {
-	Domain        string
-	Service       string
-	ServiceMethod api.ServiceMethod
-	Body          interface{}
-}
-
-type Engine interface {
-	Bind(...*ServiceMethodImpl)
-	Handle(string, http.Handler)
-	ServeHTTP(http.ResponseWriter, *http.Request)
-	GetUrlParameter(*http.Request, string) string
-	GetHttpHeaders(*http.Request, api.HttpHeaders) (map[string][]string, error)
-	GetUrlQueries(*http.Request, api.UrlQueries) (api.UrlQueries, error)
-	Unmarshal(*http.Request, proto.Message) error
-	Marshal(*http.Request, proto.Message, http.ResponseWriter) error
-	UnmarshalJSON(*http.Request, interface{}) error
-	MarshalJSON(*http.Request, interface{}, http.ResponseWriter) error
-	HandleError(http.ResponseWriter, *http.Request, string, int) error
-	EventChannel() chan<- *EngineEvent
-}
-
 type engine struct {
-	spec       *api.ServiceMethods
-	router     *mux.Router
-	auth       auth.Service
-	event_chan chan *EngineEvent
-	done_chan  chan bool
-	webhooks   WebhookManager
+	spec        *api.ServiceMethods
+	router      *mux.Router
+	auth        auth.Service
+	event_chan  chan *EngineEvent
+	done_chan   chan bool
+	webhooks    WebhookManager
+	sseChannels map[string]*sseChannel
+	lock        sync.Mutex
 }
 
 func NewEngine(spec *api.ServiceMethods, auth auth.Service, webhooks WebhookManager) *engine {
 	e := &engine{
-		spec:       spec,
-		router:     mux.NewRouter(),
-		auth:       auth,
-		event_chan: make(chan *EngineEvent),
-		done_chan:  make(chan bool),
-		webhooks:   webhooks,
+		spec:        spec,
+		router:      mux.NewRouter(),
+		auth:        auth,
+		event_chan:  make(chan *EngineEvent),
+		done_chan:   make(chan bool),
+		webhooks:    webhooks,
+		sseChannels: make(map[string]*sseChannel),
 	}
 	return e
-}
-
-func (this *engine) Router() *mux.Router {
-	return this.router
 }
 
 func (this *engine) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
