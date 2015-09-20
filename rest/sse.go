@@ -109,11 +109,11 @@ func (this *sseChannel) Stop() {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
-	glog.V(100).Infoln("Closing stop")
+	glog.V(100).Infoln("Closing stop", this.Key)
 	close(this.stop)
 	this.stop = nil
 
-	glog.V(100).Infoln("Closing messages")
+	glog.V(100).Infoln("Closing messages", this.Key)
 	close(this.messages)
 	// stop all clients
 	for c, _ := range this.clients {
@@ -157,6 +157,9 @@ func (this *sseChannel) Start() *sseChannel {
 						this.defunctClients <- s
 					}
 					this.stop <- 1
+
+					glog.V(100).Infoln("Channel loop stopped", this.Key)
+					return // stop this
 				} else {
 					// There is a new message to send.  For each
 					// attached client, push the new message
