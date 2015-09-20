@@ -40,6 +40,7 @@ func (this *engine) deleteSseChannel(key string) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	delete(this.sseChannels, key)
+	glog.Infoln("Removed sse channel", key, "count=", len(this.sseChannels))
 }
 
 func (this *engine) getSseChannel(contentType, eventType, key string) (*sseChannel, bool) {
@@ -49,12 +50,14 @@ func (this *engine) getSseChannel(contentType, eventType, key string) (*sseChann
 	if c, has := this.sseChannels[key]; has {
 		return c, false
 	} else {
-		c = new(sseChannel).Init()
-		c.engine = this
-		c.ContentType = contentType
-		c.EventType = eventType
+		c = &sseChannel{
+			Key:         key,
+			ContentType: contentType,
+			EventType:   eventType,
+			engine:      this,
+		}
+		c.Init().Start()
 		this.sseChannels[key] = c
-		c.Start()
 		return c, true
 	}
 }
@@ -106,7 +109,7 @@ func (this *sseChannel) Stop() {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
-	glog.V(100).Infoln("Sending stop")
+	glog.V(100).Infoln("Closing stop")
 	close(this.stop)
 	this.stop = nil
 
@@ -114,7 +117,7 @@ func (this *sseChannel) Stop() {
 	close(this.messages)
 	// stop all clients
 	for c, _ := range this.clients {
-		glog.V(100).Infoln("Closing event client channels")
+		glog.V(100).Infoln("Closing event client", c)
 		close(c)
 	}
 	this.engine.deleteSseChannel(this.Key)
@@ -139,9 +142,14 @@ func (this *sseChannel) Start() *sseChannel {
 				close(s)
 				glog.V(100).Infoln("Removed client:", s)
 
-			case <-this.stop:
-				this.Stop()
-				return
+			case _, open := <-this.stop:
+				if open {
+					glog.V(100).Infoln("Received stop.", this.Key)
+					this.Stop()
+				} else {
+					glog.V(100).Infoln("Stopping channel loop.", this.Key)
+					return
+				}
 			default:
 				msg, open := <-this.messages
 				if !open || msg == nil {
