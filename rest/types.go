@@ -39,7 +39,7 @@ type Engine interface {
 	HandleError(http.ResponseWriter, *http.Request, string, int) error
 	EventChannel() chan<- *EngineEvent
 	StreamChannel(contentType, eventType, key string) (*sseChannel, bool)
-	BroadcastHttpStream(w http.ResponseWriter, r *http.Request, contentType, eventType, key string, src <-chan interface{}) error
+	MergeHttpStream(w http.ResponseWriter, r *http.Request, contentType, eventType, key string, src <-chan interface{}) error
 	DirectHttpStream(http.ResponseWriter, *http.Request) (chan<- interface{}, error)
 	Stop()
 }

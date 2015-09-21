@@ -62,7 +62,7 @@ func (this *engine) DirectHttpStream(w http.ResponseWriter, r *http.Request) (ch
 	return messageChan, nil
 }
 
-func (this *engine) BroadcastHttpStream(resp http.ResponseWriter, req *http.Request,
+func (this *engine) MergeHttpStream(resp http.ResponseWriter, req *http.Request,
 	contentType, eventType, key string, source <-chan interface{}) error {
 
 	sc, new := this.StreamChannel(contentType, eventType, key)
@@ -70,13 +70,11 @@ func (this *engine) BroadcastHttpStream(resp http.ResponseWriter, req *http.Requ
 		go func() {
 			// connect the source
 			for {
-				if m, open := <-source; !open {
-					glog.V(100).Infoln("Closing channel:", sc.Key)
-					sc.Stop()
-					this.deleteSseChannel(key)
-					return
+				if m, open := <-source; open {
+					sc.messages <- m
 				} else {
-					sc.Messages <- m
+					glog.Infoln("Source", source, "closed.")
+					return
 				}
 			}
 		}()
@@ -133,6 +131,10 @@ type sseChannel struct {
 
 	clients map[event_client]int
 
+	// Multiple sources can multiplex onto the Messages.  This gives a way to track
+	sources        int
+	sourceTracking chan int
+
 	// Channel into which new clients can be pushed
 	newClients chan event_client
 
@@ -141,7 +143,7 @@ type sseChannel struct {
 
 	// Channel into which messages are pushed to be broadcast out
 	// to attahed clients.
-	Messages chan interface{}
+	messages chan interface{}
 }
 
 func (this *sseChannel) Init() *sseChannel {
@@ -149,7 +151,8 @@ func (this *sseChannel) Init() *sseChannel {
 	this.clients = make(map[event_client]int)
 	this.newClients = make(chan event_client)
 	this.defunctClients = make(chan event_client)
-	this.Messages = make(chan interface{})
+	this.messages = make(chan interface{})
+	this.sourceTracking = make(chan int)
 	return this
 }
 
@@ -169,7 +172,7 @@ func (this *sseChannel) Stop() {
 	this.stop = nil
 
 	glog.V(100).Infoln("Closing messages", this.Key)
-	close(this.Messages)
+	close(this.messages)
 	// stop all clients
 	for c, _ := range this.clients {
 		glog.V(100).Infoln("Closing event client", c)
@@ -184,6 +187,15 @@ func (this *sseChannel) Start() *sseChannel {
 		for {
 			select {
 
+			case c := <-this.sourceTracking:
+				this.sources += c
+				if this.sources == 0 {
+					// all sources are gone.
+					glog.V(100).Infoln("All sources gone. Closing channel:", this.Key)
+					this.Stop()
+					this.engine.deleteSseChannel(this.Key)
+					return
+				}
 			case s := <-this.newClients:
 				this.lock.Lock()
 				this.clients[s] = 1
@@ -206,7 +218,7 @@ func (this *sseChannel) Start() *sseChannel {
 					return
 				}
 			default:
-				msg, open := <-this.Messages
+				msg, open := <-this.messages
 				if !open || msg == nil {
 					for s, _ := range this.clients {
 						this.defunctClients <- s
