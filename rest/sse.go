@@ -1,16 +1,71 @@
 package rest
 
 import (
+	"errors"
 	"fmt"
 	"github.com/golang/glog"
 	"net/http"
 	"sync"
 )
 
-func (this *engine) StreamServerEvents(resp http.ResponseWriter, req *http.Request,
+// TODO - return and disconnect client
+func (this *engine) DirectHttpStream(w http.ResponseWriter, r *http.Request) (chan<- interface{}, error) {
+
+	// Make sure that the writer supports flushing.
+	f, ok := w.(http.Flusher)
+	if !ok {
+		return nil, errors.New("streaming-unsupported")
+	}
+
+	// Create a new channel, over which the broker can
+	// send this client messages.
+	messageChan := make(chan interface{})
+
+	// Set the headers related to event streaming.
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	go func() {
+		for {
+			// Read from our messageChan.
+			msg, open := <-messageChan
+
+			if !open || msg == nil {
+				// If our messageChan was closed, this means that the client has
+				// disconnected.
+				glog.V(100).Infoln("Messages stopped.. Closing http connection")
+				break
+			}
+
+			// by type switch
+			switch t := msg.(type) {
+			default:
+				fmt.Fprintf(w, "event: %s\n", t)
+				fmt.Fprint(w, "data: ")
+				json_marshaler("application/json", w, &msg, no_header)
+				fmt.Fprint(w, "\n\n")
+			case string:
+				fmt.Fprintf(w, "%s\n", msg.(string))
+			case []byte:
+				fmt.Fprintf(w, "%s\n", string(msg.([]byte)))
+			}
+
+			// Flush the response.  This is only possible if
+			// the repsonse supports streaming.
+			f.Flush()
+		}
+		// Done.
+		glog.V(100).Infoln("Finished HTTP request at ", r.URL.Path)
+	}()
+
+	return messageChan, nil
+}
+
+func (this *engine) BroadcastHttpStream(resp http.ResponseWriter, req *http.Request,
 	contentType, eventType, key string, source <-chan interface{}) error {
 
-	sc, new := this.getSseChannel(contentType, eventType, key)
+	sc, new := this.StreamChannel(contentType, eventType, key)
 	if new {
 		go func() {
 			// connect the source
@@ -21,7 +76,7 @@ func (this *engine) StreamServerEvents(resp http.ResponseWriter, req *http.Reque
 					this.deleteSseChannel(key)
 					return
 				} else {
-					sc.messages <- m
+					sc.Messages <- m
 				}
 			}
 		}()
@@ -43,7 +98,7 @@ func (this *engine) deleteSseChannel(key string) {
 	glog.Infoln("Removed sse channel", key, "count=", len(this.sseChannels))
 }
 
-func (this *engine) getSseChannel(contentType, eventType, key string) (*sseChannel, bool) {
+func (this *engine) StreamChannel(contentType, eventType, key string) (*sseChannel, bool) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
@@ -86,7 +141,7 @@ type sseChannel struct {
 
 	// Channel into which messages are pushed to be broadcast out
 	// to attahed clients.
-	messages chan interface{}
+	Messages chan interface{}
 }
 
 func (this *sseChannel) Init() *sseChannel {
@@ -94,7 +149,7 @@ func (this *sseChannel) Init() *sseChannel {
 	this.clients = make(map[event_client]int)
 	this.newClients = make(chan event_client)
 	this.defunctClients = make(chan event_client)
-	this.messages = make(chan interface{})
+	this.Messages = make(chan interface{})
 	return this
 }
 
@@ -114,7 +169,7 @@ func (this *sseChannel) Stop() {
 	this.stop = nil
 
 	glog.V(100).Infoln("Closing messages", this.Key)
-	close(this.messages)
+	close(this.Messages)
 	// stop all clients
 	for c, _ := range this.clients {
 		glog.V(100).Infoln("Closing event client", c)
@@ -151,7 +206,7 @@ func (this *sseChannel) Start() *sseChannel {
 					return
 				}
 			default:
-				msg, open := <-this.messages
+				msg, open := <-this.Messages
 				if !open || msg == nil {
 					for s, _ := range this.clients {
 						this.defunctClients <- s

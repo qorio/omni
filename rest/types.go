@@ -38,7 +38,8 @@ type Engine interface {
 	MarshalJSON(*http.Request, interface{}, http.ResponseWriter) error
 	HandleError(http.ResponseWriter, *http.Request, string, int) error
 	EventChannel() chan<- *EngineEvent
-	StreamServerEvents(w http.ResponseWriter, r *http.Request,
-		contentType, eventType, key string, src <-chan interface{}) error
+	StreamChannel(contentType, eventType, key string) (*sseChannel, bool)
+	BroadcastHttpStream(w http.ResponseWriter, r *http.Request, contentType, eventType, key string, src <-chan interface{}) error
+	DirectHttpStream(http.ResponseWriter, *http.Request) (chan<- interface{}, error)
 	Stop()
 }
