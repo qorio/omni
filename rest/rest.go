@@ -404,7 +404,8 @@ func (this *engine) MarshalJSON(req *http.Request, any interface{}, resp http.Re
 func (this *engine) HandleError(resp http.ResponseWriter, req *http.Request, message string, code int) (err error) {
 	resp.WriteHeader(code)
 	if len(message) > 0 {
-		resp.Write([]byte(fmt.Sprintf("{\"error\":\"%s\"}", message)))
+		escaped := strings.Replace(message, "\"", "'", -1)
+		resp.Write([]byte(fmt.Sprintf("{\"error\":\"%s\"}", escaped)))
 	}
 	return
 }
