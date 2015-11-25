@@ -32,6 +32,7 @@ type Engine interface {
 	GetUrlParameter(*http.Request, string) string
 	GetHttpHeaders(*http.Request, api.HttpHeaders) (map[string][]string, error)
 	GetUrlQueries(*http.Request, api.UrlQueries) (api.UrlQueries, error)
+	GetPostForm(*http.Request, api.FormParams) (api.FormParams, error)
 	Unmarshal(*http.Request, proto.Message) error
 	Marshal(*http.Request, proto.Message, http.ResponseWriter) error
 	UnmarshalJSON(*http.Request, interface{}) error

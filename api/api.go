@@ -15,6 +15,8 @@ type ObjectFactory func(*http.Request) interface{}
 type HttpMethod string
 type QueryDefault interface{}
 type UrlQueries map[string]QueryDefault
+type FormParams UrlQueries
+
 type HttpHeaders map[string]string
 
 var (
@@ -34,6 +36,7 @@ type MethodSpec struct {
 	HttpMethod           HttpMethod
 	HttpMethods          []HttpMethod
 	UrlQueries           UrlQueries
+	FormParams           FormParams
 	ContentTypes         []string
 	RequestBody          ObjectFactory
 	ResponseBody         ObjectFactory

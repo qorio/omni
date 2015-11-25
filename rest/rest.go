@@ -222,6 +222,11 @@ func (this *engine) GetHttpHeaders(req *http.Request, m api.HttpHeaders) (map[st
 	return q, nil
 }
 
+func (this *engine) GetPostForm(req *http.Request, m api.FormParams) (api.FormParams, error) {
+	q, err := this.GetUrlQueries(req, api.UrlQueries(m))
+	return api.FormParams(q), err
+}
+
 func (this *engine) GetUrlQueries(req *http.Request, m api.UrlQueries) (api.UrlQueries, error) {
 	result := make(api.UrlQueries)
 	for key, default_value := range m {
