@@ -156,6 +156,7 @@ type engine struct {
 	webhooks    WebhookManager
 	sseChannels map[string]*sseChannel
 	lock        sync.Mutex
+	running     bool
 }
 
 func NewEngine(spec *api.ServiceMethods, auth auth.Service, webhooks WebhookManager) *engine {
@@ -172,22 +173,28 @@ func NewEngine(spec *api.ServiceMethods, auth auth.Service, webhooks WebhookMana
 }
 
 func (this *engine) ServeHTTP(resp http.ResponseWriter, request *http.Request) {
-	// Also start listening on the event channel for any webhook calls
-	go func() {
-		for {
-			select {
+	defer this.lock.Unlock()
+	this.lock.Lock()
 
-			case message := <-this.event_chan:
-				this.do_callback(message)
+	if !this.running {
+		// Also start listening on the event channel for any webhook calls
+		go func() {
+			for {
+				select {
 
-			case done := <-this.done_chan:
-				if done {
-					glog.Infoln("REST engine event channel stopped.")
-					return
+				case message := <-this.event_chan:
+					this.do_callback(message)
+
+				case done := <-this.done_chan:
+					if done {
+						glog.Infoln("REST engine event channel stopped.")
+						return
+					}
 				}
 			}
-		}
-	}()
+		}()
+		this.running = true
+	}
 
 	this.router.ServeHTTP(resp, request)
 }
